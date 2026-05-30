@@ -252,6 +252,29 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   font-variant-numeric:tabular-nums;line-height:1;margin:16px 0;color:var(--text)}
 .wo-rest-count.ending{color:var(--accent)}
 .wo-rest-next{font-size:13px;color:var(--muted);text-align:center;letter-spacing:.06em;text-transform:uppercase;min-height:16px}
+#woRestMobAnim{display:flex;align-items:center;justify-content:center;height:28vh;max-height:260px;margin:6px 0}
+#woRestMobAnim img{height:100%;width:auto;max-width:90%;display:block;object-fit:contain}
+.wo-rest-swap{margin-top:12px;text-align:center;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.wo-rest-swap span{cursor:pointer;color:var(--accent);padding:8px 10px;-webkit-user-select:none;user-select:none}
+.wo-rest-swap span.dim{color:var(--muted)}
+.wo-mob-line{font-size:9px;color:var(--green);width:100%;padding-left:38px;letter-spacing:.03em}
+.wo-edit-link{margin:14px 16px 0;text-align:center}
+.wo-edit-link span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
+.wo-ed-ex{background:var(--card);border:1px solid var(--border);margin:14px 16px 0;padding:4px 14px 10px}
+.wo-ed-name{font-size:15px;font-weight:600;padding:10px 0 4px}
+.wo-ed-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
+.wo-ed-lbl{font-size:12px;color:var(--muted);flex:1;min-width:0}
+.wo-ed-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.wo-toggle{width:44px;height:26px;border-radius:13px;background:var(--border);position:relative;cursor:pointer;flex-shrink:0;transition:background .15s}
+.wo-toggle.on{background:var(--green)}
+.wo-toggle-knob{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s}
+.wo-toggle.on .wo-toggle-knob{left:20px}
+.wo-mob-pick{font-size:12px;color:var(--accent);cursor:pointer;text-align:right;flex-shrink:0;-webkit-user-select:none;user-select:none}
+.wo-ed-actions{margin:18px 16px 0;display:flex;gap:8px}
+.wo-ed-btn{flex:1;text-align:center;padding:14px;border:1px solid var(--border);font-size:12px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--text);-webkit-user-select:none;user-select:none}
+.wo-ed-btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}
 /* STRETCH */
 .st-set-toggle{display:flex;gap:8px;margin:16px 16px 0}
 .st-tog{flex:1;text-align:center;font-size:12px;font-weight:600;letter-spacing:.08em;
@@ -476,8 +499,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   <div class="st-timer-body">
     <div class="st-stretch-name" id="woRestEx">Rest</div>
     <div class="st-stretch-note" id="woRestNote">Next set coming up</div>
+    <div id="woRestMobAnim" style="display:none"></div>
+    <div class="st-stretch-cue" id="woRestCue" style="display:none"></div>
     <div class="wo-rest-count" id="woRestCount">3:00</div>
     <div class="wo-rest-next" id="woRestNext"></div>
+    <div class="wo-rest-swap" id="woRestSwap" style="display:none"><span onclick="woRestSwap()">Swap mobility</span><span class="dim" onclick="woRestSkipMob()">Skip mobility</span></div>
   </div>
   <div class="st-controls">
     <div class="st-ctrl" onclick="woRestAdd(30)">+30</div>
@@ -949,37 +975,44 @@ function woSnap(v){return WO_LADDER[woSnapIdx(v)];}
 function woLadderStep(v,dir){var i=woSnapIdx(v)+dir;if(i<0)i=0;if(i>WO_LADDER.length-1)i=WO_LADDER.length-1;return WO_LADDER[i];}
 var WO_TEMPLATES={
  mon:{tag:'UPPER PUSH',ex:[
-   {name:'DB Bench Press',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:180,seedW:45,seedR:10},
-   {name:'Seated Overhead Press',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:180,seedW:25,seedR:10},
-   {name:'DB Triceps Extension',load:'pb',input:'wr',warmup:false,sets:2,target:[8,12],workRest:180,seedW:15,seedR:10},
-   {name:'Hanging Knee Raise',load:'bw',input:'reps',warmup:false,sets:2,target:[6,12],workRest:60,seedR:10}
+   {name:'DB Bench Press',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:180,seedW:45,seedR:10,restMob:['b0']},
+   {name:'Seated Overhead Press',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:180,seedW:25,seedR:10,restMob:['b1']},
+   {name:'DB Triceps Extension',load:'pb',input:'wr',warmup:false,sets:2,target:[8,12],workRest:180,seedW:15,seedR:10,restMob:['b0']},
+   {name:'Hanging Knee Raise',load:'bw',input:'reps',warmup:false,sets:2,target:[6,12],workRest:60,seedR:10,restMob:[null]}
  ]},
  tue:{tag:'LOWER + RUN',ex:[
-   {name:'Goblet Squat',load:'pb',input:'wr',warmup:true,sets:1,target:[8,15],warmRest:120,seedW:50,seedR:10},
-   {name:'DB Romanian Deadlift',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:120,seedW:45,seedR:10},
-   {name:'Reverse Lunge',load:'bw',input:'reps',warmup:false,sets:1,target:[8,12],seedR:10}
+   {name:'Goblet Squat',load:'pb',input:'wr',warmup:true,sets:1,target:[8,15],warmRest:120,seedW:50,seedR:10,restMob:[]},
+   {name:'DB Romanian Deadlift',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:120,seedW:45,seedR:10,restMob:['b3']},
+   {name:'Reverse Lunge',load:'bw',input:'reps',warmup:false,sets:1,target:[8,12],seedR:10,restMob:[]}
  ]},
  wed:{tag:'UPPER PULL',ex:[
-   {name:'Pull-Up',load:'bw',input:'reps',warmup:true,sets:2,target:[6,12],warmRest:60,workRest:180,seedR:8,form:true},
-   {name:'Bent Over DB Row',load:'pb',input:'wr',warmup:false,sets:2,target:[8,15],workRest:180,seedW:40,seedR:10},
-   {name:'Preacher Curl',load:'pb',input:'wr',warmup:false,sets:1,target:[8,12],seedW:20,seedR:10},
-   {name:'DB Hammer Curl',load:'pb',input:'wr',warmup:false,sets:2,target:[8,12],workRest:180,seedW:20,seedR:10},
-   {name:'Hanging Knee Raise',load:'bw',input:'reps',warmup:false,sets:2,target:[6,12],workRest:60,seedR:10}
+   {name:'Pull-Up',load:'bw',input:'reps',warmup:true,sets:2,target:[6,12],warmRest:60,workRest:180,seedR:8,form:true,restMob:['b4']},
+   {name:'Bent Over DB Row',load:'pb',input:'wr',warmup:false,sets:2,target:[8,15],workRest:180,seedW:40,seedR:10,restMob:['b4']},
+   {name:'Preacher Curl',load:'pb',input:'wr',warmup:false,sets:1,target:[8,12],seedW:20,seedR:10,restMob:[]},
+   {name:'DB Hammer Curl',load:'pb',input:'wr',warmup:false,sets:2,target:[8,12],workRest:180,seedW:20,seedR:10,restMob:['b3']},
+   {name:'Hanging Knee Raise',load:'bw',input:'reps',warmup:false,sets:2,target:[6,12],workRest:60,seedR:10,restMob:[null]}
  ]},
  thu:{tag:'LOWER VAR + RUN',ex:[
-   {name:'Goblet Squat',load:'pb',input:'wr',warmup:true,sets:1,target:[8,15],warmRest:120,seedW:50,seedR:10},
-   {name:'Plank',load:'bw',input:'time',warmup:false,sets:1,workRest:60,seedT:45},
-   {name:'Bulgarian Split Squat',load:'bw',input:'reps',warmup:false,sets:1,target:[6,12],seedR:8}
+   {name:'Goblet Squat',load:'pb',input:'wr',warmup:true,sets:1,target:[8,15],warmRest:120,seedW:50,seedR:10,restMob:[]},
+   {name:'Plank',load:'bw',input:'time',warmup:false,sets:1,workRest:60,seedT:45,restMob:[]},
+   {name:'Bulgarian Split Squat',load:'bw',input:'reps',warmup:false,sets:1,target:[6,12],seedR:8,restMob:[]}
  ]},
  fri:{tag:'UPPER MIX',ex:[
-   {name:'Incline DB Bench',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:180,seedW:40,seedR:10},
-   {name:'Pull-Up',load:'bw',input:'reps',warmup:true,sets:2,target:[6,12],warmRest:60,workRest:180,seedR:8,form:true},
-   {name:'Mike Tyson Pushups',load:'bw',input:'reps',warmup:false,sets:2,target:[8,20],workRest:60,seedR:10,form:true},
-   {name:'Side Plank',load:'bw',input:'time',warmup:false,sets:2,workRest:60,seedT:35,bil:true}
+   {name:'Incline DB Bench',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:180,seedW:40,seedR:10,restMob:['b0']},
+   {name:'Pull-Up',load:'bw',input:'reps',warmup:true,sets:2,target:[6,12],warmRest:60,workRest:180,seedR:8,form:true,restMob:['b4']},
+   {name:'Mike Tyson Pushups',load:'bw',input:'reps',warmup:false,sets:2,target:[8,20],workRest:60,seedR:10,form:true,restMob:[null]},
+   {name:'Side Plank',load:'bw',input:'time',warmup:false,sets:2,workRest:60,seedT:35,bil:true,restMob:[null]}
  ]}
 };
 function woDayTag(dow){return ({1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'})[dow]||null;}
 function woKeyForDow(d){var x=getDateForDow(d);return 'wo_'+x.getFullYear()+'_'+(x.getMonth()+1)+'_'+x.getDate();}
+function woClone(o){return JSON.parse(JSON.stringify(o));}
+function woLoadTmplOverrides(){try{return JSON.parse(localStorage.getItem('wo_tmpl')||'{}')||{};}catch(e){return {};}}
+function woEffTemplate(tag){var ov=woLoadTmplOverrides();return ov[tag]?ov[tag]:WO_TEMPLATES[tag];}
+function woSaveTmplOverride(tag,t){var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
+function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
+function woNormTmpl(t){var c=woClone(t);for(var i=0;i<c.ex.length;i++){var x=c.ex[i];x.warmup=!!x.warmup;if(!x.sets||x.sets<1)x.sets=1;if(x.warmRest==null)x.warmRest=60;if(x.workRest==null)x.workRest=0;var need=Math.max(0,x.sets-1);if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;}return c;}
+function woMobName(id){if(!id)return '';var m=getCatalogMap()[id];return m?m.name:'';}
 var woSession=null;
 function loadWoLast(name,excludeKey){
   var best=null,bestMs=-1;
@@ -992,7 +1025,7 @@ function loadWoLast(name,excludeKey){
   return best;
 }
 function woSeed(dow,key){
-  var tag=woDayTag(dow),tmpl=WO_TEMPLATES[tag];
+  var tag=woDayTag(dow),tmpl=tag?woNormTmpl(woEffTemplate(tag)):null;
   var x=getDateForDow(dow);x.setHours(0,0,0,0);
   var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,exercises:[]};
   if(!tmpl)return sess;
@@ -1016,6 +1049,7 @@ function woSeed(dow,key){
       if(t.input==='reps'||t.input==='wr')set.reps=wR;
       if(t.input==='time')set.time=(typeof wT==='object'?(wT.r||wT.l||t.seedT):wT);
       if(t.form)set.form='strict';
+      set.mobility=(s<t.sets&&t.restMob&&t.restMob[s-1]!=null)?t.restMob[s-1]:null;
       sets.push(set);
     }
     sess.exercises.push({name:t.name,load:t.load,input:t.input,target:t.target||null,form:!!t.form,bil:!!t.bil,prev:prev,sets:sets});
@@ -1050,7 +1084,10 @@ function woSetHTML(ex,ei,si){
   h+='</div>';
   if(ex.form&&!isW)h+='<div class="wo-flag '+(set.form||'strict')+'" onclick="woToggleFlag('+ei+','+si+')">'+(set.form||'strict')+'</div>';
   h+='<div class="wo-chk'+(set.done?' on':'')+'" onclick="woLogSet('+ei+','+si+')">&#10003;</div>';
-  if(!isW&&wn===1){var pv=woPrevTxt(ex);if(pv)h+='<div class="wo-prev">'+pv+'</div>';}
+  if(!isW){
+    if(wn===1){var pv=woPrevTxt(ex);if(pv)h+='<div class="wo-prev">'+pv+'</div>';}
+    if(set.rest>0){h+='<div class="wo-prev">rest '+fmtMMSSVal(set.rest)+'</div>';if(set.mobility)h+='<div class="wo-mob-line">+ '+woMobName(set.mobility)+'</div>';}
+  }
   h+='</div>';return h;
 }
 function woExHTML(ex,ei){
@@ -1069,9 +1106,11 @@ function renderWorkout(){
   document.getElementById('woDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();
   var tag=woDayTag(viewDow);
   if(!tag){woSession=null;document.getElementById('root').innerHTML='<div class="wo-empty">No lift scheduled for '+DAYS[viewDow]+'.<br>Rest or active recovery — mobility lives in the Stretch tab.</div>';return;}
+  if(woEditing){renderWoEditor(tag);return;}
   var key=woKeyForDow(viewDow);
   if(!woSession||woSession._key!==key)woLoadOrSeed(viewDow,key);
-  var sess=woSession,h='<div class="wo-intro">'+WO_TEMPLATES[tag].tag+' · ramp-up phase · tap ✓ to log each set</div>';
+  var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ to log each set</div>';
+  h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span></div>';
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
   h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button></div>';
   document.getElementById('root').innerHTML=h;
@@ -1080,16 +1119,22 @@ function woAdjW(ei,si,dir){var set=woSession.exercises[ei].sets[si];if(set.weigh
 function woAdjR(ei,si,dir){var set=woSession.exercises[ei].sets[si];set.reps=Math.max(0,(set.reps||0)+dir);woSave();renderWorkout();}
 function woToggleFlag(ei,si){var set=woSession.exercises[ei].sets[si];set.form=(set.form==='strict')?'partial':'strict';woSave();renderWorkout();}
 function woNextLabel(ei,si){var ex=woSession.exercises[ei];for(var s=si+1;s<ex.sets.length;s++)if(!ex.sets[s].done)return 'Next: '+ex.name;for(var e=ei+1;e<woSession.exercises.length;e++)return 'Next: '+woSession.exercises[e].name;return 'Last set done';}
-function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si));}
+function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si),set.mobility,ei,si);}
 function woFinish(){if(!woSession)return;woSession.finished=true;woSession.elapsed=Math.round((Date.now()-(woSession.started||Date.now()))/1000);woSave();state['lift']=true;save();renderWorkout();try{beep();}catch(e){}}
 /* rest timer */
-var woRestRemain=0,woRestTimer=null;
+var woRestRemain=0,woRestTimer=null,woRestCtx=null,woRestExName='',woMobCb=null;
 function woRestPaint(){var el=document.getElementById('woRestCount');if(el){el.textContent=fmtMMSSVal(Math.max(0,woRestRemain));el.className='wo-rest-count'+(woRestRemain<=10?' ending':'');}}
-function woStartRest(sec,exName,nextLbl){
-  woRestRemain=sec;
-  document.getElementById('woRestNote').textContent=exName;
+function woRestPaintMob(){
+  var mobId=null;if(woRestCtx&&woSession){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];mobId=st?st.mobility:null;}
+  var nameEl=document.getElementById('woRestEx'),noteEl=document.getElementById('woRestNote'),anim=document.getElementById('woRestMobAnim'),cue=document.getElementById('woRestCue'),swap=document.getElementById('woRestSwap');
+  var m=mobId?getCatalogMap()[mobId]:null;
+  if(m){nameEl.textContent=m.name;noteEl.textContent=m.note||'Active recovery';anim.innerHTML=SSVG[mobId]||'';anim.style.display=SSVG[mobId]?'flex':'none';cue.textContent=m.cue||'';cue.style.display=m.cue?'':'none';swap.style.display='';}
+  else{nameEl.textContent='Rest';noteEl.textContent=woRestExName||'Next set coming up';anim.innerHTML='';anim.style.display='none';cue.textContent='';cue.style.display='none';swap.style.display=woRestCtx?'':'none';}
+}
+function woStartRest(sec,exName,nextLbl,mobId,ei,si){
+  woRestRemain=sec;woRestExName=exName;woRestCtx=(ei!=null)?{ei:ei,si:si}:null;
   document.getElementById('woRestNext').textContent=nextLbl||'';
-  woRestPaint();
+  woRestPaintMob();woRestPaint();
   document.getElementById('woRest').style.display='flex';
   var hh=document.querySelector('.hdr');if(hh)hh.style.display='none';
   getCtx();acquireWakeLock();startNoSleep();
@@ -1098,6 +1143,18 @@ function woStartRest(sec,exName,nextLbl){
 }
 function woRestAdd(d){woRestRemain=Math.max(1,woRestRemain+d);woRestPaint();}
 function woRestEnd(){if(woRestTimer){clearInterval(woRestTimer);woRestTimer=null;}document.getElementById('woRest').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();stopNoSleep();}
+function woRestSwap(){if(!woRestCtx)return;woMobCb=function(id){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];st.mobility=id;woSave();woRestPaintMob();};woOpenMobSheet('Swap mobility');}
+function woRestSkipMob(){if(woRestCtx){woSession.exercises[woRestCtx.ei].sets[woRestCtx.si].mobility=null;woSave();}woRestPaintMob();}
+function woCatalogList(){var out=[],i;for(i=0;i<ALL_BASE.length;i++)out.push({id:'b'+i,name:ALL_BASE[i].name,note:ALL_BASE[i].note,sec:ALL_BASE[i].sec});var cs=loadCustomStretches();for(i=0;i<cs.length;i++)out.push({id:cs[i].id,name:cs[i].name,note:cs[i].note||'',sec:cs[i].sec});return out;}
+function woOpenMobSheet(title){
+  document.getElementById('shtTitle').textContent=title||'Choose mobility';
+  document.getElementById('shtSub').textContent='Tap to queue · runs inside the rest';
+  var list=woCatalogList(),h='<div class="co-row" onclick="woMobPick(\'__none__\')"><div class="co-body"><div class="co-lbl">None</div><div class="co-sub">Plain rest, no mobility</div></div></div>';
+  for(var i=0;i<list.length;i++){var m=list[i];h+='<div class="co-row" onclick="woMobPick(\''+m.id+'\')"><div class="co-body"><div class="co-lbl">'+m.name+'</div><div class="co-sub">'+(m.note||'')+(m.sec?(' · '+m.sec+'s'):'')+'</div></div></div>';}
+  document.getElementById('shtBody').innerHTML=h;
+  document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');
+}
+function woMobPick(id){closeSheet();var cb=woMobCb;woMobCb=null;if(cb)cb(id==='__none__'?null:id);}
 /* count-up stopwatch (reuses lead-in / beep pattern from Test tab) */
 var woSw={ei:-1,si:-1,elapsed:0,lead:0,running:false,interval:null,bil:false,side:'',lt:0};
 function woSwPaint(){
@@ -1135,9 +1192,34 @@ function woStopLog(){
   set.done=true;woSave();
   document.getElementById('woStop').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';
   releaseWakeLock();renderWorkout();
-  if(set.rest>0)woStartRest(set.rest,woSession.exercises[woSw.ei].name,woNextLabel(woSw.ei,woSw.si));
+  if(set.rest>0)woStartRest(set.rest,woSession.exercises[woSw.ei].name,woNextLabel(woSw.ei,woSw.si),set.mobility,woSw.ei,woSw.si);
 }
 function woStopCancel(){if(woSw.interval){clearInterval(woSw.interval);woSw.interval=null;}document.getElementById('woStop').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();}
+/* template editor (v2) */
+var woEditing=false,woEditTmpl=null;
+function woOpenEditor(){var tag=woDayTag(viewDow);if(!tag)return;woEditTmpl=woNormTmpl(woEffTemplate(tag));woEditing=true;renderWorkout();}
+function renderWoEditor(tag){
+  var h='<div class="wo-intro">Editing '+woEditTmpl.tag+' template · saves to this device & rides along in backup</div>';
+  for(var e=0;e<woEditTmpl.ex.length;e++){
+    var x=woEditTmpl.ex[e];
+    h+='<div class="wo-ed-ex"><div class="wo-ed-name">'+x.name+'</div>';
+    h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Warm-up set</div><div class="wo-toggle'+(x.warmup?' on':'')+'" onclick="woEdToggleWarm('+e+')"><div class="wo-toggle-knob"></div></div></div>';
+    h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Working sets</div><div class="wo-ed-ctrl"><div class="wo-sbtn" onclick="woEdSets('+e+',-1)">&minus;</div><div class="wo-sval">'+x.sets+'</div><div class="wo-sbtn" onclick="woEdSets('+e+',1)">+</div></div></div>';
+    if(x.warmup)h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Warm-up rest</div><div class="wo-ed-ctrl"><div class="wo-sbtn" onclick="woEdRest('+e+',\'warm\',-1)">&minus;</div><div class="wo-sval">'+fmtMMSSVal(x.warmRest||0)+'</div><div class="wo-sbtn" onclick="woEdRest('+e+',\'warm\',1)">+</div></div></div>';
+    if(x.sets>1)h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Working rest</div><div class="wo-ed-ctrl"><div class="wo-sbtn" onclick="woEdRest('+e+',\'work\',-1)">&minus;</div><div class="wo-sval">'+fmtMMSSVal(x.workRest||0)+'</div><div class="wo-sbtn" onclick="woEdRest('+e+',\'work\',1)">+</div></div></div>';
+    for(var r=0;r<Math.max(0,x.sets-1);r++){var mn=(x.restMob&&x.restMob[r]!=null)?woMobName(x.restMob[r]):'None';h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Mobility · rest '+(r+1)+'</div><div class="wo-mob-pick" onclick="woEditPickMob('+e+','+r+')">'+mn+' &rsaquo;</div></div>';}
+    h+='</div>';
+  }
+  h+='<div class="wo-ed-actions"><div class="wo-ed-btn" onclick="woEdReset()">Reset to default</div><div class="wo-ed-btn primary" onclick="woEdDone()">Done</div></div>';
+  document.getElementById('root').innerHTML=h;
+}
+function woEdToggleWarm(e){woEditTmpl.ex[e].warmup=!woEditTmpl.ex[e].warmup;renderWoEditor();}
+function woEdSets(e,dir){var x=woEditTmpl.ex[e];x.sets=Math.max(1,Math.min(4,x.sets+dir));var need=Math.max(0,x.sets-1);if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;renderWoEditor();}
+function woEdRest(e,which,dir){var x=woEditTmpl.ex[e],k=which==='warm'?'warmRest':'workRest';x[k]=Math.max(0,Math.min(600,(x[k]||0)+dir*15));renderWoEditor();}
+function woEditPickMob(e,r){woMobCb=function(id){if(!woEditTmpl.ex[e].restMob)woEditTmpl.ex[e].restMob=[];woEditTmpl.ex[e].restMob[r]=id;renderWoEditor();};woOpenMobSheet('Mobility · rest '+(r+1));}
+function woEdReset(){var tag=woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
+function woEdDone(){var tag=woDayTag(viewDow);woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
+function woMaybeReseed(){var key=woKeyForDow(viewDow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed today from the updated template? This clears sets logged so far today.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
 loadState();render();
 </script>
 </body>
