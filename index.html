@@ -257,7 +257,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-rest-swap{margin-top:12px;text-align:center;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
 .wo-rest-swap span{cursor:pointer;color:var(--accent);padding:8px 10px;-webkit-user-select:none;user-select:none}
 .wo-rest-swap span.dim{color:var(--muted)}
-.wo-mob-line{font-size:9px;color:var(--green);width:100%;padding-left:38px;letter-spacing:.03em}
+.wo-mob-line{font-size:11px;color:var(--green);width:100%;padding-left:38px;letter-spacing:.03em;margin-top:2px}
 .wo-edit-link{margin:14px 16px 0;text-align:center}
 .wo-edit-link span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
   cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
@@ -1056,9 +1056,27 @@ function woSeed(dow,key){
   }
   return sess;
 }
+function woBackfillMobility(sess,dow){
+  var tag=woDayTag(dow);if(!tag||!sess||!sess.exercises)return false;
+  var tmpl=woNormTmpl(woEffTemplate(tag)),changed=false;
+  for(var e=0;e<sess.exercises.length;e++){
+    var ex=sess.exercises[e],te=null;
+    for(var k=0;k<tmpl.ex.length;k++)if(tmpl.ex[k].name===ex.name){te=tmpl.ex[k];break;}
+    var wn=0;
+    for(var s=0;s<ex.sets.length;s++){
+      var set=ex.sets[s];if(set.tag==='W')continue;wn++;
+      if(set.mobility===undefined){
+        var ri=wn-1;
+        set.mobility=(te&&set.rest>0&&te.restMob&&te.restMob[ri]!=null)?te.restMob[ri]:null;
+        changed=true;
+      }
+    }
+  }
+  return changed;
+}
 function woLoadOrSeed(dow,key){
   var raw=null;try{raw=localStorage.getItem(key);}catch(e){}
-  if(raw){try{var o=JSON.parse(raw);if(o&&o.exercises){o._key=key;woSession=o;return;}}catch(e){}}
+  if(raw){try{var o=JSON.parse(raw);if(o&&o.exercises){o._key=key;woSession=o;if(woBackfillMobility(o,dow))woSave();return;}}catch(e){}}
   woSession=woSeed(dow,key);
 }
 function woSave(){if(!woSession)return;try{localStorage.setItem(woSession._key,JSON.stringify(woSession));}catch(e){}}
@@ -1086,7 +1104,7 @@ function woSetHTML(ex,ei,si){
   h+='<div class="wo-chk'+(set.done?' on':'')+'" onclick="woLogSet('+ei+','+si+')">&#10003;</div>';
   if(!isW){
     if(wn===1){var pv=woPrevTxt(ex);if(pv)h+='<div class="wo-prev">'+pv+'</div>';}
-    if(set.rest>0){h+='<div class="wo-prev">rest '+fmtMMSSVal(set.rest)+'</div>';if(set.mobility)h+='<div class="wo-mob-line">+ '+woMobName(set.mobility)+'</div>';}
+    if(set.rest>0){h+='<div class="wo-prev">rest '+fmtMMSSVal(set.rest)+'</div>';if(set.mobility)h+='<div class="wo-mob-line">&#9788; Mobility: '+woMobName(set.mobility)+'</div>';}
   }
   h+='</div>';return h;
 }
