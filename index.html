@@ -262,6 +262,23 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-rest-divider{display:flex;align-items:center;gap:10px;padding:5px 16px;
   font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#BDBDCC;background:rgba(255,255,255,.015);border-bottom:1px solid var(--border)}
 .wo-rest-divider::before,.wo-rest-divider::after{content:"";flex:1;height:1px;background:var(--border)}
+/* weight wheel / dial picker */
+.wo-wheel-wrap{position:relative;height:240px;margin:6px 0 2px;overflow:hidden}
+.wo-wheel{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;text-align:center}
+.wo-wheel::-webkit-scrollbar{display:none}
+.wo-wheel-pad{height:96px}
+.wo-wheel-item{height:48px;line-height:48px;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;
+  scroll-snap-align:center;color:var(--muted);transition:color .12s,transform .12s,opacity .12s;opacity:.5}
+.wo-wheel-item.sel{color:var(--text);transform:scale(1.22);opacity:1}
+.wo-wheel-band{position:absolute;left:24px;right:24px;top:96px;height:48px;border-top:1px solid var(--accent);
+  border-bottom:1px solid var(--accent);background:rgba(212,168,67,.06);pointer-events:none}
+.wo-wheel-unit{position:absolute;right:38px;top:106px;font-size:15px;font-weight:700;color:var(--accent);
+  letter-spacing:.08em;text-transform:uppercase;pointer-events:none}
+.wo-wheel-foot{padding:8px 20px 20px}
+.wo-wheel-done{width:100%;background:var(--accent);color:#000;font-size:15px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;padding:15px;border:none;border-radius:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.wo-wheel-done:active{opacity:.85}
 .wo-nudge{font-size:10px;color:var(--accent);padding:8px 14px 10px;letter-spacing:.03em;line-height:1.4;border-top:1px solid var(--border);background:rgba(212,168,67,.04)}
 .wo-finish-wrap{margin:22px 16px 0}
 .wo-finish{width:100%;background:var(--accent);color:#000;font-size:15px;font-weight:700;letter-spacing:.08em;
@@ -769,7 +786,7 @@ function toggleCardioOpt(id){state[id]=!state[id];save();var row=document.getEle
 function openSnackSheet(id,lbl){sheetMode='snack';activeSnackId=id;document.getElementById('shtTitle').textContent=lbl;document.getElementById('shtSub').textContent=(state[id]||0)+' today';var h='<div class="num-grid">';for(var i=0;i<SNACK_NUMS.length;i++)h+='<div class="num-btn" onclick="snackAdd('+SNACK_NUMS[i]+')">'+SNACK_NUMS[i]+'</div>';h+='</div><div class="undo-row"><button class="undo-btn" onclick="snackUndo()">Undo last</button></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function snackAdd(n){if(!activeSnackId)return;state['_p_'+activeSnackId]=state[activeSnackId]||0;state[activeSnackId]=(state[activeSnackId]||0)+n;save();document.getElementById('shtSub').textContent=state[activeSnackId]+' today';var el=document.getElementById('snt_'+activeSnackId);if(el){var v=state[activeSnackId];el.textContent=v>0?v:'--';el.className='snack-total'+(v===0?' zero':'');}closeSheet();}
 function snackUndo(){if(!activeSnackId)return;var p=state['_p_'+activeSnackId];if(p!==undefined){state[activeSnackId]=p;save();}document.getElementById('shtSub').textContent=(state[activeSnackId]||0)+' today';}
-function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');if(sheetMode==='cardio'){var secs=document.querySelectorAll('.sec');for(var i=0;i<secs.length;i++){var lbl=secs[i].querySelector('.sec-lbl');if(lbl&&lbl.textContent==='CARDIO'){secs[i].querySelector('.sec-card').innerHTML=cardioRowHTML();break;}}}sheetMode='';activeSnackId='';}
+function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');if(sheetMode==='woWheel'){woSave();renderWorkout();}if(sheetMode==='cardio'){var secs=document.querySelectorAll('.sec');for(var i=0;i<secs.length;i++){var lbl=secs[i].querySelector('.sec-lbl');if(lbl&&lbl.textContent==='CARDIO'){secs[i].querySelector('.sec-card').innerHTML=cardioRowHTML();break;}}}sheetMode='';activeSnackId='';}
 var resetOk=false;
 function doReset(){var btn=document.getElementById('resetBtn');if(resetOk){state={};save();resetOk=false;render();btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}else{resetOk=true;btn.textContent='Tap again to confirm';btn.style.color='#E06060';btn.style.borderColor='#E06060';setTimeout(function(){if(resetOk){resetOk=false;btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}},3000);}}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&stInterval)acquireWakeLock();});
@@ -1124,8 +1141,8 @@ function woSetHTML(ex,ei,si){
   h+='<div class="wo-prevcol">'+(isW?'':woPrevCol(ex))+'</div>';
   if(t==='t-wr'){
     if(ex.load==='pb'){
-      var hint=(!woHintSeen()&&!isW&&!set.done)?'<div class="wo-whint">&#8597; hold</div>':'';
-      h+='<div class="wo-wpill" id="wo-w-'+ei+'-'+si+'" onpointerdown="woWStart(event,'+ei+','+si+')"><div class="wo-wval">'+(set.weight!=null?set.weight:'--')+'</div>'+hint+'</div>';
+      var hint=(!woHintSeen()&&!isW&&!set.done)?'<div class="wo-whint">tap</div>':'';
+      h+='<div class="wo-wpill" id="wo-w-'+ei+'-'+si+'" onpointerdown="event.stopPropagation()" onclick="woOpenWheel('+ei+','+si+')"><div class="wo-wval">'+(set.weight!=null?set.weight:'--')+'</div>'+hint+'</div>';
     }else h+='<div></div>';
     h+=woRepStep(ex,ei,si,set);
   }else if(t==='t-reps'){
@@ -1168,30 +1185,53 @@ function renderWorkout(){
   if(woEditing){renderWoEditor(tag);return;}
   var key=woKeyForDow(viewDow);
   if(!woSession||woSession._key!==key)woLoadOrSeed(viewDow,key);
-  var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · hold the weight to adjust</div>';
+  var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it</div>';
   h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span></div>';
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
   h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button></div>';
   document.getElementById('root').innerHTML=h;
 }
 function woAdjW(ei,si,dir){var set=woSession.exercises[ei].sets[si];if(set.weight==null)return;set.weight=woLadderStep(set.weight,dir);woSave();renderWorkout();}
-/* gesture input: press-and-hold the weight pill to scrub WO_LADDER; swipe a row to log/undo.
-   woGes holds the active gesture; window listeners are added on start and removed on end. */
+/* weight wheel: tap the weight pill to open a scrolling dial of WO_LADDER values.
+   The centered value is the selection (visible above/below the thumb), so the number
+   is never under your finger. Selecting is live; closing the sheet keeps it. */
+var woWheel={ei:-1,si:-1,idx:0};
+function woOpenWheel(ei,si){
+  var set=woSession&&woSession.exercises[ei].sets[si];
+  if(!set||set.weight==null)return;
+  woHintMark();sheetMode='woWheel';
+  woWheel={ei:ei,si:si,idx:woSnapIdx(set.weight)};
+  document.getElementById('shtTitle').textContent=woSession.exercises[ei].name;
+  document.getElementById('shtSub').textContent='Spin to set weight · lb';
+  var h='<div class="wo-wheel-wrap"><div class="wo-wheel-band"></div><div class="wo-wheel-unit">lb</div>'
+      +'<div class="wo-wheel" id="woWheel" onscroll="woWheelScroll()"><div class="wo-wheel-pad"></div>';
+  for(var i=0;i<WO_LADDER.length;i++)h+='<div class="wo-wheel-item" id="wo-wi-'+i+'" onclick="woWheelTap('+i+')">'+WO_LADDER[i]+'</div>';
+  h+='<div class="wo-wheel-pad"></div></div></div>'
+      +'<div class="wo-wheel-foot"><button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
+  document.getElementById('shtBody').innerHTML=h;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+  setTimeout(woWheelCenter,30);
+}
+function woWheelCenter(){var el=document.getElementById('woWheel');if(el)el.scrollTop=woWheel.idx*48;var cur=document.getElementById('wo-wi-'+woWheel.idx);if(cur)cur.className='wo-wheel-item sel';}
+function woWheelSet(idx){
+  if(idx<0)idx=0;if(idx>WO_LADDER.length-1)idx=WO_LADDER.length-1;
+  if(idx===woWheel.idx)return;
+  var prev=document.getElementById('wo-wi-'+woWheel.idx);if(prev)prev.className='wo-wheel-item';
+  woWheel.idx=idx;
+  var cur=document.getElementById('wo-wi-'+idx);if(cur)cur.className='wo-wheel-item sel';
+  if(woWheel.ei>=0&&woSession)woSession.exercises[woWheel.ei].sets[woWheel.si].weight=WO_LADDER[idx];
+  if(navigator.vibrate)try{navigator.vibrate(8);}catch(_){}
+  try{beepTick();}catch(_){}
+}
+function woWheelScroll(){var el=document.getElementById('woWheel');if(!el)return;woWheelSet(Math.round((el.scrollTop||0)/48));}
+function woWheelTap(i){var el=document.getElementById('woWheel');if(el&&el.scrollTo)el.scrollTo({top:i*48,behavior:'smooth'});woWheelSet(i);}
+function woWheelDone(){closeSheet();}
+/* swipe a row to log/undo. woGes holds the active gesture; window listeners added on start, removed on end. */
 var woGes=null;
 function woEvXY(e){var t=(e&&e.touches&&e.touches[0])||(e&&e.changedTouches&&e.changedTouches[0])||e||{};return{x:t.clientX||0,y:t.clientY||0};}
 function woGesDetach(){try{window.removeEventListener('pointermove',woGesMove);window.removeEventListener('pointerup',woGesUp);window.removeEventListener('pointercancel',woGesUp);}catch(e){}}
 function woGesAttach(){try{window.addEventListener('pointermove',woGesMove);window.addEventListener('pointerup',woGesUp);window.addEventListener('pointercancel',woGesUp);}catch(e){}}
-function woWStart(e,ei,si){
-  if(e&&e.stopPropagation)e.stopPropagation();
-  var set=woSession&&woSession.exercises[ei].sets[si];
-  if(!set||set.weight==null||set.done)return;
-  var i0=woSnapIdx(set.weight);
-  woGes={type:'w',ei:ei,si:si,y0:woEvXY(e).y,baseIdx:i0,lastIdx:i0,moved:false};
-  woHintMark();
-  if(e&&e.preventDefault)e.preventDefault();
-  woGesAttach();
-}
-function woWTap(ei,si){var set=woSession.exercises[ei].sets[si];if(set.weight==null)return;var i=woSnapIdx(set.weight)+1;if(i>WO_LADDER.length-1)i=0;set.weight=WO_LADDER[i];woSave();renderWorkout();}
 function woSwStart(e,ei,si){
   var set=woSession&&woSession.exercises[ei].sets[si];
   if(!set)return;
@@ -1203,20 +1243,6 @@ function woSwStart(e,ei,si){
 function woGesMove(e){
   if(!woGes)return;
   var p=woEvXY(e);
-  if(woGes.type==='w'){
-    var idx=woGes.baseIdx+Math.round((woGes.y0-p.y)/16);
-    if(idx<0)idx=0;if(idx>WO_LADDER.length-1)idx=WO_LADDER.length-1;
-    if(idx!==woGes.lastIdx){
-      woGes.lastIdx=idx;woGes.moved=true;
-      woSession.exercises[woGes.ei].sets[woGes.si].weight=WO_LADDER[idx];
-      var pill=document.getElementById('wo-w-'+woGes.ei+'-'+woGes.si),vv=pill&&pill.querySelector?pill.querySelector('.wo-wval'):null;
-      if(vv)vv.textContent=WO_LADDER[idx];
-      if(navigator.vibrate)try{navigator.vibrate(8);}catch(_){}
-      try{beepTick();}catch(_){}
-    }
-    if(e&&e.preventDefault)e.preventDefault();
-    return;
-  }
   var dx=p.x-woGes.x0,dy=p.y-woGes.y0;
   if(woGes.axis==null){
     if(Math.abs(dx)<7&&Math.abs(dy)<7)return;
@@ -1231,7 +1257,6 @@ function woGesMove(e){
 function woGesUp(){
   var g=woGes;woGes=null;woGesDetach();
   if(!g)return;
-  if(g.type==='w'){if(g.moved){woSave();renderWorkout();}else woWTap(g.ei,g.si);return;}
   if(g.row)g.row.style.transform='';
   if(g.fill)g.fill.style.width='0';
   if(g.axis==='x'&&Math.abs(g.dx)>=g.w*0.4){
