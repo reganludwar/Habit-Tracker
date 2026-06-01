@@ -150,7 +150,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .sheet-title{font-size:15px;font-weight:600}
 .sheet-sub{font-size:11px;color:var(--accent);margin-top:2px}
 .sheet-close{font-size:22px;color:var(--muted);cursor:pointer;padding:4px 8px;line-height:1;-webkit-user-select:none;user-select:none}
-.sheet-body{padding:8px 0}
+.sheet-body{padding:8px 0;max-height:68vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.co-hd{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--surf);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;
+  -webkit-user-select:none;user-select:none;position:sticky;top:0;z-index:2}
+.co-hd-lbl{flex:1;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+.co-hd-meta{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.co-caret{font-size:11px;color:var(--accent);width:14px;text-align:center}
 .num-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 16px}
 .num-btn{background:var(--surf);border:1px solid var(--border);color:var(--text);
   font-size:18px;font-weight:600;padding:16px 8px;text-align:center;cursor:pointer;
@@ -1329,12 +1335,17 @@ function woRestEnd(){if(woRestTimer){clearInterval(woRestTimer);woRestTimer=null
 function woRestSwap(){if(!woRestCtx)return;woMobCb=function(id){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];st.mobility=id;woSave();woRestPaintMob();};woOpenMobSheet('Swap mobility');}
 function woRestSkipMob(){if(woRestCtx){woSession.exercises[woRestCtx.ei].sets[woRestCtx.si].mobility=null;woSave();}woRestPaintMob();}
 function woCatalogList(){var out=[],i;for(i=0;i<MOB_BASE.length;i++)out.push({id:'m'+i,name:MOB_BASE[i].name,note:MOB_BASE[i].note,sec:MOB_BASE[i].sec,area:MOB_BASE[i].area});var cm=loadCustomMobility();for(i=0;i<cm.length;i++)out.push({id:cm[i].id,name:cm[i].name,note:cm[i].note||'',sec:cm[i].sec,area:'Custom'});return out;}
+function woStretchListCat(){var out=[],i;for(i=0;i<ALL_BASE.length;i++)out.push({id:'b'+i,name:ALL_BASE[i].name,note:ALL_BASE[i].note,sec:ALL_BASE[i].sec});var cs=loadCustomStretches();for(i=0;i<cs.length;i++)out.push({id:cs[i].id,name:cs[i].name,note:cs[i].note||'',sec:cs[i].sec});return out;}
+function woMobRow(m){var meta=[(m.area||''),(m.note==='Each side'?'each side':''),(m.sec?m.sec+'s':'')].filter(Boolean).join(' · ');return '<div class="co-row" onclick="woMobPick(\''+m.id+'\')"><div class="co-body"><div class="co-lbl">'+m.name+'</div><div class="co-sub">'+meta+'</div></div></div>';}
+function woMobSec(label,key,list){var open=woMobSheetState[key];var h='<div class="co-hd" onclick="woMobSheetToggle(\''+key+'\')"><span class="co-caret">'+(open?'&#9662;':'&#9656;')+'</span><span class="co-hd-lbl">'+label+'</span><span class="co-hd-meta">'+list.length+'</span></div>';if(open)for(var i=0;i<list.length;i++)h+=woMobRow(list[i]);return h;}
+var woMobSheetState={mob:true,str:false};
+function woRenderMobSheet(){var h='<div class="co-row" onclick="woMobPick(\'__none__\')"><div class="co-body"><div class="co-lbl">None</div><div class="co-sub">Plain rest, no mobility</div></div></div>';h+=woMobSec('Mobility','mob',woCatalogList());h+=woMobSec('Stretch','str',woStretchListCat());document.getElementById('shtBody').innerHTML=h;}
+function woMobSheetToggle(key){woMobSheetState[key]=!woMobSheetState[key];woRenderMobSheet();}
 function woOpenMobSheet(title){
   document.getElementById('shtTitle').textContent=title||'Choose mobility';
-  document.getElementById('shtSub').textContent='Active mobility · runs inside the rest';
-  var list=woCatalogList(),h='<div class="co-row" onclick="woMobPick(\'__none__\')"><div class="co-body"><div class="co-lbl">None</div><div class="co-sub">Plain rest, no mobility</div></div></div>';
-  for(var i=0;i<list.length;i++){var m=list[i];var meta=[(m.area||''),(m.note?'each side':''),(m.sec?m.sec+'s':'')].filter(Boolean).join(' · ');h+='<div class="co-row" onclick="woMobPick(\''+m.id+'\')"><div class="co-body"><div class="co-lbl">'+m.name+'</div><div class="co-sub">'+meta+'</div></div></div>';}
-  document.getElementById('shtBody').innerHTML=h;
+  document.getElementById('shtSub').textContent='Mobility drill or stretch · runs inside the rest';
+  woMobSheetState={mob:true,str:false};
+  woRenderMobSheet();
   document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');
 }
 function woMobPick(id){closeSheet();var cb=woMobCb;woMobCb=null;if(cb)cb(id==='__none__'?null:id);}
