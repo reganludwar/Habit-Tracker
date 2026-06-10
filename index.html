@@ -507,6 +507,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .backup-nag b{color:var(--accent)}
 .backup-nag>span:first-child{cursor:pointer}
 .backup-nag .bn-x{cursor:pointer;color:var(--muted);font-size:16px;padding:0 4px;flex-shrink:0}
+/* RPE-creep nudges */
+.wo-nudge{display:flex;gap:8px;align-items:flex-start;margin:0 14px 6px;padding:8px 11px;border-radius:8px;font-size:12px;line-height:1.45}
+.wo-nudge b{font-weight:700}
+.wo-nudge-i{flex-shrink:0}
+.wo-nudge.deload{background:rgba(224,108,108,.10);border:1px solid rgba(224,108,108,.40);color:#E7B7B7}
+.wo-nudge.deload b{color:var(--red)}
+.wo-nudge.progress{background:rgba(106,176,106,.10);border:1px solid rgba(106,176,106,.40);color:#B7DBB7}
+.wo-nudge.progress b{color:var(--green)}
 /* AI Coach */
 .coach-row{display:flex;justify-content:center;margin-top:9px}
 .coach-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(212,168,67,.10);border:1px solid #6B5420;color:var(--accent);
@@ -546,6 +554,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-hrow-s{font-size:11.5px;color:var(--muted);margin-top:2px;text-transform:capitalize}
 .cch-hx{color:var(--muted);font-size:18px;flex-shrink:0;padding:2px 6px}
 .cch-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px}
+.cch-flash{background:rgba(106,176,106,.12);border:1px solid rgba(106,176,106,.45);color:var(--green);font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:8px;margin-bottom:12px}
+.cch-edit{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:10px}
+.cch-edit-h{font-size:13px;font-weight:700;color:var(--text)}
+.cch-edit-h .d{color:var(--accent);text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin-right:6px}
+.cch-edit-b{font-size:13px;color:var(--text);margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.cch-edit-b .ar{color:var(--accent);margin:0 5px}
+.cch-edit-w{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px}
+.cch-edit-apply{width:100%;background:var(--accent);color:#000;font-size:12px;font-weight:700;padding:10px;border:none;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
 </style>
 </head>
 <body>
@@ -1416,6 +1432,15 @@ function woSetHTML(ex,ei,si){
   }
   return h;
 }
+/* RPE-creep nudges: scan an exercise's logged working sets for an avg-RPE trend
+   and suggest a deload (creeping high) or progression (consistently easy). */
+function woExRpeHist(name){var out=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!k||k.indexOf('wo_')!==0)continue;var o;try{o=JSON.parse(localStorage.getItem(k));}catch(e){continue;}if(!o||!o.exercises||!o.dateMs)continue;for(var e=0;e<o.exercises.length;e++){var x=o.exercises[e];if(x.name!==name)continue;var rs=[],w=null,r=null;for(var s=0;s<x.sets.length;s++){var st=x.sets[s];if(st.tag!=='work'||!st.done)continue;if(st.rpe!=null)rs.push(st.rpe);if(st.weight!=null&&(w==null||st.weight>w))w=st.weight;if(st.reps!=null&&(r==null||st.reps>r))r=st.reps;}if(rs.length){var sum=0;for(var q=0;q<rs.length;q++)sum+=rs[q];out.push({ms:o.dateMs,rpe:Math.round((sum/rs.length)*10)/10,w:w,reps:r});}}}}catch(e){}out.sort(function(a,b){return a.ms-b.ms;});return out;}
+function woSameLoad(a,b){if(a.w!=null&&b.w!=null){if(a.w===0||b.w===0)return a.w===b.w;return Math.abs(a.w-b.w)/Math.max(a.w,b.w)<=0.08;}return true;}
+function woNudge(name){var h=woExRpeHist(name);if(h.length<2)return null;var a=h[h.length-2],b=h[h.length-1];
+  if(b.rpe>=9||(b.rpe>=8.5&&b.rpe>=a.rpe&&woSameLoad(a,b)))return {type:'deload',msg:'RPE creeping high',detail:'Recent sets averaged RPE '+b.rpe+'. Deload ~10% or drop a set to reset, then build back up.'};
+  if(b.rpe<=7&&b.rpe<=a.rpe)return {type:'progress',msg:'Room to progress',detail:'Recent sets sit at RPE '+b.rpe+' — add a little load or a rep next session.'};
+  return null;}
+function woNudgeHTML(name){var n=woNudge(name);if(!n)return '';return '<div class="wo-nudge '+n.type+'"><span class="wo-nudge-i">'+(n.type==='deload'?'&#9888;&#65039;':'&#9650;')+'</span><span><b>'+esc(n.msg)+'</b> &middot; '+esc(n.detail)+'</span></div>';}
 function woExHTML(ex,ei){
   var sub=ex.load==='pb'?'PowerBlock':'Bodyweight';
   if(ex.input==='time')sub+=' · hold for time'+(ex.bil?' (per side)':'');
@@ -1423,6 +1448,7 @@ function woExHTML(ex,ei){
   var t=woRowType(ex);
   var h='<div class="wo-ex"><div class="wo-ex-hd"><div class="wo-ex-name">'+ex.name+'</div><div class="wo-ex-sub">'+sub+'</div></div>';
   h+=woExProgressHTML(ex);
+  h+=woNudgeHTML(ex.name);
   h+='<div class="wo-cols '+t+'"><div>Set</div><div class="prev">Prev</div>';
   if(t==='t-wr')h+='<div class="w">Weight</div><div class="r">Reps</div>';
   else if(t==='t-reps')h+='<div class="r">Reps</div>';
@@ -1662,10 +1688,11 @@ var COACH_FOCUS=[['balanced','Balanced'],['progression','Progression'],['imbalan
 var coachRange='this',coachBusy=false,coachResult='',coachErr='',coachViewTs=0;
 function coachLen(){return coachGet('coach_len','standard');}
 function coachFocus(){return coachGet('coach_focus','balanced');}
+var COACH_EDIT_INSTR=' If (and only if) you recommend concrete changes to my existing day-templates, append ONE fenced ```json code block AFTER the markdown, of the form {"edits":[{"day":"mon","exercise":"<exact name from weeklyTemplates>","field":"repTarget" | "sets" | "workRest","value":"6-12" for repTarget, an integer for sets, or seconds for workRest,"why":"short reason"}]}. Only edit EXISTING exercises by their exact names — never invent exercises or use any other field. At most 5 edits. Omit the json block entirely if you have no template-parameter changes (you can still suggest adding exercises in prose).';
 function coachSystem(){
   var len=coachLen(),lenTxt=len==='lean'?'Keep it very tight: under ~200 words, almost all short bullets, no preamble.':len==='detailed'?'You may go in depth: up to ~800 words, briefly explaining the "why" where it helps.':'Keep the whole reply under ~450 words.';
   var foc=coachFocus(),focMap={balanced:'',progression:' Emphasize progression: concrete next steps to add load, reps, sets, or exercises, with specific numbers.',imbalances:' Emphasize muscle and movement-pattern imbalances and injury risk (push/pull, squat/hinge, vertical/horizontal, unilateral, core).',mobility:' Emphasize mobility and flexibility: judge whether my mobility/stretch routine matches what my training demands, and what to add or drop.'};
-  return COACH_SYSTEM_BASE+' '+lenTxt+' Lead with bullet lists and bold the key items.'+(focMap[foc]||'');}
+  return COACH_SYSTEM_BASE+' '+lenTxt+' Lead with bullet lists and bold the key items.'+(focMap[foc]||'')+COACH_EDIT_INSTR;}
 function coachLoadReports(){try{var a=JSON.parse(localStorage.getItem('coach_reports'));return (a&&a.length)?a:[];}catch(e){return [];}}
 function coachSaveReports(a){try{localStorage.setItem('coach_reports',JSON.stringify(a.slice(0,25)));}catch(e){}}
 function coachAddReport(en){var a=coachLoadReports();a.unshift(en);coachSaveReports(a);}
@@ -1689,12 +1716,13 @@ function coachSessSummary(o){var d=new Date(o.dateMs),ex=[];for(var e=0;e<o.exer
 function coachTrends(sessions){var seen={},names=[];for(var i=0;i<sessions.length;i++)for(var e=0;e<sessions[i].exercises.length;e++){var n=sessions[i].exercises[e].name;if(!seen[n]){seen[n]=1;names.push(n);}}var tr=[];for(var j=0;j<names.length;j++){var h=woHistory(names[j],null);if(h.length<2)continue;var pts=[];for(var p=Math.max(0,h.length-6);p<h.length;p++){var dd=new Date(h[p].ms);pts.push((dd.getMonth()+1)+'/'+dd.getDate()+': '+woFmtMetric(h[p].kind,h[p].best));}tr.push({name:names[j],trend:pts});}return tr;}
 function coachTemplates(){var tags=['mon','tue','wed','thu','fri'],out=[];for(var i=0;i<tags.length;i++){var t=woNormTmpl(woEffTemplate(tags[i])),ex=[];for(var e=0;e<t.ex.length;e++){var x=t.ex[e];ex.push({name:x.name,load:x.load,measure:x.input,workSets:x.sets,repTarget:x.target?(x.target[0]+'-'+x.target[1]):null});}out.push({day:tags[i],focus:t.tag,exercises:ex});}return out;}
 function coachRoutine(mode){try{var ids=loadActiveList(mode),map=getCatalogMap(),names=[];for(var i=0;i<ids.length;i++)if(map[ids[i]])names.push(map[ids[i]].name);return names;}catch(e){return [];}}
-function coachPayload(){var r=coachRangeMs(coachRange),sessions=coachSessions(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),progressTrends:coachTrends(sessions),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch')};}
+function coachNudges(){var seen={},out=[],tags=['mon','tue','wed','thu','fri'];for(var i=0;i<tags.length;i++){var t=woNormTmpl(woEffTemplate(tags[i]));for(var e=0;e<t.ex.length;e++){var nm=t.ex[e].name;if(seen[nm])continue;seen[nm]=1;var n=woNudge(nm);if(n)out.push({exercise:nm,type:n.type,note:n.detail});}}return out;}
+function coachPayload(){var r=coachRangeMs(coachRange),sessions=coachSessions(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),progressTrends:coachTrends(sessions),progressionNudges:coachNudges(),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch')};}
 function coachPrompt(p,prev){var s='Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover three things:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING?\n3. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch work? Be specific, with target sets and reps.';
   if(prev)s+='\n\nFor reference, here is your previous analysis ('+prev.when+', covering '+prev.rangeLabel+'). Briefly note what has changed since and whether I acted on it — do NOT just repeat it:\n"""\n'+prev.text+'\n"""';
   s+='\n\nMy data as JSON:\n```json\n'+JSON.stringify(p,null,1)+'\n```';return s;}
 function coachFriendlyErr(status,msg){if(status===401)return 'Your API key was rejected (401). Open settings and paste a valid Anthropic key.';if(status===429)return 'Rate limited or out of credits (429). '+msg;if(status===400)return 'Request rejected (400): '+msg;if(status===0)return 'Could not reach Anthropic. Check your connection.';return 'Error '+status+': '+msg;}
-function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;}if(coachBusy)return;var p=coachPayload();if(p.sessionsLogged===0){coachErr='No workouts logged in '+p.rangeLabel+'. Log some sets or pick a wider range, then try again.';coachRender('error');return;}coachBusy=true;coachResult='';coachErr='';coachRender('busy');
+function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;}if(coachBusy)return;var p=coachPayload();if(p.sessionsLogged===0){coachErr='No workouts logged in '+p.rangeLabel+'. Log some sets or pick a wider range, then try again.';coachRender('error');return;}coachBusy=true;coachResult='';coachErr='';coachFlash='';coachRender('busy');
   var lp=coachLastReport(),prev=lp?{when:coachAgo(lp.ts),rangeLabel:lp.rangeLabel,text:(lp.text||'').slice(0,1100)}:null;
   var mt=coachLen()==='detailed'?2400:(coachLen()==='lean'?900:1600);
   var body={model:coachModel(),max_tokens:mt,system:coachSystem(),messages:[{role:'user',content:coachPrompt(p,prev)}]};
@@ -1702,6 +1730,30 @@ function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;
     .then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j};},function(){return {ok:res.ok,status:res.status,j:null};});})
     .then(function(r){coachBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);coachErr=coachFriendlyErr(r.status,msg);coachRender('error');return;}var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;coachResult=txt||'(empty response)';coachAddReport({ts:Date.now(),rangeKey:coachRange,rangeLabel:coachRangeLabel(),model:coachModel(),modelLabel:coachModelLabel(),len:coachLen(),focus:coachFocus(),text:coachResult});coachRender('result');})
     .catch(function(e){coachBusy=false;coachErr='Network error: '+(e&&e.message?e.message:e)+'. Confirm your connection and that your key allows direct browser access.';coachRender('error');});}
+/* One-tap template edits: the model may append a ```json {"edits":[…]} block. We strip it from
+   the prose, validate each edit against the live template, and render an Apply button. Only
+   per-exercise fields the override model allows (rep target, sets, rest) are accepted. */
+var coachEdits=[],coachFlash='',coachMode='home';
+function coachDayName(d){return ({mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri'})[d]||d;}
+function coachFmtRest(s){s=s||0;if(!s)return 'no rest';var m=Math.floor(s/60),x=s%60;return m?(m+':'+(x<10?'0':'')+x):(s+'s');}
+function coachParseRange(v){if(Array.isArray(v)&&v.length===2)v=v[0]+'-'+v[1];var m=String(v).match(/(\d+)\s*(?:[-–]|to)\s*(\d+)/);if(!m)return null;var lo=parseInt(m[1],10),hi=parseInt(m[2],10);return (lo>=1&&hi>lo&&hi<=50)?[lo,hi]:null;}
+function coachValidEdit(e){if(!e||['mon','tue','wed','thu','fri'].indexOf(e.day)<0||!e.exercise)return null;var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}if(!ex)return null;
+  if(e.field==='repTarget'){var v=coachParseRange(e.value);if(!v)return null;var cur=ex.target?(ex.target[0]+'-'+ex.target[1]):'—',nw=v[0]+'-'+v[1];if(cur===nw)return null;return {day:e.day,exercise:e.exercise,field:'repTarget',value:v,why:e.why||'',curStr:cur+' reps',newStr:nw+' reps'};}
+  if(e.field==='sets'){var n=parseInt(e.value,10);if(!(n>=1&&n<=12)||ex.sets===n)return null;return {day:e.day,exercise:e.exercise,field:'sets',value:n,why:e.why||'',curStr:ex.sets+(ex.sets===1?' set':' sets'),newStr:n+(n===1?' set':' sets')};}
+  if(e.field==='workRest'){var r=parseInt(e.value,10);if(!(r>=0&&r<=600)||(ex.workRest||0)===r)return null;return {day:e.day,exercise:e.exercise,field:'workRest',value:r,why:e.why||'',curStr:coachFmtRest(ex.workRest||0)+' rest',newStr:coachFmtRest(r)+' rest'};}
+  return null;}
+function coachParseEdits(text){text=text||'';var raw=null,re=/```json\s*([\s\S]*?)```/gi,m;while((m=re.exec(text))){try{var o=JSON.parse(m[1]);if(o&&o.edits)raw=o.edits;}catch(e){}}
+  var prose=text.replace(/```json\s*[\s\S]*?```/gi,'').replace(/\n{3,}/g,'\n\n').trim();
+  var edits=[];if(raw&&raw.length)for(var i=0;i<raw.length&&edits.length<5;i++){var v=coachValidEdit(raw[i]);if(v)edits.push(v);}
+  return {prose:prose,edits:edits};}
+function coachEditsHTML(){if(!coachEdits.length)return '';var h='<div class="cch-pad"><div class="cch-lbl">Suggested template edits — one tap to apply</div>';
+  for(var i=0;i<coachEdits.length;i++){var e=coachEdits[i];h+='<div class="cch-edit"><div class="cch-edit-h"><span class="d">'+coachDayName(e.day)+'</span>'+esc(e.exercise)+'</div><div class="cch-edit-b">'+esc(e.curStr)+'<span class="ar">&rarr;</span><b>'+esc(e.newStr)+'</b></div>'+(e.why?'<div class="cch-edit-w">'+esc(e.why)+'</div>':'<div style="height:6px"></div>')+'<button class="cch-edit-apply" onclick="coachApplyEdit('+i+')">Apply to '+coachDayName(e.day)+' template</button></div>';}
+  return h+'</div>';}
+function coachApplyEdit(idx){var e=coachEdits[idx];if(!e)return;var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}if(!ex)return;
+  if(e.field==='repTarget')ex.target=[e.value[0],e.value[1]];else if(e.field==='sets'){ex.sets=e.value;t=woNormTmpl(t);}else if(e.field==='workRest')ex.workRest=e.value;
+  woSaveTmplOverride(e.day,t);coachFlash='Applied: '+e.exercise+' → '+e.newStr+' on '+coachDayName(e.day)+'. It takes effect next time you start that day.';
+  if(typeof viewMode!=='undefined'&&viewMode==='workout'&&typeof render==='function'){/* leave any in-progress session intact */}
+  coachRender(coachMode);}
 function coachMd(src){var lines=esc(src).split(/\r?\n/),html='',inUl=false;
   function inl(s){s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');s=s.replace(/`([^`]+)`/g,'<code>$1</code>');s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');return s;}
   for(var i=0;i<lines.length;i++){var ln=lines[i];var mh=ln.match(/^(#{2,3})\s+(.*)$/),mli=ln.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
@@ -1736,10 +1788,14 @@ function coachHistoryHTML(){var a=coachLoadReports();var h='<div class="cch-bar"
   return h;}
 function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return;
   if(mode==='setup'){b.innerHTML=coachSetupHTML();var el=document.getElementById('cchKey');if(el)setTimeout(function(){try{el.focus();}catch(e){}},80);return;}
-  if(mode==='history'){b.innerHTML=coachHistoryHTML();return;}
-  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}
+  if(mode==='history'){coachFlash='';b.innerHTML=coachHistoryHTML();return;}
+  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}coachMode='view';var pe=coachParseEdits(r.text||'');coachEdits=pe.edits;
     var foc=(r.focus&&r.focus!=='balanced')?(' &middot; '+esc(r.focus)):'';
-    b.innerHTML='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'history\')">&lsaquo; History</span><span class="cch-link" onclick="coachRender(\'home\')">Home</span></div><div class="cch-meta">'+esc(r.rangeLabel)+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+foc+'</div><div class="cch-out">'+coachMd(r.text||'')+'</div><div class="cch-pad"><button class="cch-ghost" onclick="coachCopyView()">Copy report</button></div>';return;}
+    var bh='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'history\')">&lsaquo; History</span><span class="cch-link" onclick="coachRender(\'home\')">Home</span></div><div class="cch-meta">'+esc(r.rangeLabel)+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+foc+'</div>';
+    if(coachFlash)bh+='<div class="cch-pad" style="padding-top:0"><div class="cch-flash">'+esc(coachFlash)+'</div></div>';
+    bh+='<div class="cch-out">'+coachMd(pe.prose)+'</div>'+coachEditsHTML()+'<div class="cch-pad"><button class="cch-ghost" onclick="coachCopyView()">Copy report</button></div>';
+    b.innerHTML=bh;return;}
+  if(mode==='home'||mode==='setup')coachFlash='';
   var lp=coachLastReport();
   var h='<div class="cch-pad">';
   if(lp){h+='<div class="cch-last">Last analyzed <b>'+esc(coachAgo(lp.ts))+'</b> &middot; '+esc(lp.rangeLabel)+' &middot; <span class="cch-link" onclick="coachViewReport('+lp.ts+')">view</span></div>';
@@ -1751,7 +1807,10 @@ function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return
   h+='<div style="text-align:center;margin-top:12px">'+(coachLoadReports().length?'<span class="cch-link" onclick="coachRender(\'history\')">History ('+coachLoadReports().length+')</span> &nbsp;&middot;&nbsp; ':'')+'<span class="cch-link" onclick="coachRender(\'setup\')">API key &amp; model</span></div></div>';
   if(mode==='busy')h+='<div class="cch-spin"><span class="cch-dot"></span>Analyzing with '+esc(coachModelLabel())+'…</div>';
   if(mode==='error'&&coachErr)h+='<div class="cch-pad"><div class="cch-err">'+esc(coachErr)+'</div></div>';
-  if(mode==='result'&&coachResult)h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+' &middot; saved to history</div><div class="cch-out">'+coachMd(coachResult)+'</div><div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';
+  if(mode==='result'&&coachResult){coachMode='result';var pe=coachParseEdits(coachResult);coachEdits=pe.edits;
+    h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+' &middot; saved to history</div>';
+    if(coachFlash)h+='<div class="cch-pad" style="padding-top:0"><div class="cch-flash">'+esc(coachFlash)+'</div></div>';
+    h+='<div class="cch-out">'+coachMd(pe.prose)+'</div>'+coachEditsHTML()+'<div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';}
   b.innerHTML=h;}
 function openCoach(){sheetMode='coach';coachBusy=false;coachResult='';coachErr='';document.getElementById('shtTitle').textContent='AI Coach';document.getElementById('shtSub').textContent='Training analysis & programming review';coachRender(coachKey()?'home':'setup');document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 
