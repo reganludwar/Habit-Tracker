@@ -1182,9 +1182,15 @@ function woDayTag(dow){return ({1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'})[dow]||
 function woKeyForDow(d){var x=getDateForDow(d);return 'wo_'+x.getFullYear()+'_'+(x.getMonth()+1)+'_'+x.getDate();}
 function woClone(o){return JSON.parse(JSON.stringify(o));}
 function woLoadTmplOverrides(){try{return JSON.parse(localStorage.getItem('wo_tmpl')||'{}')||{};}catch(e){return {};}}
-function woEffTemplate(tag){var ov=woLoadTmplOverrides();return ov[tag]?ov[tag]:WO_TEMPLATES[tag];}
-function woSaveTmplOverride(tag,t){var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
+/* An override is only valid if its exercises match the built-in template for that day — the editor
+   can change sets/rest/mobility but never the exercise identity. A mismatch means the override was
+   saved against the wrong day (e.g. the editor was opened on one day then Done'd on another), so we
+   ignore it and fall back to the built-in template. */
+function woTmplValid(ov,tag){var base=WO_TEMPLATES[tag];if(!base||!ov||!ov.ex||ov.ex.length!==base.ex.length)return false;for(var i=0;i<base.ex.length;i++){if(!ov.ex[i]||ov.ex[i].name!==base.ex[i].name)return false;}return true;}
+function woEffTemplate(tag){var ov=woLoadTmplOverrides();return (ov[tag]&&woTmplValid(ov[tag],tag))?ov[tag]:WO_TEMPLATES[tag];}
+function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return;var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
+function woCleanOverrides(){var ov=woLoadTmplOverrides(),changed=false;for(var tag in ov){if(ov.hasOwnProperty(tag)&&!woTmplValid(ov[tag],tag)){delete ov[tag];changed=true;}}if(changed)try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woNormTmpl(t){var c=woClone(t);for(var i=0;i<c.ex.length;i++){var x=c.ex[i];x.warmup=!!x.warmup;x.restLast=!!x.restLast;if(!x.sets||x.sets<1)x.sets=1;if(x.warmRest==null)x.warmRest=60;if(x.workRest==null)x.workRest=0;var need=Math.max(0,x.sets-(x.restLast?0:1));if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;}return c;}
 function woMobName(id){if(!id)return '';var m=getCatalogMap()[id];return m?m.name:'';}
 var woSession=null;
@@ -1535,8 +1541,8 @@ function woStopLog(){
 }
 function woStopCancel(){if(woSw.interval){clearInterval(woSw.interval);woSw.interval=null;}document.getElementById('woStop').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();}
 /* template editor (v2) */
-var woEditing=false,woEditTmpl=null;
-function woOpenEditor(){var tag=woDayTag(viewDow);if(!tag)return;woEditTmpl=woNormTmpl(woEffTemplate(tag));woEditing=true;renderWorkout();}
+var woEditing=false,woEditTmpl=null,woEditTag=null,woEditDow=null;
+function woOpenEditor(){var tag=woDayTag(viewDow);if(!tag)return;woEditTag=tag;woEditDow=viewDow;woEditTmpl=woNormTmpl(woEffTemplate(tag));woEditing=true;renderWorkout();}
 function renderWoEditor(tag){
   var h='<div class="wo-intro">Editing '+woEditTmpl.tag+' template · saves to this device & rides along in backup</div>';
   for(var e=0;e<woEditTmpl.ex.length;e++){
@@ -1560,9 +1566,10 @@ function woEdSets(e,dir){var x=woEditTmpl.ex[e];x.sets=Math.max(1,Math.min(4,x.s
 function woEdToggleRestLast(e){var x=woEditTmpl.ex[e];x.restLast=!x.restLast;woEdNeedMob(x);renderWoEditor();}
 function woEdRest(e,which,dir){var x=woEditTmpl.ex[e],k=which==='warm'?'warmRest':'workRest';x[k]=Math.max(0,Math.min(600,(x[k]||0)+dir*15));renderWoEditor();}
 function woEditPickMob(e,r){woMobCb=function(id){if(!woEditTmpl.ex[e].restMob)woEditTmpl.ex[e].restMob=[];woEditTmpl.ex[e].restMob[r]=id;renderWoEditor();};woOpenMobSheet('Mobility · rest '+(r+1));}
-function woEdReset(){var tag=woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
-function woEdDone(){var tag=woDayTag(viewDow);woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
-function woMaybeReseed(){var key=woKeyForDow(viewDow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed today from the updated template? This clears sets logged so far today.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
+function woEdReset(){var tag=woEditTag||woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
+function woEdDone(){woSaveTmplOverride(woEditTag||woDayTag(viewDow),woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
+function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed this day from the updated template? This clears sets logged so far for this day.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
+woCleanOverrides();
 var _hlN=ingestHealthFromURL();
 loadState();render();updateBackupNag();
 if(_hlN)setTimeout(function(){try{alert('Imported Apple Health data for '+_hlN+' day'+(_hlN>1?'s':'')+'.');}catch(e){}},300);
