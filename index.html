@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Training">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#09090C">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Training</title>
 <style>
 :root{
@@ -446,7 +449,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .reset-wrap{margin:28px 16px 0;display:flex;justify-content:center}
 .reset-btn{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   background:none;border:1px solid var(--border);padding:11px 22px;cursor:pointer}
-.data-wrap{margin:12px 16px 0;display:flex;justify-content:center;gap:8px}
+.data-wrap{margin:12px 16px 0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.backup-nag{margin:12px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:rgba(212,168,67,.08);border:1px solid #6B5420;border-radius:8px;padding:11px 14px;font-size:12.5px;color:var(--text)}
+.backup-nag b{color:var(--accent)}
+.backup-nag>span:first-child{cursor:pointer}
+.backup-nag .bn-x{cursor:pointer;color:var(--muted);font-size:16px;padding:0 4px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -512,6 +520,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   <button class="reset-btn" onclick="importData()">Import Backup</button>
   <button class="reset-btn" onclick="openHealthSheet()">Apple Health</button>
 </div>
+<div class="backup-nag" id="backupNag" style="display:none"></div>
 <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="handleImportFile(this)">
 <div class="st-timer" id="stTimer" style="display:none">
   <div class="st-timer-hdr">
@@ -859,7 +868,12 @@ function isBackupKey(k){return k&&(k.indexOf('tr_')===0||k.indexOf('wo_')===0||k
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
 function backupName(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return'training-backup-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';}
 function fallbackDownload(blob,fname){try{var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);}catch(e){alert('Export failed on this device.');}}
-function exportData(){var b=collectBackup();var n=0;for(var k in b.data)if(b.data.hasOwnProperty(k))n++;var payload=JSON.stringify(b,null,2);var fname=backupName();var blob=new Blob([payload],{type:'application/json'});try{var file=new File([blob],fname,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Training Backup'}).catch(function(){fallbackDownload(blob,fname);});return;}}catch(e){}fallbackDownload(blob,fname);}
+function daysSince(ms){return ms?Math.floor((Date.now()-ms)/86400000):Infinity;}
+function lastBackupMs(){try{return +localStorage.getItem('last_backup')||0;}catch(e){return 0;}}
+function hasUserData(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&(k.indexOf('tr_')===0||k.indexOf('wo_')===0))return true;}}catch(e){}return false;}
+function updateBackupNag(){var el=document.getElementById('backupNag');if(!el)return;var lb=lastBackupMs(),sn=0;try{sn=+localStorage.getItem('backup_snooze')||0;}catch(e){}var due=hasUserData()&&daysSince(lb)>=14&&daysSince(sn)>=3;if(!due){el.style.display='none';el.innerHTML='';return;}var d=daysSince(lb);var txt=lb?('Last backup '+d+' day'+(d!==1?'s':'')+' ago'):'No backup yet — your data lives only on this device';el.style.display='';el.innerHTML='<span onclick="exportData()">&#9888;&#65039; '+txt+' &middot; <b>Export now</b></span><span class="bn-x" onclick="snoozeBackup()">&#215;</span>';}
+function snoozeBackup(){try{localStorage.setItem('backup_snooze',''+Date.now());}catch(e){}updateBackupNag();}
+function exportData(){try{localStorage.setItem('last_backup',''+Date.now());}catch(e){}updateBackupNag();var b=collectBackup();var n=0;for(var k in b.data)if(b.data.hasOwnProperty(k))n++;var payload=JSON.stringify(b,null,2);var fname=backupName();var blob=new Blob([payload],{type:'application/json'});try{var file=new File([blob],fname,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Training Backup'}).catch(function(){fallbackDownload(blob,fname);});return;}}catch(e){}fallbackDownload(blob,fname);}
 function importData(){var inp=document.getElementById('importFile');if(inp){inp.value='';inp.click();}}
 function handleImportFile(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var obj=JSON.parse(r.result);var d=(obj&&obj.data)?obj.data:obj;if(!d||typeof d!=='object'){alert('Not a valid backup file.');return;}var keys=[];for(var k in d){if(d.hasOwnProperty(k)&&isBackupKey(k))keys.push(k);}if(keys.length===0){alert('No training data found in that file.');return;}if(!confirm('Restore '+keys.length+' entries? This overwrites any matching days currently on this device.'))return;var ok=0;for(var i=0;i<keys.length;i++){try{localStorage.setItem(keys[i],d[keys[i]]);ok++;}catch(e){}}loadState();render();alert('Restored '+ok+' of '+keys.length+' entries.');}catch(e){alert('Could not read that backup file.');}};r.readAsText(f);}
 /* ── APPLE HEALTH (Shortcuts bridge) ──────────────────────
@@ -1472,8 +1486,10 @@ function woEdReset(){var tag=woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.t
 function woEdDone(){var tag=woDayTag(viewDow);woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
 function woMaybeReseed(){var key=woKeyForDow(viewDow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed today from the updated template? This clears sets logged so far today.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
 var _hlN=ingestHealthFromURL();
-loadState();render();
+loadState();render();updateBackupNag();
 if(_hlN)setTimeout(function(){try{alert('Imported Apple Health data for '+_hlN+' day'+(_hlN>1?'s':'')+'.');}catch(e){}},300);
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(function(){});}catch(e){}
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
 </script>
 </body>
 </html>
