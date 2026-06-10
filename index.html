@@ -507,6 +507,34 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .backup-nag b{color:var(--accent)}
 .backup-nag>span:first-child{cursor:pointer}
 .backup-nag .bn-x{cursor:pointer;color:var(--muted);font-size:16px;padding:0 4px;flex-shrink:0}
+/* AI Coach */
+.coach-row{display:flex;justify-content:center;margin-top:9px}
+.coach-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(212,168,67,.10);border:1px solid #6B5420;color:var(--accent);
+  font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:7px 16px;border-radius:999px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.coach-btn:active{background:rgba(212,168,67,.18)}
+.cch-pad{padding:16px 16px 8px}
+.cch-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+.cch-in{width:100%;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:16px;padding:12px;-webkit-appearance:none;border-radius:0;outline:none;font-family:inherit;box-sizing:border-box}
+.cch-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.cch-chip{flex:1 1 calc(50% - 4px);text-align:center;background:var(--surf);border:1.5px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:11px 8px;cursor:pointer;border-radius:8px;-webkit-user-select:none;user-select:none}
+.cch-chip.on{border-color:var(--accent);background:rgba(212,168,67,.08);color:var(--accent)}
+.cch-go{width:100%;background:var(--accent);color:#000;font-size:14px;font-weight:700;padding:14px;border:none;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
+.cch-go:disabled{opacity:.5}
+.cch-ghost{width:100%;background:var(--surf);border:1.5px solid var(--border);color:var(--text);font-size:12px;font-weight:600;padding:12px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
+.cch-link{color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer}
+.cch-err{color:var(--red);font-size:13px;line-height:1.5;margin-top:12px}
+.cch-spin{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:20px 0;justify-content:center}
+.cch-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:cchp 1s infinite ease-in-out}
+@keyframes cchp{0%,100%{opacity:.3}50%{opacity:1}}
+.cch-out{padding:4px 18px 24px;font-size:14.5px;line-height:1.6;color:var(--text)}
+.cch-out h2{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;margin:20px 0 8px}
+.cch-out h3{font-size:14.5px;font-weight:700;color:var(--text);margin:16px 0 6px}
+.cch-out ul{margin:6px 0 6px;padding-left:20px}
+.cch-out li{margin:5px 0}
+.cch-out p{margin:9px 0}
+.cch-out strong{color:#fff;font-weight:700}
+.cch-out code{background:var(--surf);padding:1px 5px;border-radius:4px;font-size:13px}
+.cch-meta{font-size:11px;color:var(--muted);padding:0 18px 16px;letter-spacing:.04em}
 </style>
 </head>
 <body>
@@ -540,6 +568,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
       </div>
       <div class="nav-btn" onclick="navWeek(1)">&#8594;</div>
     </div>
+    <div class="coach-row"><button class="coach-btn" onclick="openCoach()">&#10024; AI Coach</button></div>
   </div>
   <div id="stretchHdr" style="display:none">
     <div class="week-hdr" style="margin-bottom:4px"><div class="week-title">Mobility Timer</div></div>
@@ -557,6 +586,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
       </div>
       <div class="nav-btn" onclick="navDay(1)">&#8594;</div>
     </div>
+    <div class="coach-row"><button class="coach-btn" onclick="openCoach()">&#10024; AI Coach</button></div>
   </div>
   <div id="hdrPb">
     <div class="pb-wrap"><div class="pb-fill" id="pbFill"></div></div>
@@ -1612,6 +1642,67 @@ function woEditPickMob(e,r){woMobCb=function(id){if(!woEditTmpl.ex[e].restMob)wo
 function woEdReset(){var tag=woEditTag||woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
 function woEdDone(){woSaveTmplOverride(woEditTag||woDayTag(viewDow),woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
 function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed this day from the updated template? This clears sets logged so far for this day.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
+/* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
+var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
+var COACH_RANGES=[['this','This week'],['last','Last week'],['2w','Last 2 weeks'],['month','Last 30 days']];
+var COACH_SYSTEM='You are an expert strength & conditioning coach and physiotherapist reviewing a client\'s training data exported from their workout app. The client trains mostly with adjustable dumbbells (PowerBlocks) and bodyweight across five day-templates (Mon upper push, Tue lower + run, Wed upper pull, Thu lower variation + run, Fri upper mix), plus daily mobility and stretching. Be specific, concise, and honest but encouraging. Ground every point in the actual numbers from the data. Reply in GitHub-flavored markdown with exactly these sections in order: "## Progress", "## Programming Review", "## Recommendations", "## Watch-outs". Keep the whole reply under ~450 words, lead with bullet lists, and bold the key items.';
+var coachRange='this',coachBusy=false,coachResult='',coachErr='';
+function coachGet(k,d){try{var v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}}
+function coachKey(){return coachGet('coach_key','');}
+function coachModel(){return coachGet('coach_model','claude-sonnet-4-6');}
+function coachModelLabel(){var m=coachModel();for(var i=0;i<COACH_MODELS.length;i++)if(COACH_MODELS[i][0]===m)return COACH_MODELS[i][1].split(' — ')[0];return m;}
+function coachRangeLabel(){for(var i=0;i<COACH_RANGES.length;i++)if(COACH_RANGES[i][0]===coachRange)return COACH_RANGES[i][1];return '';}
+function coachRangeMs(rk){var now=new Date();var end=now.getTime();var t0=new Date(now);t0.setHours(0,0,0,0);var sun=new Date(t0);sun.setDate(t0.getDate()-t0.getDay());
+  if(rk==='last'){var ls=new Date(sun);ls.setDate(sun.getDate()-7);return {start:ls.getTime(),end:sun.getTime(),label:'last week'};}
+  if(rk==='2w'){var t=new Date(sun);t.setDate(sun.getDate()-7);return {start:t.getTime(),end:end,label:'the last 2 weeks'};}
+  if(rk==='month'){var m=new Date(t0);m.setDate(t0.getDate()-30);return {start:m.getTime(),end:end,label:'the last 30 days'};}
+  return {start:sun.getTime(),end:end,label:'this week'};}
+function coachSessions(r){var out=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!k||k.indexOf('wo_')!==0)continue;var o;try{o=JSON.parse(localStorage.getItem(k));}catch(e){continue;}if(!o||!o.exercises||!o.dateMs)continue;if(o.dateMs<r.start||o.dateMs>r.end)continue;out.push(o);}}catch(e){}out.sort(function(a,b){return a.dateMs-b.dateMs;});return out;}
+function coachSessSummary(o){var d=new Date(o.dateMs),ex=[];for(var e=0;e<o.exercises.length;e++){var x=o.exercises[e],sets=[];for(var s=0;s<x.sets.length;s++){var st=x.sets[s];if(st.tag==='W'||!st.done)continue;var v={};if(st.weight!=null)v.w=st.weight;if(st.reps!=null)v.reps=st.reps;if(st.time!=null)v.time=st.time;if(st.rpe!=null)v.rpe=st.rpe;sets.push(v);}if(sets.length)ex.push({name:x.name,sets:sets});}return {date:d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),day:DAYS[d.getDay()],focus:o.dayTag||'',exercises:ex};}
+function coachTrends(sessions){var seen={},names=[];for(var i=0;i<sessions.length;i++)for(var e=0;e<sessions[i].exercises.length;e++){var n=sessions[i].exercises[e].name;if(!seen[n]){seen[n]=1;names.push(n);}}var tr=[];for(var j=0;j<names.length;j++){var h=woHistory(names[j],null);if(h.length<2)continue;var pts=[];for(var p=Math.max(0,h.length-6);p<h.length;p++){var dd=new Date(h[p].ms);pts.push((dd.getMonth()+1)+'/'+dd.getDate()+': '+woFmtMetric(h[p].kind,h[p].best));}tr.push({name:names[j],trend:pts});}return tr;}
+function coachTemplates(){var tags=['mon','tue','wed','thu','fri'],out=[];for(var i=0;i<tags.length;i++){var t=woNormTmpl(woEffTemplate(tags[i])),ex=[];for(var e=0;e<t.ex.length;e++){var x=t.ex[e];ex.push({name:x.name,load:x.load,measure:x.input,workSets:x.sets,repTarget:x.target?(x.target[0]+'-'+x.target[1]):null});}out.push({day:tags[i],focus:t.tag,exercises:ex});}return out;}
+function coachRoutine(mode){try{var ids=loadActiveList(mode),map=getCatalogMap(),names=[];for(var i=0;i<ids.length;i++)if(map[ids[i]])names.push(map[ids[i]].name);return names;}catch(e){return [];}}
+function coachPayload(){var r=coachRangeMs(coachRange),sessions=coachSessions(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),progressTrends:coachTrends(sessions),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch')};}
+function coachPrompt(p){return 'Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover three things:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING?\n3. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch work? Be specific, with target sets and reps.\n\nMy data as JSON:\n```json\n'+JSON.stringify(p,null,1)+'\n```';}
+function coachFriendlyErr(status,msg){if(status===401)return 'Your API key was rejected (401). Open settings and paste a valid Anthropic key.';if(status===429)return 'Rate limited or out of credits (429). '+msg;if(status===400)return 'Request rejected (400): '+msg;if(status===0)return 'Could not reach Anthropic. Check your connection.';return 'Error '+status+': '+msg;}
+function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;}if(coachBusy)return;var p=coachPayload();if(p.sessionsLogged===0){coachErr='No workouts logged in '+p.rangeLabel+'. Log some sets or pick a wider range, then try again.';coachRender('error');return;}coachBusy=true;coachResult='';coachErr='';coachRender('busy');
+  var body={model:coachModel(),max_tokens:1600,system:COACH_SYSTEM,messages:[{role:'user',content:coachPrompt(p)}]};
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)})
+    .then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j};},function(){return {ok:res.ok,status:res.status,j:null};});})
+    .then(function(r){coachBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);coachErr=coachFriendlyErr(r.status,msg);coachRender('error');return;}var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;coachResult=txt||'(empty response)';coachRender('result');})
+    .catch(function(e){coachBusy=false;coachErr='Network error: '+(e&&e.message?e.message:e)+'. Confirm your connection and that your key allows direct browser access.';coachRender('error');});}
+function coachMd(src){var lines=esc(src).split(/\r?\n/),html='',inUl=false;
+  function inl(s){s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');s=s.replace(/`([^`]+)`/g,'<code>$1</code>');s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');return s;}
+  for(var i=0;i<lines.length;i++){var ln=lines[i];var mh=ln.match(/^(#{2,3})\s+(.*)$/),mli=ln.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+    if(mh){if(inUl){html+='</ul>';inUl=false;}html+=(mh[1].length===2?'<h2>'+inl(mh[2])+'</h2>':'<h3>'+inl(mh[2])+'</h3>');continue;}
+    if(mli){if(!inUl){html+='<ul>';inUl=true;}html+='<li>'+inl(mli[1])+'</li>';continue;}
+    if(/^\s*$/.test(ln)){if(inUl){html+='</ul>';inUl=false;}continue;}
+    if(inUl){html+='</ul>';inUl=false;}html+='<p>'+inl(ln)+'</p>';}
+  if(inUl)html+='</ul>';return html;}
+function coachSetupHTML(){var model=coachModel(),h='<div class="cch-pad">';
+  h+='<div class="cch-lbl">Anthropic API key</div><input id="cchKey" class="cch-in" type="password" placeholder="sk-ant-…" value="'+esc(coachKey())+'" autocomplete="off" autocapitalize="off" spellcheck="false">';
+  h+='<div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin:8px 0 16px">Stored only on this device and sent directly to Anthropic for each analysis. Never included in backups. Create a key at console.anthropic.com.</div>';
+  h+='<div class="cch-lbl">Model</div><select id="cchModel" class="cch-in" style="font-size:15px">';
+  for(var i=0;i<COACH_MODELS.length;i++)h+='<option value="'+COACH_MODELS[i][0]+'"'+(COACH_MODELS[i][0]===model?' selected':'')+'>'+COACH_MODELS[i][1]+'</option>';
+  h+='</select><div style="height:18px"></div><button class="cch-go" onclick="coachSaveSettings()">Save</button>';
+  if(coachKey())h+='<div style="text-align:center;margin-top:14px"><span class="cch-link" onclick="coachRender(\'home\')">Back</span> &nbsp;&middot;&nbsp; <span class="cch-link" onclick="coachClearKey()">Remove key</span></div>';
+  return h+'</div>';}
+function coachSaveSettings(){var k=document.getElementById('cchKey'),m=document.getElementById('cchModel');try{if(k)localStorage.setItem('coach_key',k.value.trim());if(m)localStorage.setItem('coach_model',m.value);}catch(e){}coachRender(coachKey()?'home':'setup');}
+function coachClearKey(){try{localStorage.removeItem('coach_key');}catch(e){}coachRender('setup');}
+function coachSetRange(r){if(coachBusy)return;coachRange=r;coachResult='';coachErr='';coachRender('home');}
+function coachCopy(){try{navigator.clipboard.writeText(coachResult);}catch(e){}}
+function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return;
+  if(mode==='setup'){b.innerHTML=coachSetupHTML();var el=document.getElementById('cchKey');if(el)setTimeout(function(){try{el.focus();}catch(e){}},80);return;}
+  var h='<div class="cch-pad"><div class="cch-lbl">Date range</div><div class="cch-chips">';
+  for(var i=0;i<COACH_RANGES.length;i++)h+='<div class="cch-chip'+(coachRange===COACH_RANGES[i][0]?' on':'')+'" onclick="coachSetRange(\''+COACH_RANGES[i][0]+'\')">'+COACH_RANGES[i][1]+'</div>';
+  h+='</div><button class="cch-go" onclick="coachAnalyze()"'+(coachBusy?' disabled':'')+'>'+(coachBusy?'Analyzing…':'Analyze my training')+'</button>';
+  h+='<div style="text-align:center;margin-top:12px"><span class="cch-link" onclick="coachRender(\'setup\')">API key &amp; model</span></div></div>';
+  if(mode==='busy')h+='<div class="cch-spin"><span class="cch-dot"></span>Analyzing with '+esc(coachModelLabel())+'…</div>';
+  if(mode==='error'&&coachErr)h+='<div class="cch-pad"><div class="cch-err">'+esc(coachErr)+'</div></div>';
+  if(mode==='result'&&coachResult)h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+'</div><div class="cch-out">'+coachMd(coachResult)+'</div><div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';
+  b.innerHTML=h;}
+function openCoach(){sheetMode='coach';coachBusy=false;coachResult='';coachErr='';document.getElementById('shtTitle').textContent='AI Coach';document.getElementById('shtSub').textContent='Training analysis & programming review';coachRender(coachKey()?'home':'setup');document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+
 woCleanOverrides();
 var _hlN=ingestHealthFromURL();
 loadState();render();updateBackupNag();
