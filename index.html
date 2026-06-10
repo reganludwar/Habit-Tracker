@@ -535,6 +535,17 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-out strong{color:#fff;font-weight:700}
 .cch-out code{background:var(--surf);padding:1px 5px;border-radius:4px;font-size:13px}
 .cch-meta{font-size:11px;color:var(--muted);padding:0 18px 16px;letter-spacing:.04em}
+.cch-sm .cch-chip{flex:1 1 calc(33.33% - 6px);font-size:12px;padding:9px 6px}
+.cch-sm.cch-4 .cch-chip{flex:1 1 calc(50% - 4px)}
+.cch-last{font-size:12.5px;color:var(--muted);background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:14px}
+.cch-last b{color:var(--text)}
+.cch-rerun{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:rgba(212,168,67,.10);border:1px solid #6B5420;color:var(--accent);font-size:13px;font-weight:700;padding:12px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;margin-bottom:16px}
+.cch-hrow{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer}
+.cch-hrow:active{background:var(--surf)}
+.cch-hrow-t{font-size:14px;font-weight:600;color:var(--text)}
+.cch-hrow-s{font-size:11.5px;color:var(--muted);margin-top:2px;text-transform:capitalize}
+.cch-hx{color:var(--muted);font-size:18px;flex-shrink:0;padding:2px 6px}
+.cch-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px}
 </style>
 </head>
 <body>
@@ -1645,8 +1656,24 @@ function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyFo
 /* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
 var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
 var COACH_RANGES=[['this','This week'],['last','Last week'],['2w','Last 2 weeks'],['month','Last 30 days']];
-var COACH_SYSTEM='You are an expert strength & conditioning coach and physiotherapist reviewing a client\'s training data exported from their workout app. The client trains mostly with adjustable dumbbells (PowerBlocks) and bodyweight across five day-templates (Mon upper push, Tue lower + run, Wed upper pull, Thu lower variation + run, Fri upper mix), plus daily mobility and stretching. Be specific, concise, and honest but encouraging. Ground every point in the actual numbers from the data. Reply in GitHub-flavored markdown with exactly these sections in order: "## Progress", "## Programming Review", "## Recommendations", "## Watch-outs". Keep the whole reply under ~450 words, lead with bullet lists, and bold the key items.';
-var coachRange='this',coachBusy=false,coachResult='',coachErr='';
+var COACH_SYSTEM_BASE='You are an expert strength & conditioning coach and physiotherapist reviewing a client\'s training data exported from their workout app. The client trains mostly with adjustable dumbbells (PowerBlocks) and bodyweight across five day-templates (Mon upper push, Tue lower + run, Wed upper pull, Thu lower variation + run, Fri upper mix), plus daily mobility and stretching. Be specific and honest but encouraging. Ground every point in the actual numbers from the data. Reply in GitHub-flavored markdown with exactly these sections in order: "## Progress", "## Programming Review", "## Recommendations", "## Watch-outs".';
+var COACH_LENS=[['lean','Lean'],['standard','Standard'],['detailed','Detailed']];
+var COACH_FOCUS=[['balanced','Balanced'],['progression','Progression'],['imbalances','Imbalances'],['mobility','Mobility']];
+var coachRange='this',coachBusy=false,coachResult='',coachErr='',coachViewTs=0;
+function coachLen(){return coachGet('coach_len','standard');}
+function coachFocus(){return coachGet('coach_focus','balanced');}
+function coachSystem(){
+  var len=coachLen(),lenTxt=len==='lean'?'Keep it very tight: under ~200 words, almost all short bullets, no preamble.':len==='detailed'?'You may go in depth: up to ~800 words, briefly explaining the "why" where it helps.':'Keep the whole reply under ~450 words.';
+  var foc=coachFocus(),focMap={balanced:'',progression:' Emphasize progression: concrete next steps to add load, reps, sets, or exercises, with specific numbers.',imbalances:' Emphasize muscle and movement-pattern imbalances and injury risk (push/pull, squat/hinge, vertical/horizontal, unilateral, core).',mobility:' Emphasize mobility and flexibility: judge whether my mobility/stretch routine matches what my training demands, and what to add or drop.'};
+  return COACH_SYSTEM_BASE+' '+lenTxt+' Lead with bullet lists and bold the key items.'+(focMap[foc]||'');}
+function coachLoadReports(){try{var a=JSON.parse(localStorage.getItem('coach_reports'));return (a&&a.length)?a:[];}catch(e){return [];}}
+function coachSaveReports(a){try{localStorage.setItem('coach_reports',JSON.stringify(a.slice(0,25)));}catch(e){}}
+function coachAddReport(en){var a=coachLoadReports();a.unshift(en);coachSaveReports(a);}
+function coachLastReport(){var a=coachLoadReports();return a.length?a[0]:null;}
+function coachReportByTs(ts){var a=coachLoadReports();for(var i=0;i<a.length;i++)if(a[i].ts===ts)return a[i];return null;}
+function coachDeleteReport(ts){var a=coachLoadReports(),out=[];for(var i=0;i<a.length;i++)if(a[i].ts!==ts)out.push(a[i]);coachSaveReports(out);coachRender('history');}
+function coachClearReports(){try{localStorage.removeItem('coach_reports');}catch(e){}coachRender('history');}
+function coachAgo(ts){var s=Math.max(0,Date.now()-ts),m=Math.floor(s/6e4),h=Math.floor(m/60),d=Math.floor(h/24);if(d>=1)return d+'d ago';if(h>=1)return h+'h ago';if(m>=1)return m+'m ago';return 'just now';}
 function coachGet(k,d){try{var v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}}
 function coachKey(){return coachGet('coach_key','');}
 function coachModel(){return coachGet('coach_model','claude-sonnet-4-6');}
@@ -1663,13 +1690,17 @@ function coachTrends(sessions){var seen={},names=[];for(var i=0;i<sessions.lengt
 function coachTemplates(){var tags=['mon','tue','wed','thu','fri'],out=[];for(var i=0;i<tags.length;i++){var t=woNormTmpl(woEffTemplate(tags[i])),ex=[];for(var e=0;e<t.ex.length;e++){var x=t.ex[e];ex.push({name:x.name,load:x.load,measure:x.input,workSets:x.sets,repTarget:x.target?(x.target[0]+'-'+x.target[1]):null});}out.push({day:tags[i],focus:t.tag,exercises:ex});}return out;}
 function coachRoutine(mode){try{var ids=loadActiveList(mode),map=getCatalogMap(),names=[];for(var i=0;i<ids.length;i++)if(map[ids[i]])names.push(map[ids[i]].name);return names;}catch(e){return [];}}
 function coachPayload(){var r=coachRangeMs(coachRange),sessions=coachSessions(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),progressTrends:coachTrends(sessions),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch')};}
-function coachPrompt(p){return 'Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover three things:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING?\n3. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch work? Be specific, with target sets and reps.\n\nMy data as JSON:\n```json\n'+JSON.stringify(p,null,1)+'\n```';}
+function coachPrompt(p,prev){var s='Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover three things:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING?\n3. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch work? Be specific, with target sets and reps.';
+  if(prev)s+='\n\nFor reference, here is your previous analysis ('+prev.when+', covering '+prev.rangeLabel+'). Briefly note what has changed since and whether I acted on it — do NOT just repeat it:\n"""\n'+prev.text+'\n"""';
+  s+='\n\nMy data as JSON:\n```json\n'+JSON.stringify(p,null,1)+'\n```';return s;}
 function coachFriendlyErr(status,msg){if(status===401)return 'Your API key was rejected (401). Open settings and paste a valid Anthropic key.';if(status===429)return 'Rate limited or out of credits (429). '+msg;if(status===400)return 'Request rejected (400): '+msg;if(status===0)return 'Could not reach Anthropic. Check your connection.';return 'Error '+status+': '+msg;}
 function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;}if(coachBusy)return;var p=coachPayload();if(p.sessionsLogged===0){coachErr='No workouts logged in '+p.rangeLabel+'. Log some sets or pick a wider range, then try again.';coachRender('error');return;}coachBusy=true;coachResult='';coachErr='';coachRender('busy');
-  var body={model:coachModel(),max_tokens:1600,system:COACH_SYSTEM,messages:[{role:'user',content:coachPrompt(p)}]};
+  var lp=coachLastReport(),prev=lp?{when:coachAgo(lp.ts),rangeLabel:lp.rangeLabel,text:(lp.text||'').slice(0,1100)}:null;
+  var mt=coachLen()==='detailed'?2400:(coachLen()==='lean'?900:1600);
+  var body={model:coachModel(),max_tokens:mt,system:coachSystem(),messages:[{role:'user',content:coachPrompt(p,prev)}]};
   fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)})
     .then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j};},function(){return {ok:res.ok,status:res.status,j:null};});})
-    .then(function(r){coachBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);coachErr=coachFriendlyErr(r.status,msg);coachRender('error');return;}var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;coachResult=txt||'(empty response)';coachRender('result');})
+    .then(function(r){coachBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);coachErr=coachFriendlyErr(r.status,msg);coachRender('error');return;}var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;coachResult=txt||'(empty response)';coachAddReport({ts:Date.now(),rangeKey:coachRange,rangeLabel:coachRangeLabel(),model:coachModel(),modelLabel:coachModelLabel(),len:coachLen(),focus:coachFocus(),text:coachResult});coachRender('result');})
     .catch(function(e){coachBusy=false;coachErr='Network error: '+(e&&e.message?e.message:e)+'. Confirm your connection and that your key allows direct browser access.';coachRender('error');});}
 function coachMd(src){var lines=esc(src).split(/\r?\n/),html='',inUl=false;
   function inl(s){s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');s=s.replace(/`([^`]+)`/g,'<code>$1</code>');s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');return s;}
@@ -1690,16 +1721,37 @@ function coachSetupHTML(){var model=coachModel(),h='<div class="cch-pad">';
 function coachSaveSettings(){var k=document.getElementById('cchKey'),m=document.getElementById('cchModel');try{if(k)localStorage.setItem('coach_key',k.value.trim());if(m)localStorage.setItem('coach_model',m.value);}catch(e){}coachRender(coachKey()?'home':'setup');}
 function coachClearKey(){try{localStorage.removeItem('coach_key');}catch(e){}coachRender('setup');}
 function coachSetRange(r){if(coachBusy)return;coachRange=r;coachResult='';coachErr='';coachRender('home');}
+function coachSetLen(v){try{localStorage.setItem('coach_len',v);}catch(e){}coachRender('home');}
+function coachSetFocus(v){try{localStorage.setItem('coach_focus',v);}catch(e){}coachRender('home');}
+function coachRerun(){if(coachBusy)return;var lp=coachLastReport();if(lp&&lp.rangeKey)coachRange=lp.rangeKey;coachResult='';coachErr='';coachAnalyze();}
+function coachViewReport(ts){coachViewTs=ts;coachRender('view');}
 function coachCopy(){try{navigator.clipboard.writeText(coachResult);}catch(e){}}
+function coachCopyView(){var r=coachReportByTs(coachViewTs);if(r){try{navigator.clipboard.writeText(r.text);}catch(e){}}}
+function coachChips(list,cur,fn,small){var h='<div class="cch-chips'+(small?' cch-sm':'')+(small&&list.length>3?' cch-4':'')+'">';for(var i=0;i<list.length;i++)h+='<div class="cch-chip'+(cur===list[i][0]?' on':'')+'" onclick="'+fn+'(\''+list[i][0]+'\')">'+list[i][1]+'</div>';return h+'</div>';}
+function coachHistoryHTML(){var a=coachLoadReports();var h='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'home\')">&lsaquo; Back</span>'+(a.length?'<span class="cch-link" onclick="coachClearReports()">Clear all</span>':'')+'</div>';
+  if(!a.length)return h+'<div style="color:var(--muted);font-size:13px;padding:22px 18px;text-align:center">No saved reports yet. Run an analysis and it\'ll show up here.</div>';
+  for(var i=0;i<a.length;i++){var r=a[i],d=new Date(r.ts),hr=d.getHours(),ap=hr>=12?'pm':'am',h12=((hr%12)||12),ds=(d.getMonth()+1)+'/'+d.getDate()+' '+h12+(d.getMinutes()<10?':0':':')+d.getMinutes()+ap;
+    var sub=ds+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+((r.focus&&r.focus!=='balanced')?(' &middot; '+esc(r.focus)):'');
+    h+='<div class="cch-hrow" onclick="coachViewReport('+r.ts+')"><div style="flex:1;min-width:0"><div class="cch-hrow-t">'+esc(r.rangeLabel)+'</div><div class="cch-hrow-s">'+sub+'</div></div><div class="cch-hx" onclick="event.stopPropagation();coachDeleteReport('+r.ts+')">&#215;</div></div>';}
+  return h;}
 function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return;
   if(mode==='setup'){b.innerHTML=coachSetupHTML();var el=document.getElementById('cchKey');if(el)setTimeout(function(){try{el.focus();}catch(e){}},80);return;}
-  var h='<div class="cch-pad"><div class="cch-lbl">Date range</div><div class="cch-chips">';
-  for(var i=0;i<COACH_RANGES.length;i++)h+='<div class="cch-chip'+(coachRange===COACH_RANGES[i][0]?' on':'')+'" onclick="coachSetRange(\''+COACH_RANGES[i][0]+'\')">'+COACH_RANGES[i][1]+'</div>';
-  h+='</div><button class="cch-go" onclick="coachAnalyze()"'+(coachBusy?' disabled':'')+'>'+(coachBusy?'Analyzing…':'Analyze my training')+'</button>';
-  h+='<div style="text-align:center;margin-top:12px"><span class="cch-link" onclick="coachRender(\'setup\')">API key &amp; model</span></div></div>';
+  if(mode==='history'){b.innerHTML=coachHistoryHTML();return;}
+  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}
+    var foc=(r.focus&&r.focus!=='balanced')?(' &middot; '+esc(r.focus)):'';
+    b.innerHTML='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'history\')">&lsaquo; History</span><span class="cch-link" onclick="coachRender(\'home\')">Home</span></div><div class="cch-meta">'+esc(r.rangeLabel)+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+foc+'</div><div class="cch-out">'+coachMd(r.text||'')+'</div><div class="cch-pad"><button class="cch-ghost" onclick="coachCopyView()">Copy report</button></div>';return;}
+  var lp=coachLastReport();
+  var h='<div class="cch-pad">';
+  if(lp){h+='<div class="cch-last">Last analyzed <b>'+esc(coachAgo(lp.ts))+'</b> &middot; '+esc(lp.rangeLabel)+' &middot; <span class="cch-link" onclick="coachViewReport('+lp.ts+')">view</span></div>';
+    h+='<div class="cch-rerun" onclick="coachRerun()">&#8635; Re-run last ('+esc(lp.rangeLabel)+')</div>';}
+  h+='<div class="cch-lbl">Date range</div>'+coachChips(COACH_RANGES,coachRange,'coachSetRange',false);
+  h+='<div class="cch-lbl">Length</div>'+coachChips(COACH_LENS,coachLen(),'coachSetLen',true);
+  h+='<div class="cch-lbl">Focus</div>'+coachChips(COACH_FOCUS,coachFocus(),'coachSetFocus',true);
+  h+='<button class="cch-go" onclick="coachAnalyze()"'+(coachBusy?' disabled':'')+'>'+(coachBusy?'Analyzing…':'Analyze my training')+'</button>';
+  h+='<div style="text-align:center;margin-top:12px">'+(coachLoadReports().length?'<span class="cch-link" onclick="coachRender(\'history\')">History ('+coachLoadReports().length+')</span> &nbsp;&middot;&nbsp; ':'')+'<span class="cch-link" onclick="coachRender(\'setup\')">API key &amp; model</span></div></div>';
   if(mode==='busy')h+='<div class="cch-spin"><span class="cch-dot"></span>Analyzing with '+esc(coachModelLabel())+'…</div>';
   if(mode==='error'&&coachErr)h+='<div class="cch-pad"><div class="cch-err">'+esc(coachErr)+'</div></div>';
-  if(mode==='result'&&coachResult)h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+'</div><div class="cch-out">'+coachMd(coachResult)+'</div><div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';
+  if(mode==='result'&&coachResult)h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+' &middot; saved to history</div><div class="cch-out">'+coachMd(coachResult)+'</div><div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';
   b.innerHTML=h;}
 function openCoach(){sheetMode='coach';coachBusy=false;coachResult='';coachErr='';document.getElementById('shtTitle').textContent='AI Coach';document.getElementById('shtSub').textContent='Training analysis & programming review';coachRender(coachKey()?'home':'setup');document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 
