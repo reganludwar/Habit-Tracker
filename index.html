@@ -303,8 +303,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-coach-btn.ghost{background:none;color:var(--muted);border:1px solid var(--border)}
 .wo-coach-btn:active{opacity:.8}
 .wo-subline{padding:4px 14px 8px 38px}
-.wo-rpe{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted);
-  border:1px solid var(--border);border-radius:5px;padding:4px 9px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.wo-rpe{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--muted);white-space:nowrap;
+  border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;-webkit-user-select:none;user-select:none}
 .wo-rpe.set{color:var(--accent);border-color:#6B5420;background:rgba(212,168,67,.06)}
 .wo-notes-wrap{margin:18px 16px 0}
 .wo-notes{width:100%;min-height:56px;background:var(--card);border:1px solid var(--border);border-radius:8px;
@@ -1231,7 +1231,7 @@ function woEffTemplate(tag){var ov=woLoadTmplOverrides();return (ov[tag]&&woTmpl
 function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return;var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woCleanOverrides(){var ov=woLoadTmplOverrides(),changed=false;for(var tag in ov){if(ov.hasOwnProperty(tag)&&!woTmplValid(ov[tag],tag)){delete ov[tag];changed=true;}}if(changed)try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
-function woNormTmpl(t){var c=woClone(t);c.showPR=(c.showPR!==false);for(var i=0;i<c.ex.length;i++){var x=c.ex[i];x.warmup=!!x.warmup;x.restLast=!!x.restLast;if(!x.sets||x.sets<1)x.sets=1;if(x.warmRest==null)x.warmRest=60;if(x.workRest==null)x.workRest=0;var need=Math.max(0,x.sets-(x.restLast?0:1));if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;}return c;}
+function woNormTmpl(t){var c=woClone(t);c.showPR=(c.showPR!==false);c.showRPE=(c.showRPE!==false);for(var i=0;i<c.ex.length;i++){var x=c.ex[i];x.warmup=!!x.warmup;x.restLast=!!x.restLast;if(!x.sets||x.sets<1)x.sets=1;if(x.warmRest==null)x.warmRest=60;if(x.workRest==null)x.workRest=0;var need=Math.max(0,x.sets-(x.restLast?0:1));if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;}return c;}
 function woMobName(id){if(!id)return '';var m=getCatalogMap()[id];return m?m.name:'';}
 var woSession=null;
 function loadWoLast(name,excludeKey){
@@ -1263,7 +1263,7 @@ function testTrendHTML(t){var arr=historyOf(t.id,8);if(!arr||arr.length<2)return
 function woSeed(dow,key){
   var tag=woDayTag(dow),tmpl=tag?woNormTmpl(woEffTemplate(tag)):null;
   var x=getDateForDow(dow);x.setHours(0,0,0,0);
-  var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,showPR:(tmpl?tmpl.showPR!==false:true),exercises:[]};
+  var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,showPR:(tmpl?tmpl.showPR!==false:true),showRPE:(tmpl?tmpl.showRPE!==false:true),exercises:[]};
   if(!tmpl)return sess;
   var prog=loadProg();
   for(var e=0;e<tmpl.ex.length;e++){
@@ -1354,7 +1354,9 @@ function woSetHTML(ex,ei,si){
   var h='<div class="wo-set '+t+(set.done?' done':'')+'" id="wo-row-'+ei+'-'+si+'" onpointerdown="woSwStart(event,'+ei+','+si+')">';
   h+='<div class="wo-swfill" id="wo-fill-'+ei+'-'+si+'"></div>';
   h+='<div class="wo-tag'+(isW?' w':'')+'">'+(isW?'W':wn)+'</div>';
-  h+='<div class="wo-prevcol">'+(isW?'':woPrevCol(ex))+'</div>';
+  var rpeOn=!(woSession&&woSession.showRPE===false);
+  var rpeChip='<span class="wo-rpe'+(set.rpe!=null?' set':'')+'" onpointerdown="event.stopPropagation()" onclick="woOpenRpe('+ei+','+si+')">'+(set.rpe!=null?('RPE '+set.rpe):'RPE')+'</span>';
+  h+='<div class="wo-prevcol">'+(isW?'':((set.done&&rpeOn)?rpeChip:woPrevCol(ex)))+'</div>';
   if(t==='t-wr'){
     if(ex.load==='pb'){
       var hint=(!woHintSeen()&&!isW&&!set.done)?'<div class="wo-whint">tap</div>':'';
@@ -1369,7 +1371,6 @@ function woSetHTML(ex,ei,si){
   }
   h+='<div class="wo-chk'+(set.done?' on':'')+'" onclick="woLogSet('+ei+','+si+')">&#10003;</div>';
   h+='</div>';
-  if(!isW&&set.done)h+='<div class="wo-subline"><span class="wo-rpe'+(set.rpe!=null?' set':'')+'" onclick="woOpenRpe('+ei+','+si+')">RPE '+(set.rpe!=null?set.rpe:'&middot;')+'</span></div>';
   if(!isW&&set.rest>0){
     h+='<div class="wo-rest-divider">Rest '+fmtMMSSVal(set.rest)+'</div>';
     if(set.mobility)h+='<div class="wo-mob-line">&#9788; Mobility: '+esc(woMobName(set.mobility))+'</div>';
@@ -1588,7 +1589,7 @@ var woEditing=false,woEditTmpl=null,woEditTag=null,woEditDow=null;
 function woOpenEditor(){var tag=woDayTag(viewDow);if(!tag)return;woEditTag=tag;woEditDow=viewDow;woEditTmpl=woNormTmpl(woEffTemplate(tag));woEditing=true;renderWorkout();}
 function renderWoEditor(tag){
   var h='<div class="wo-intro">Editing '+woEditTmpl.tag+' template · saves to this device & rides along in backup</div>';
-  h+='<div class="wo-ed-ex"><div class="wo-ed-row"><div class="wo-ed-lbl">Show progress &amp; PR badge</div><div class="wo-toggle'+(woEditTmpl.showPR!==false?' on':'')+'" onclick="woEdToggleProg()"><div class="wo-toggle-knob"></div></div></div></div>';
+  h+='<div class="wo-ed-ex"><div class="wo-ed-row"><div class="wo-ed-lbl">Show progress &amp; PR badge</div><div class="wo-toggle'+(woEditTmpl.showPR!==false?' on':'')+'" onclick="woEdToggleProg()"><div class="wo-toggle-knob"></div></div></div><div class="wo-ed-row"><div class="wo-ed-lbl">Track RPE (per set)</div><div class="wo-toggle'+(woEditTmpl.showRPE!==false?' on':'')+'" onclick="woEdToggleRPE()"><div class="wo-toggle-knob"></div></div></div></div>';
   for(var e=0;e<woEditTmpl.ex.length;e++){
     var x=woEditTmpl.ex[e];
     h+='<div class="wo-ed-ex"><div class="wo-ed-name">'+x.name+'</div>';
@@ -1607,6 +1608,7 @@ function renderWoEditor(tag){
 function woEdToggleWarm(e){woEditTmpl.ex[e].warmup=!woEditTmpl.ex[e].warmup;renderWoEditor();}
 function woEdNeedMob(x){var need=Math.max(0,x.sets-(x.restLast?0:1));if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;}
 function woEdToggleProg(){woEditTmpl.showPR=(woEditTmpl.showPR===false);renderWoEditor();}
+function woEdToggleRPE(){woEditTmpl.showRPE=(woEditTmpl.showRPE===false);renderWoEditor();}
 function woEdSets(e,dir){var x=woEditTmpl.ex[e];x.sets=Math.max(1,Math.min(4,x.sets+dir));woEdNeedMob(x);renderWoEditor();}
 function woEdToggleRestLast(e){var x=woEditTmpl.ex[e];x.restLast=!x.restLast;woEdNeedMob(x);renderWoEditor();}
 function woEdRest(e,which,dir){var x=woEditTmpl.ex[e],k=which==='warm'?'warmRest':'workRest';x[k]=Math.max(0,Math.min(600,(x[k]||0)+dir*15));renderWoEditor();}
