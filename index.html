@@ -498,6 +498,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .hl-url{margin:8px 0 4px;padding:10px;background:var(--surf);border:1px solid var(--border);border-radius:6px;
   font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent);word-break:break-all;cursor:pointer}
 .hl-copy{font-size:11px;color:var(--accent);cursor:pointer;letter-spacing:.04em}
+.hl-toggle{display:block;margin:10px 0 2px;font-size:12.5px;color:var(--accent);cursor:pointer;font-weight:600;letter-spacing:.03em;-webkit-user-select:none;user-select:none}
+.hl-guide{padding:2px 18px 12px}
+.hl-guide h4{font-size:12px;font-weight:700;color:var(--text);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.07em}
+.hl-guide ol{margin:6px 0;padding-left:20px}
+.hl-guide li{font-size:12.5px;color:var(--muted);line-height:1.55;margin:6px 0}
+.hl-guide li b{color:var(--text);font-weight:600}
+.hl-guide code{background:var(--surf);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11.5px;color:var(--text);font-family:ui-monospace,Menlo,monospace}
+.hl-json{background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--text);overflow-x:auto;white-space:pre;margin:7px 0;line-height:1.4}
+.hl-note{font-size:12px;color:var(--muted);background:rgba(212,168,67,.07);border:1px solid #6B5420;border-radius:8px;padding:10px 12px;margin-top:14px;line-height:1.5}
+.hl-note b{color:var(--accent)}
 .reset-wrap{margin:28px 16px 0;display:flex;justify-content:center}
 .reset-btn{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   background:none;border:1px solid var(--border);padding:11px 22px;cursor:pointer}
@@ -1006,7 +1016,34 @@ function importUrl(){try{return location.origin+location.pathname;}catch(e){retu
 function healthWriteURL(payload){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HEALTH_SHORTCUT)+'&input=text&text='+encodeURIComponent(JSON.stringify(payload));}
 function healthCopyURL(){var u=importUrl();try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u);alert('Import URL copied:\n'+u);return;}}catch(e){}try{prompt('Copy this import URL:',u);}catch(e2){}}
 function healthMetricsHTML(dt){var hd=loadHealth(dt);if(!hd)return '';var h='',any=false;for(var f=0;f<HEALTH_FIELDS.length;f++){var fld=HEALTH_FIELDS[f];if(hd[fld]==null)continue;any=true;var v=hd[fld],txt;if(fld==='steps')txt=Math.round(v).toLocaleString();else if(fld==='weightLb')txt=(Math.round(v*10)/10)+' lb';else if(fld==='sleepHr')txt=(Math.round(v*10)/10)+'h';else if(fld.indexOf('Min')>0||fld==='standHr')txt=Math.round(v)+(fld==='standHr'?'h':'m');else txt=''+Math.round(v);h+='<div class="hl-metric"><div class="hl-val">'+txt+'</div><div class="hl-lbl">'+HEALTH_LABELS[fld]+'</div></div>';}return any?('<div class="hl-strip">'+h+'</div>'):'';}
-function openHealthSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';var vd=getDateForDow(viewDow),metrics=healthMetricsHTML(vd);var u=importUrl();var pad='padding:14px 18px;';var h='<div style="'+pad+'">';h+=metrics?('<div style="font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Imported · '+DAYS[viewDow]+'</div>'+metrics):'<div style="color:var(--muted);font-size:13px;margin-bottom:6px">No Health data imported yet for this day.</div>';h+='</div>';h+='<div class="hl-sec"><div class="hl-sec-t">&#10003; Export to Apple Health</div><div class="hl-sec-b">Finish a workout or a stretch / mobility session, then tap <b>Add to Apple Health</b> on the summary screen. It runs your Shortcut named <b>'+esc(HEALTH_SHORTCUT)+'</b> with the session as JSON (type, name, start, minutes). Build that Shortcut once: <i>Get Dictionary from Input → Log Health Workout (map type→activity, set Start + Duration)</i>.</div></div>';h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Import from Apple Health</div><div class="hl-sec-b">Create a Personal Automation (e.g. 7 AM daily): read Steps, Walking + Running Distance / minutes, Body Weight, Sleep → build a Dictionary → URL-encode as JSON → <b>Open URL</b>:<div class="hl-url" onclick="healthCopyURL()">'+esc(u)+'?hl=&lt;json&gt;</div><span class="hl-copy" onclick="healthCopyURL()">Tap to copy base URL</span><br>Accepted fields: '+HEALTH_FIELDS.join(', ')+' (+ optional <i>date</i> as YYYY-MM-DD).</div></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+var healthGuide=false;
+function healthToggleGuide(){healthGuide=!healthGuide;renderHealthSheet();}
+function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">';
+  h+='<h4>Part A &middot; Export shortcut (app &rarr; Health)</h4>';
+  h+='<div class="hl-sec-b">When you tap <b>&#10084;&#65039; Add to Apple Health</b> on a finished session, the app runs a shortcut named <b>Log to Health</b> and passes this JSON as text:</div>';
+  h+='<div class="hl-json">{"type":"workout","kind":"strength",\n "name":"UPPER PUSH",\n "start":"2026-06-10T17:32:00Z",\n "minutes":41}</div>';
+  h+='<div class="hl-sec-b"><code>kind</code> is <code>strength</code> for workouts, <code>mobility</code> / <code>flexibility</code> for stretches.</div>';
+  h+='<div class="hl-sec-b" style="margin-top:8px">In Shortcuts, create a new shortcut named exactly <b>Log to Health</b>:</div>';
+  h+='<ol><li><b>Get Dictionary from Input</b></li><li><b>Get Dictionary Value</b> &rarr; key <code>minutes</code> &rarr; name it <b>Mins</b></li><li><b>Get Dictionary Value</b> &rarr; key <code>start</code> &rarr; <b>Get Dates from Input</b> &rarr; <b>StartDate</b> <i>(or just use Current Date)</i></li><li><b>Adjust Date</b> &rarr; StartDate <b>+ Mins Minutes</b> &rarr; <b>EndDate</b></li><li><i>Optional:</i> <b>Get Dictionary Value</b> key <code>kind</code>, then <b>If</b> it is <code>strength</code> &rarr; <i>Functional Strength Training</i>, otherwise <i>Flexibility</i></li><li><b>Log Workout</b> &rarr; Type from step 5, <b>Start</b> = StartDate, <b>End</b> = EndDate</li></ol>';
+  h+='<div class="hl-sec-b">On first run, allow <b>write access</b> to Health.</div>';
+  h+='<h4>Part B &middot; Import automation (Health &rarr; app)</h4>';
+  h+='<div class="hl-sec-b">A daily automation reads Health and opens <code>'+u+'?hl=&lt;json&gt;</code>. Accepted keys (all optional): <code>'+HEALTH_FIELDS.join('</code> <code>')+'</code> &middot; <code>date</code> as YYYY-MM-DD.</div>';
+  h+='<div class="hl-sec-b" style="margin-top:8px">Shortcuts &rarr; <b>Automation</b> &rarr; <b>+</b> &rarr; <b>Time of Day</b> (e.g. 7 AM, Daily) &rarr; <b>Run Immediately</b> (turn off &ldquo;Ask Before Running&rdquo;). Then:</div>';
+  h+='<ol><li>Per stat: <b>Find Health Samples</b> (Today) &rarr; <b>Calculate Statistics</b> (Sum) &mdash; Steps&rarr;<code>steps</code>, Active Energy&rarr;<code>activeKcal</code>, Apple Exercise Time&rarr;<code>exerciseMin</code>, Sleep&rarr;<code>sleepHr</code></li><li><b>Find Health Samples</b> Body Mass, latest 1 &rarr;<code>weightLb</code> <i>(set Health units to lb)</i></li><li><b>Format Current Date</b> as <code>yyyy-MM-dd</code> &rarr;<code>date</code></li><li><b>Dictionary</b> &rarr; add the keys above with their values</li><li><b>Text</b> &rarr; put the Dictionary variable inside it (becomes JSON)</li><li><b>URL Encode</b> that text &rarr; <b>Encoded</b></li><li><b>Text</b> &rarr; <code>'+u+'?hl=</code> then <b>Encoded</b></li><li><b>Open URLs</b> &rarr; that text</li></ol>';
+  h+='<div class="hl-sec-b">It opens the app, saves the day&rsquo;s stats, and the strip above fills in.</div>';
+  h+='<div class="hl-note"><b>Two gotchas.</b> The export shortcut must be named exactly <b>Log to Health</b>. And if you launch from the Home-Screen app, an automation that opens the URL in Safari can write to a separate storage box &mdash; check that the strip fills in; if not, open the app the same way the automation does.</div>';
+  return h+'</div>';}
+function renderHealthSheet(){document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';
+  var vd=getDateForDow(viewDow),metrics=healthMetricsHTML(vd),u=importUrl();
+  var h='<div style="padding:14px 18px;">';
+  h+=metrics?('<div style="font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Imported · '+DAYS[viewDow]+'</div>'+metrics):'<div style="color:var(--muted);font-size:13px;margin-bottom:6px">No Health data imported yet for this day.</div>';
+  h+='</div>';
+  h+='<div class="hl-sec"><div class="hl-sec-t">&#10003; Export to Apple Health</div><div class="hl-sec-b">Finish a workout or stretch / mobility session, then tap <b>Add to Apple Health</b> on the summary. It runs your <b>'+esc(HEALTH_SHORTCUT)+'</b> shortcut with the session as JSON (type, kind, name, start, minutes).</div></div>';
+  h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Import from Apple Health</div><div class="hl-sec-b">A daily automation reads Steps / Sleep / Weight &hellip; and opens:<div class="hl-url" onclick="healthCopyURL()">'+esc(u)+'?hl=&lt;json&gt;</div><span class="hl-copy" onclick="healthCopyURL()">Tap to copy base URL</span></div>';
+  h+='<span class="hl-toggle" onclick="healthToggleGuide()">'+(healthGuide?'&#9660; Hide step-by-step setup guide':'&#9654; Show step-by-step setup guide')+'</span></div>';
+  if(healthGuide)h+=healthGuideHTML();
+  document.getElementById('shtBody').innerHTML=h;}
+function openHealthSheet(){sheetMode='';healthGuide=false;renderHealthSheet();document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 /* TEST TAB */
 var TEST_CATALOG=[
   {id:'t_pl',name:'Pull-Ups',type:'reps',unit:'reps',cue:'Strict form. Chin over bar. Stop at form break.'},
