@@ -426,6 +426,23 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .st-done-btn{background:var(--accent);color:#000;font-size:14px;font-weight:700;
   letter-spacing:.1em;text-transform:uppercase;padding:16px 48px;cursor:pointer;border:none;
   -webkit-user-select:none;user-select:none}
+.st-done-health{display:inline-block;margin-bottom:16px;color:var(--text);font-size:13px;font-weight:600;
+  letter-spacing:.04em;text-decoration:none;border:1px solid var(--border);border-radius:8px;padding:11px 20px}
+.st-done-health:active{border-color:var(--accent)}
+.wo-health{display:block;text-align:center;margin-top:10px;color:var(--text);font-size:14px;font-weight:600;
+  letter-spacing:.04em;text-decoration:none;border:1px solid var(--border);border-radius:8px;padding:13px}
+.wo-health:active{border-color:var(--accent)}
+.hl-strip{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.hl-metric{flex:1;min-width:64px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center}
+.hl-val{font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;line-height:1.1}
+.hl-lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.hl-sec{padding:12px 18px;border-top:1px solid var(--border)}
+.hl-sec-t{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px}
+.hl-sec-b{font-size:12.5px;color:var(--muted);line-height:1.5}
+.hl-sec-b b{color:var(--text);font-weight:600}
+.hl-url{margin:8px 0 4px;padding:10px;background:var(--surf);border:1px solid var(--border);border-radius:6px;
+  font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent);word-break:break-all;cursor:pointer}
+.hl-copy{font-size:11px;color:var(--accent);cursor:pointer;letter-spacing:.04em}
 .reset-wrap{margin:28px 16px 0;display:flex;justify-content:center}
 .reset-btn{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   background:none;border:1px solid var(--border);padding:11px 22px;cursor:pointer}
@@ -493,6 +510,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 <div class="data-wrap" id="dataWrap">
   <button class="reset-btn" onclick="exportData()">Export Backup</button>
   <button class="reset-btn" onclick="importData()">Import Backup</button>
+  <button class="reset-btn" onclick="openHealthSheet()">Apple Health</button>
 </div>
 <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="handleImportFile(this)">
 <div class="st-timer" id="stTimer" style="display:none">
@@ -519,6 +537,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   <div class="st-done-icon">&#10003;</div>
   <div class="st-done-title">Session complete</div>
   <div class="st-done-sub" id="stDoneSub">5 stretches done</div>
+  <a class="st-done-health" id="stDoneHealth" href="#" style="display:none">&#10084;&#65039; Add to Apple Health</a>
   <button class="st-done-btn" onclick="timerDone()">Done</button>
 </div>
 <div class="ts-session" id="tsSession" style="display:none">
@@ -745,7 +764,8 @@ function stretchDur(i){return isBilateral(i)?stTimes[i]*2:stTimes[i];}
 function stAdjId(id,delta){var map=getCatalogMap();var s=map[id];if(!s)return;var cur=getStretchTime(id,s.sec);var nv=Math.max(30,cur+delta);setStretchTime(id,nv);var active=loadActiveList(stSet);var idx=active.indexOf(id);if(idx>=0)stTimes[idx]=nv;var el=document.getElementById('stt_'+id);if(el)el.textContent=fmtTime(nv);var total=0;for(var i=0;i<stTimes.length;i++)total+=(isBilateral(i)?stTimes[i]*2:stTimes[i]);var tot=document.getElementById('st_total');if(tot)tot.textContent='Total: '+fmtTime(total);}
 function fmtTime(s){var m=Math.floor(s/60),sc=s%60;return m+':'+(sc<10?'0':'')+sc;}
 function announceAndStart(){clearInterval(stInterval);stInterval=null;var list=stGetList();try{window.speechSynthesis.cancel();var ann=new SpeechSynthesisUtterance(list[stIdx].name);ann.rate=0.9;ann.volume=1;ann.onend=function(){stInterval=setInterval(timerTick,1000);};window.speechSynthesis.speak(ann);}catch(e){stInterval=setInterval(timerTick,1000);}}
-function startTimer(){var list=stGetList();stTotalStretches=list.length;stIdx=0;stPaused=false;stPreStart=true;stTransition=false;stSwitchTrans=false;stSwitched=false;stSecs=5;stShownImg=null;document.getElementById('stTimer').style.display='flex';var _hh=document.querySelector('.hdr');if(_hh)_hh.style.display='none';updateTimerUI();getCtx();acquireWakeLock();startNoSleep();if(window._stKeepAlive)clearInterval(window._stKeepAlive);window._stKeepAlive=setInterval(function(){if(window.speechSynthesis.paused)window.speechSynthesis.resume();var ctx=getCtx();if(ctx&&ctx.state==='suspended')ctx.resume();if(!_wakeLock||_wakeLock.released)acquireWakeLock();},3000);try{window.speechSynthesis.cancel();var unlock=new SpeechSynthesisUtterance(' ');unlock.volume=0;unlock.onend=function(){announceAndStart();};window.speechSynthesis.speak(unlock);}catch(e){announceAndStart();}}
+var stStartMs=0;
+function startTimer(){var list=stGetList();stStartMs=Date.now();stTotalStretches=list.length;stIdx=0;stPaused=false;stPreStart=true;stTransition=false;stSwitchTrans=false;stSwitched=false;stSecs=5;stShownImg=null;document.getElementById('stTimer').style.display='flex';var _hh=document.querySelector('.hdr');if(_hh)_hh.style.display='none';updateTimerUI();getCtx();acquireWakeLock();startNoSleep();if(window._stKeepAlive)clearInterval(window._stKeepAlive);window._stKeepAlive=setInterval(function(){if(window.speechSynthesis.paused)window.speechSynthesis.resume();var ctx=getCtx();if(ctx&&ctx.state==='suspended')ctx.resume();if(!_wakeLock||_wakeLock.released)acquireWakeLock();},3000);try{window.speechSynthesis.cancel();var unlock=new SpeechSynthesisUtterance(' ');unlock.volume=0;unlock.onend=function(){announceAndStart();};window.speechSynthesis.speak(unlock);}catch(e){announceAndStart();}}
 function timerTick(){if(stPaused)return;stSecs--;if(stPreStart){if(stSecs<=0){stPreStart=false;stSecs=stretchDur(stIdx);beep();}else if(stSecs<=4)beepTick();updateTimerUI();return;}if(!stTransition&&!stSwitchTrans&&stSecs>0){if(stSecs<=4)beepTick();else if(isBilateral(stIdx)&&!stSwitched&&stSecs<=stTimes[stIdx]+4&&stSecs>stTimes[stIdx])beepTick();}if(!stTransition&&!stSwitchTrans&&!stSwitched&&isBilateral(stIdx)&&stSecs===stTimes[stIdx]){beep();speak('Switch sides');stSwitched=true;stSwitchTrans=true;stSecs=ST_SWITCH;updateTimerUI();return;}if(stSecs<=0){beep();if(stSwitchTrans){stSwitchTrans=false;stSecs=stTimes[stIdx];}else if(stTransition){stTransition=false;stIdx++;stSwitched=false;if(stIdx>=stTotalStretches){clearInterval(stInterval);showDone();return;}stSecs=stretchDur(stIdx);speak(stGetList()[stIdx].name);}else{if(stIdx<stTotalStretches-1){stTransition=true;stSecs=ST_TRANS;speak('Next: '+stGetList()[stIdx+1].name);}else{clearInterval(stInterval);showDone();return;}}}updateTimerUI();}
 function updateTimerUI(){
   var animEl=document.getElementById('stAnim');
@@ -771,7 +791,7 @@ function togglePause(){stPaused=!stPaused;document.getElementById('stPlayBtn').i
 function skipFwd(){if(stIdx<stTotalStretches-1){stIdx++;stTransition=false;stSwitchTrans=false;stSwitched=false;stPreStart=true;stSecs=5;updateTimerUI();announceAndStart();}else{clearInterval(stInterval);showDone();}}
 function skipBack(){stTransition=false;stSwitchTrans=false;stSwitched=false;if(stIdx>0)stIdx--;stPreStart=true;stSecs=5;updateTimerUI();announceAndStart();}
 function stopTimer(){clearInterval(stInterval);stInterval=null;clearInterval(window._stKeepAlive);window.speechSynthesis.cancel();releaseWakeLock();stopNoSleep();document.getElementById('stTimer').style.display='none';var _hh=document.querySelector('.hdr');if(_hh)_hh.style.display='';}
-function showDone(){clearInterval(window._stKeepAlive);window.speechSynthesis.cancel();releaseWakeLock();stopNoSleep();document.getElementById('stTimer').style.display='none';document.getElementById('stDone').style.display='flex';var n=stTotalStretches;var word=stSet==='mobility'?('mobility drill'+(n!==1?'s':'')):('stretch'+(n!==1?'es':''));document.getElementById('stDoneSub').textContent=n+' '+word+' complete';}
+function showDone(){clearInterval(window._stKeepAlive);window.speechSynthesis.cancel();releaseWakeLock();stopNoSleep();document.getElementById('stTimer').style.display='none';document.getElementById('stDone').style.display='flex';var n=stTotalStretches;var word=stSet==='mobility'?('mobility drill'+(n!==1?'s':'')):('stretch'+(n!==1?'es':''));document.getElementById('stDoneSub').textContent=n+' '+word+' complete';var hl=document.getElementById('stDoneHealth');if(hl){var mins=Math.max(1,Math.round(((Date.now()-(stStartMs||Date.now()))/60000)));var pay={type:'workout',kind:stSet==='mobility'?'mobility':'flexibility',name:stSet==='mobility'?'Mobility':'Stretch',start:new Date(stStartMs||Date.now()).toISOString(),minutes:mins};hl.href=healthWriteURL(pay);hl.style.display='';}}
 function timerDone(){document.getElementById('stDone').style.display='none';var _hh=document.querySelector('.hdr');if(_hh)_hh.style.display='';}
 function stSwitch(set){stSet=set;stTimes=[];renderStretch();}
 function renderStretch(){
@@ -807,7 +827,7 @@ function standHTML(){var wins=['6-9:30 AM','12:45 PM','2-4 PM'],lbls=['BLOCK 1',
 function snacksHTML(){var h='';for(var i=0;i<SNACKS.length;i++){var s=SNACKS[i],v=state[s.id]||0,cls=v===0?' zero':'';var rec=snackRec(s.id),badge='';if(rec==='great')badge='<span class="snack-rec great">GO</span>';else if(rec==='light')badge='<span class="snack-rec light">EASY</span>';h+='<div class="snack-row" onclick="openSnackSheet(\''+s.id+'\',\''+s.lbl+'\')"><span class="snack-name">'+s.lbl+'</span>'+badge+'<span class="snack-total'+cls+'" id="snt_'+s.id+'">'+(v>0?v:'--')+'</span><span class="snack-chev">&#9654;</span></div>';}return h;}
 function secHTML(sec){var inner='';if(sec.type==='items')inner=sec.items.map(itemHTML).join('');if(sec.type==='stand')inner=standHTML();if(sec.type==='walks')inner=walksHTML(sec.walks);if(sec.type==='cardio')inner=cardioRowHTML();return'<div class="sec"><div class="sec-lbl">'+sec.time+'</div><div class="sec-card">'+inner+'</div></div>';}
 function renderPills(){var h='';for(var i=0;i<7;i++){var c=i===viewDow?' active-pill':((weekOffset===0&&i===todayDow)?' today-pill':'');h+='<div class="pill'+c+'" onclick="jumpToDay('+i+')">'+DAYS_S[i]+'</div>';}document.getElementById('dayPills').innerHTML=h;}
-function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();var h='';if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';for(var i=0;i<sc.sections.length;i++)h+=secHTML(sc.sections[i]);h+='<div class="sec"><div class="sec-lbl">EXERCISE SNACKS</div><div class="sec-card">'+snacksHTML()+'</div></div>';document.getElementById('root').innerHTML=h;updateProgress();}
+function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();var h=healthMetricsHTML(vd);if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';for(var i=0;i<sc.sections.length;i++)h+=secHTML(sc.sections[i]);h+='<div class="sec"><div class="sec-lbl">EXERCISE SNACKS</div><div class="sec-card">'+snacksHTML()+'</div></div>';document.getElementById('root').innerHTML=h;updateProgress();}
 function pct(v,t){return Math.min(100,Math.round(v/t*100));}
 function wcnt(v,t){return'<div class="wcount'+(v>=t?' ok':'')+'">'+v+'</div><div class="wtgt">target '+t+'</div>';}
 function wbar(v,t){var p=pct(v,t),ok=v>=t;return'<div class="wbar"><div class="wbar-fill'+(ok?' ok':'')+'\" style="width:'+p+'%"></div></div>';}
@@ -835,13 +855,34 @@ function refreshToday(){var dow=new Date().getDay();if(dow!==todayDow){todayDow=
 setInterval(refreshToday,60000);
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer)woRestTick();refreshToday();}});
 /* ── DATA BACKUP ──────────────────────────────────────── */
-function isBackupKey(k){return k&&(k.indexOf('tr_')===0||k.indexOf('wo_')===0||k==='custom_stretches'||k==='custom_mobility'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k.indexOf('test_active_')===0);}
+function isBackupKey(k){return k&&(k.indexOf('tr_')===0||k.indexOf('wo_')===0||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k.indexOf('test_active_')===0);}
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
 function backupName(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return'training-backup-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';}
 function fallbackDownload(blob,fname){try{var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);}catch(e){alert('Export failed on this device.');}}
 function exportData(){var b=collectBackup();var n=0;for(var k in b.data)if(b.data.hasOwnProperty(k))n++;var payload=JSON.stringify(b,null,2);var fname=backupName();var blob=new Blob([payload],{type:'application/json'});try{var file=new File([blob],fname,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Training Backup'}).catch(function(){fallbackDownload(blob,fname);});return;}}catch(e){}fallbackDownload(blob,fname);}
 function importData(){var inp=document.getElementById('importFile');if(inp){inp.value='';inp.click();}}
 function handleImportFile(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var obj=JSON.parse(r.result);var d=(obj&&obj.data)?obj.data:obj;if(!d||typeof d!=='object'){alert('Not a valid backup file.');return;}var keys=[];for(var k in d){if(d.hasOwnProperty(k)&&isBackupKey(k))keys.push(k);}if(keys.length===0){alert('No training data found in that file.');return;}if(!confirm('Restore '+keys.length+' entries? This overwrites any matching days currently on this device.'))return;var ok=0;for(var i=0;i<keys.length;i++){try{localStorage.setItem(keys[i],d[keys[i]]);ok++;}catch(e){}}loadState();render();alert('Restored '+ok+' of '+keys.length+' entries.');}catch(e){alert('Could not read that backup file.');}};r.readAsText(f);}
+/* ── APPLE HEALTH (Shortcuts bridge) ──────────────────────
+   A browser PWA can't touch HealthKit directly, so we bridge via iOS Shortcuts:
+   - WRITE: finish screens deep-link shortcuts://run-shortcut?name=...&input=text&text=<json>
+     to a user-built Shortcut that logs the workout to Health.
+   - READ: a user automation opens this app with ?hl=<json|base64> of daily metrics,
+     which we ingest into hl_YYYY_M_D and surface in the Day view. */
+var HEALTH_SHORTCUT='Log to Health';
+var HEALTH_FIELDS=['steps','walkMin','exerciseMin','activeKcal','standHr','weightLb','sleepHr','restHr','hrv'];
+var HEALTH_LABELS={steps:'Steps',walkMin:'Walk',exerciseMin:'Exercise',activeKcal:'Active kcal',standHr:'Stand',weightLb:'Weight',sleepHr:'Sleep',restHr:'Rest HR',hrv:'HRV'};
+function healthKey(y,m,d){return 'hl_'+y+'_'+m+'_'+d;}
+function healthKeyForDate(dt){return healthKey(dt.getFullYear(),dt.getMonth()+1,dt.getDate());}
+function loadHealth(dt){try{var r=localStorage.getItem(healthKeyForDate(dt));return r?JSON.parse(r):null;}catch(e){return null;}}
+function healthKeyFromStr(s){if(!s)return null;var p=String(s).split(/[-_\/]/);if(p.length<3)return null;var y=parseInt(p[0],10),m=parseInt(p[1],10),d=parseInt(p[2],10);if(!y||!m||!d)return null;return healthKey(y,m,d);}
+function ingestHealth(data){var days=Array.isArray(data)?data:[data],n=0;for(var i=0;i<days.length;i++){var d=days[i];if(!d||typeof d!=='object')continue;var key=d.date?healthKeyFromStr(d.date):healthKeyForDate(new Date());if(!key)continue;var cur={};try{var ex=localStorage.getItem(key);if(ex)cur=JSON.parse(ex);}catch(e){}var got=false;for(var f=0;f<HEALTH_FIELDS.length;f++){var fld=HEALTH_FIELDS[f];if(d[fld]!=null&&d[fld]!==''&&!isNaN(+d[fld])){cur[fld]=+d[fld];got=true;}}if(!got)continue;cur.updated=Date.now();try{localStorage.setItem(key,JSON.stringify(cur));n++;}catch(e){}}return n;}
+function decodeB64(s){try{return decodeURIComponent(escape(atob(String(s).replace(/-/g,'+').replace(/_/g,'/'))));}catch(e){try{return atob(s);}catch(e2){return '';}}}
+function ingestHealthFromURL(){try{if(typeof location==='undefined')return 0;var src=(location.search||'')+'&'+(location.hash||'');var m=/[?&#]hl=([^&]+)/.exec(src);if(!m)return 0;var raw=decodeURIComponent(m[1]),data;try{data=JSON.parse(raw);}catch(e){try{data=JSON.parse(decodeB64(raw));}catch(e2){return 0;}}var n=ingestHealth(data);try{if(history&&history.replaceState)history.replaceState(null,'',location.pathname);}catch(e3){}return n;}catch(e){return 0;}}
+function importUrl(){try{return location.origin+location.pathname;}catch(e){return '';}}
+function healthWriteURL(payload){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HEALTH_SHORTCUT)+'&input=text&text='+encodeURIComponent(JSON.stringify(payload));}
+function healthCopyURL(){var u=importUrl();try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u);alert('Import URL copied:\n'+u);return;}}catch(e){}try{prompt('Copy this import URL:',u);}catch(e2){}}
+function healthMetricsHTML(dt){var hd=loadHealth(dt);if(!hd)return '';var h='',any=false;for(var f=0;f<HEALTH_FIELDS.length;f++){var fld=HEALTH_FIELDS[f];if(hd[fld]==null)continue;any=true;var v=hd[fld],txt;if(fld==='steps')txt=Math.round(v).toLocaleString();else if(fld==='weightLb')txt=(Math.round(v*10)/10)+' lb';else if(fld==='sleepHr')txt=(Math.round(v*10)/10)+'h';else if(fld.indexOf('Min')>0||fld==='standHr')txt=Math.round(v)+(fld==='standHr'?'h':'m');else txt=''+Math.round(v);h+='<div class="hl-metric"><div class="hl-val">'+txt+'</div><div class="hl-lbl">'+HEALTH_LABELS[fld]+'</div></div>';}return any?('<div class="hl-strip">'+h+'</div>'):'';}
+function openHealthSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';var vd=getDateForDow(viewDow),metrics=healthMetricsHTML(vd);var u=importUrl();var pad='padding:14px 18px;';var h='<div style="'+pad+'">';h+=metrics?('<div style="font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Imported · '+DAYS[viewDow]+'</div>'+metrics):'<div style="color:var(--muted);font-size:13px;margin-bottom:6px">No Health data imported yet for this day.</div>';h+='</div>';h+='<div class="hl-sec"><div class="hl-sec-t">&#10003; Export to Apple Health</div><div class="hl-sec-b">Finish a workout or a stretch / mobility session, then tap <b>Add to Apple Health</b> on the summary screen. It runs your Shortcut named <b>'+esc(HEALTH_SHORTCUT)+'</b> with the session as JSON (type, name, start, minutes). Build that Shortcut once: <i>Get Dictionary from Input → Log Health Workout (map type→activity, set Start + Duration)</i>.</div></div>';h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Import from Apple Health</div><div class="hl-sec-b">Create a Personal Automation (e.g. 7 AM daily): read Steps, Walking + Running Distance / minutes, Body Weight, Sleep → build a Dictionary → URL-encode as JSON → <b>Open URL</b>:<div class="hl-url" onclick="healthCopyURL()">'+esc(u)+'?hl=&lt;json&gt;</div><span class="hl-copy" onclick="healthCopyURL()">Tap to copy base URL</span><br>Accepted fields: '+HEALTH_FIELDS.join(', ')+' (+ optional <i>date</i> as YYYY-MM-DD).</div></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 /* TEST TAB */
 var TEST_CATALOG=[
   {id:'t_pl',name:'Pull-Ups',type:'reps',unit:'reps',cue:'Strict form. Chin over bar. Stop at form break.'},
@@ -1232,7 +1273,9 @@ function renderWorkout(){
   var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it</div>';
   h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span></div>';
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
-  h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button></div>';
+  h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button>';
+  if(sess.finished){var wpay={type:'workout',kind:'strength',name:woEffTemplate(tag).tag,start:new Date(sess.started||Date.now()).toISOString(),minutes:Math.max(1,Math.round((sess.elapsed||0)/60))};h+='<a class="wo-health" href="'+healthWriteURL(wpay)+'">&#10084;&#65039; Add to Apple Health</a>';}
+  h+='</div>';
   document.getElementById('root').innerHTML=h;if(_sy&&window.scrollTo)window.scrollTo(0,_sy);
 }
 /* weight wheel: tap the weight pill to open a scrolling dial of WO_LADDER values.
@@ -1428,7 +1471,9 @@ function woEditPickMob(e,r){woMobCb=function(id){if(!woEditTmpl.ex[e].restMob)wo
 function woEdReset(){var tag=woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
 function woEdDone(){var tag=woDayTag(viewDow);woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
 function woMaybeReseed(){var key=woKeyForDow(viewDow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed today from the updated template? This clears sets logged so far today.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
+var _hlN=ingestHealthFromURL();
 loadState();render();
+if(_hlN)setTimeout(function(){try{alert('Imported Apple Health data for '+_hlN+' day'+(_hlN>1?'s':'')+'.');}catch(e){}},300);
 </script>
 </body>
 </html>
