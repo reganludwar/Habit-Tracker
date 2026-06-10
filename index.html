@@ -342,7 +342,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-rest-swap span{cursor:pointer;color:var(--accent);padding:8px 10px;-webkit-user-select:none;user-select:none}
 .wo-rest-swap span.dim{color:var(--muted)}
 .wo-mob-line{font-size:13px;color:var(--green);text-align:center;padding:5px 16px 7px;letter-spacing:.03em;border-bottom:1px solid var(--border);background:rgba(77,184,133,.04)}
-.wo-edit-link{margin:14px 16px 0;text-align:center}
+.wo-edit-link{margin:14px 16px 0;display:flex;gap:8px;justify-content:center}
 .wo-edit-link span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
   cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
 .wo-ed-ex{background:var(--card);border:1px solid var(--border);margin:14px 16px 0;padding:4px 14px 10px}
@@ -1217,14 +1217,14 @@ function woSeed(dow,key){
   var x=getDateForDow(dow);x.setHours(0,0,0,0);
   var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,exercises:[]};
   if(!tmpl)return sess;
-  var prog=loadProg(),progUsed=false;
+  var prog=loadProg();
   for(var e=0;e<tmpl.ex.length;e++){
     var t=tmpl.ex[e],prev=loadWoLast(t.name,key);
     var wW=null,wR=null,wT=null;
     if(t.load==='pb')wW=woSnap(prev&&prev.weight!=null?prev.weight:t.seedW);
     if(t.input!=='time')wR=prev&&prev.reps!=null?prev.reps:t.seedR;
     if(t.input==='time')wT=prev&&prev.time!=null?prev.time:t.seedT;
-    var pq=prog[t.name];if(pq){if(pq.weight!=null&&t.load==='pb')wW=woSnap(pq.weight);if(pq.reps!=null&&t.input!=='time')wR=pq.reps;delete prog[t.name];progUsed=true;}
+    var pq=prog[t.name];if(pq){if(pq.weight!=null&&t.load==='pb')wW=woSnap(pq.weight);if(pq.reps!=null&&t.input!=='time')wR=pq.reps;}
     var sets=[];
     if(t.warmup){
       var warm={tag:'W',rest:t.warmRest||60,done:false};
@@ -1244,7 +1244,6 @@ function woSeed(dow,key){
     }
     sess.exercises.push({name:t.name,load:t.load,input:t.input,target:t.target||null,bil:!!t.bil,prev:prev,sets:sets});
   }
-  if(progUsed)saveProg(prog);
   return sess;
 }
 function woBackfillMobility(sess,dow){
@@ -1265,11 +1264,16 @@ function woBackfillMobility(sess,dow){
   }
   return changed;
 }
+function woHasProgress(o){if(!o||!o.exercises)return false;if(o.finished)return true;for(var e=0;e<o.exercises.length;e++){var ex=o.exercises[e];for(var s=0;s<ex.sets.length;s++)if(ex.sets[s].done)return true;}return false;}
 function woLoadOrSeed(dow,key){
   var raw=null;try{raw=localStorage.getItem(key);}catch(e){}
-  if(raw){try{var o=JSON.parse(raw);if(o&&o.exercises){o._key=key;woSession=o;if(woBackfillMobility(o,dow))woSave();return;}}catch(e){}}
+  if(raw){try{var o=JSON.parse(raw);if(o&&o.exercises&&woHasProgress(o)){o._key=key;woSession=o;if(woBackfillMobility(o,dow))woSave();return;}}catch(e){}}
+  // No saved session, or an untouched one (nothing logged): (re)seed from the CURRENT template so
+  // template edits permeate to today and all future days. Any stale snapshot is dropped.
+  if(raw){try{localStorage.removeItem(key);}catch(e){}}
   woSession=woSeed(dow,key);
 }
+function woResetDay(){if(!woSession)return;if(!confirm('Reset this day to the current template? Anything logged for this day will be cleared.'))return;var key=woSession._key;try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}
 function woSave(){if(!woSession)return;try{localStorage.setItem(woSession._key,JSON.stringify(woSession));}catch(e){}}
 function woFmtTime(v){if(v==null)return '0:00';if(typeof v==='object')return 'L '+fmtMMSSVal(v.l||0)+' · R '+fmtMMSSVal(v.r||0);return fmtMMSSVal(v);}
 function woPrevTxt(ex){if(!ex.prev)return 'last: —';var p=ex.prev,parts=[];if(p.weight!=null)parts.push(p.weight+' lb');if(p.reps!=null)parts.push(p.reps+' reps');if(p.time!=null)parts.push(woFmtTime(p.time));return parts.length?'last: '+parts.join(' × '):'last: —';}
@@ -1352,7 +1356,7 @@ function renderWorkout(){
   if(!woSession||woSession._key!==key)woLoadOrSeed(viewDow,key);
   var _sy=window.pageYOffset||(document.documentElement&&document.documentElement.scrollTop)||0;
   var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it</div>';
-  h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span></div>';
+  h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span><span onclick="woResetDay()">&#8635; Reset day</span></div>';
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
   h+='<div class="wo-notes-wrap"><textarea class="wo-notes" id="woNotes" placeholder="Session notes — how it felt, tweaks, aches…" oninput="woSaveNotes(this.value)">'+esc(sess.notes||'')+'</textarea></div>';
   if(sess.finished){var prs=woSessionPRs();if(prs.length){var ph='<div class="wo-pr-card"><div class="wo-pr-h">&#127942; New personal record'+(prs.length>1?'s':'')+'</div>';for(var pi=0;pi<prs.length;pi++){ph+='<div class="wo-pr-row"><span>'+esc(prs[pi].name)+'</span><span class="wo-pr-v">'+woFmtMetric(prs[pi].kind,prs[pi].val)+'</span></div>';}ph+='</div>';h+=ph;}}
@@ -1442,7 +1446,7 @@ function woOpenRpe(ei,si){sheetMode='';woRpeCtx={ei:ei,si:si};var set=woSession.
 function woPickRpe(n){if(woRpeCtx){woSession.exercises[woRpeCtx.ei].sets[woRpeCtx.si].rpe=n;woSave();}woRpeCtx=null;closeSheet();renderWorkout();}
 function woClearRpe(){if(woRpeCtx){delete woSession.exercises[woRpeCtx.ei].sets[woRpeCtx.si].rpe;woSave();}woRpeCtx=null;closeSheet();renderWorkout();}
 function woNextLabel(ei,si){var ex=woSession.exercises[ei];for(var s=si+1;s<ex.sets.length;s++)if(!ex.sets[s].done)return 'Next: '+ex.name;for(var e=ei+1;e<woSession.exercises.length;e++)return 'Next: '+woSession.exercises[e].name;return 'Last set done';}
-function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si),set.mobility,ei,si);}
+function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;if(set.done&&set.tag!=='W'){var nm=woSession.exercises[ei].name,pr=loadProg();if(pr[nm]){delete pr[nm];saveProg(pr);}}woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si),set.mobility,ei,si);}
 function woSaveNotes(v){if(woSession){woSession.notes=v;woSave();}}
 function woFinish(){if(!woSession)return;var hadPR=woSessionPRs().length>0;woSession.finished=true;woSession.elapsed=Math.round((Date.now()-(woSession.started||Date.now()))/1000);woSave();state['lift']=true;save();renderWorkout();try{if(hadPR)woFanfare();else beep();}catch(e){}}
 /* rest timer */
