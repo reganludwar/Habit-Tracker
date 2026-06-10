@@ -288,7 +288,23 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-wheel-done{width:100%;background:var(--accent);color:#000;font-size:15px;font-weight:700;letter-spacing:.08em;
   text-transform:uppercase;padding:15px;border:none;border-radius:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
 .wo-wheel-done:active{opacity:.85}
-.wo-nudge{font-size:10px;color:var(--accent);padding:8px 14px 10px;letter-spacing:.03em;line-height:1.4;border-top:1px solid var(--border);background:rgba(212,168,67,.04)}
+.wo-coach{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border);background:rgba(212,168,67,.05)}
+.wo-coach.stall{background:rgba(224,96,96,.06)}
+.wo-coach-msg{flex:1;font-size:11.5px;color:var(--text);line-height:1.35}
+.wo-coach-msg b{color:var(--accent);font-weight:700}
+.wo-coach-btn{flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:.04em;color:#000;background:var(--accent);
+  border-radius:6px;padding:8px 11px;cursor:pointer;-webkit-user-select:none;user-select:none;white-space:nowrap}
+.wo-coach-btn.ghost{background:none;color:var(--muted);border:1px solid var(--border)}
+.wo-coach-btn:active{opacity:.8}
+.wo-subline{padding:4px 14px 8px 38px}
+.wo-rpe{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted);
+  border:1px solid var(--border);border-radius:5px;padding:4px 9px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.wo-rpe.set{color:var(--accent);border-color:#6B5420;background:rgba(212,168,67,.06)}
+.wo-notes-wrap{margin:18px 16px 0}
+.wo-notes{width:100%;min-height:56px;background:var(--card);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:14px;font-family:inherit;line-height:1.45;padding:11px 12px;resize:vertical;
+  -webkit-appearance:none;outline:none;box-sizing:border-box}
+.wo-notes:focus{border-color:var(--accent)}
 .wo-finish-wrap{margin:22px 16px 0}
 .wo-finish{width:100%;background:var(--accent);color:#000;font-size:15px;font-weight:700;letter-spacing:.08em;
   text-transform:uppercase;padding:16px;border:none;cursor:pointer;-webkit-user-select:none;user-select:none}
@@ -1201,12 +1217,14 @@ function woSeed(dow,key){
   var x=getDateForDow(dow);x.setHours(0,0,0,0);
   var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,exercises:[]};
   if(!tmpl)return sess;
+  var prog=loadProg(),progUsed=false;
   for(var e=0;e<tmpl.ex.length;e++){
     var t=tmpl.ex[e],prev=loadWoLast(t.name,key);
     var wW=null,wR=null,wT=null;
     if(t.load==='pb')wW=woSnap(prev&&prev.weight!=null?prev.weight:t.seedW);
     if(t.input!=='time')wR=prev&&prev.reps!=null?prev.reps:t.seedR;
     if(t.input==='time')wT=prev&&prev.time!=null?prev.time:t.seedT;
+    var pq=prog[t.name];if(pq){if(pq.weight!=null&&t.load==='pb')wW=woSnap(pq.weight);if(pq.reps!=null&&t.input!=='time')wR=pq.reps;delete prog[t.name];progUsed=true;}
     var sets=[];
     if(t.warmup){
       var warm={tag:'W',rest:t.warmRest||60,done:false};
@@ -1226,6 +1244,7 @@ function woSeed(dow,key){
     }
     sess.exercises.push({name:t.name,load:t.load,input:t.input,target:t.target||null,bil:!!t.bil,prev:prev,sets:sets});
   }
+  if(progUsed)saveProg(prog);
   return sess;
 }
 function woBackfillMobility(sess,dow){
@@ -1254,14 +1273,24 @@ function woLoadOrSeed(dow,key){
 function woSave(){if(!woSession)return;try{localStorage.setItem(woSession._key,JSON.stringify(woSession));}catch(e){}}
 function woFmtTime(v){if(v==null)return '0:00';if(typeof v==='object')return 'L '+fmtMMSSVal(v.l||0)+' · R '+fmtMMSSVal(v.r||0);return fmtMMSSVal(v);}
 function woPrevTxt(ex){if(!ex.prev)return 'last: —';var p=ex.prev,parts=[];if(p.weight!=null)parts.push(p.weight+' lb');if(p.reps!=null)parts.push(p.reps+' reps');if(p.time!=null)parts.push(woFmtTime(p.time));return parts.length?'last: '+parts.join(' × '):'last: —';}
-function woNudge(ex){
-  if(!ex.target)return '';
-  var works=[],i;for(i=0;i<ex.sets.length;i++)if(ex.sets[i].tag!=='W')works.push(ex.sets[i]);
-  if(!works.length)return '';
-  for(i=0;i<works.length;i++){if(!works[i].done)return '';if((works[i].reps||0)<ex.target[1])return '';}
-  if(ex.load==='pb'){var cur=works[works.length-1].weight||0,nx=woLadderStep(cur,1);if(nx>cur)return '↑ Both sets hit '+ex.target[1]+' — try '+nx+' lb next session';return '↑ Top of range — progress when ready';}
-  return '↑ Both sets hit '+ex.target[1]+' — add a rep next session';
+function woWorks(ex){var w=[];for(var i=0;i<ex.sets.length;i++)if(ex.sets[i].tag!=='W')w.push(ex.sets[i]);return w;}
+function woReadyToProgress(ex){if(!ex.target)return false;var works=woWorks(ex);if(!works.length)return false;for(var j=0;j<works.length;j++){if(!works[j].done)return false;if((works[j].reps||0)<ex.target[1])return false;}return true;}
+function woStalled(name){var h=woHistory(name,null);if(h.length<3)return false;return h[h.length-1].best<=h[h.length-3].best+1e-9;}
+function loadProg(){try{return JSON.parse(localStorage.getItem('wo_prog'))||{};}catch(e){return {};}}
+function saveProg(p){try{localStorage.setItem('wo_prog',JSON.stringify(p));}catch(e){}}
+function woCoachHTML(ex,ei){
+  var q=loadProg()[ex.name];
+  if(q){var qt=(q.weight!=null?q.weight+' lb':'')+(q.weight!=null&&q.reps!=null?' × ':'')+(q.reps!=null?q.reps+' reps':'');return '<div class="wo-coach"><span class="wo-coach-msg">'+(q.deload?'&#8595; Deload queued':'&#9650; Next session')+': <b>'+qt+'</b></span><span class="wo-coach-btn ghost" onclick="woClearProg('+ei+')">Undo</span></div>';}
+  if(woReadyToProgress(ex)){
+    if(ex.load==='pb'){var works=woWorks(ex),cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);if(nx>cur)return '<div class="wo-coach"><span class="wo-coach-msg">&#9650; Hit top of range — ready to add weight</span><span class="wo-coach-btn" onclick="woApplyProgress('+ei+')">Add '+nx+' lb &rsaquo;</span></div>';return '';}
+    return '<div class="wo-coach"><span class="wo-coach-msg">&#9650; Hit top of range — progress next time</span><span class="wo-coach-btn" onclick="woApplyProgress('+ei+')">Queue +1 rep &rsaquo;</span></div>';
+  }
+  if(ex.load==='pb'&&woStalled(ex.name))return '<div class="wo-coach stall"><span class="wo-coach-msg">&#9888;&#65039; No gain in 3 sessions — a deload may help</span><span class="wo-coach-btn" onclick="woApplyDeload('+ei+')">Deload 10% &rsaquo;</span></div>';
+  return '';
 }
+function woApplyProgress(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();if(ex.load==='pb'){var cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);prog[ex.name]={weight:nx,reps:ex.target?ex.target[0]:null};}else{var lr=works.length?(works[works.length-1].reps||0):0;prog[ex.name]={weight:null,reps:lr+1};}saveProg(prog);renderWorkout();}
+function woApplyDeload(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();var cur=works.length?(works[works.length-1].weight||0):0;prog[ex.name]={weight:woSnap(cur*0.9),reps:ex.target?ex.target[0]:null,deload:true};saveProg(prog);renderWorkout();}
+function woClearProg(ei){var prog=loadProg();delete prog[woSession.exercises[ei].name];saveProg(prog);renderWorkout();}
 function woRowType(ex){return ex.input==='time'?'t-time':((ex.input==='wr'||ex.load==='pb')?'t-wr':'t-reps');}
 function woPrevCol(ex){if(!ex.prev)return '&mdash;';var p=ex.prev;if(p.time!=null)return woFmtTime(p.time);var a=[];if(p.weight!=null)a.push(p.weight);if(p.reps!=null)a.push(p.reps);return a.length?a.join('&times;'):'&mdash;';}
 function woHintSeen(){try{return localStorage.getItem('wo_whint')==='1';}catch(e){return true;}}
@@ -1288,6 +1317,7 @@ function woSetHTML(ex,ei,si){
   }
   h+='<div class="wo-chk'+(set.done?' on':'')+'" onclick="woLogSet('+ei+','+si+')">&#10003;</div>';
   h+='</div>';
+  if(!isW&&set.done)h+='<div class="wo-subline"><span class="wo-rpe'+(set.rpe!=null?' set':'')+'" onclick="woOpenRpe('+ei+','+si+')">RPE '+(set.rpe!=null?set.rpe:'&middot;')+'</span></div>';
   if(!isW&&set.rest>0){
     h+='<div class="wo-rest-divider">Rest '+fmtMMSSVal(set.rest)+'</div>';
     if(set.mobility)h+='<div class="wo-mob-line">&#9788; Mobility: '+esc(woMobName(set.mobility))+'</div>';
@@ -1307,7 +1337,7 @@ function woExHTML(ex,ei){
   else h+='<div class="w">Time</div><div></div>';
   h+='<div class="chk">&#10003;</div></div>';
   for(var s=0;s<ex.sets.length;s++)h+=woSetHTML(ex,ei,s);
-  var nudge=woNudge(ex);if(nudge)h+='<div class="wo-nudge">'+nudge+'</div>';
+  h+=woCoachHTML(ex,ei);
   h+='</div>';return h;
 }
 function renderWorkout(){
@@ -1324,6 +1354,7 @@ function renderWorkout(){
   var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it</div>';
   h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span></div>';
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
+  h+='<div class="wo-notes-wrap"><textarea class="wo-notes" id="woNotes" placeholder="Session notes — how it felt, tweaks, aches…" oninput="woSaveNotes(this.value)">'+esc(sess.notes||'')+'</textarea></div>';
   if(sess.finished){var prs=woSessionPRs();if(prs.length){var ph='<div class="wo-pr-card"><div class="wo-pr-h">&#127942; New personal record'+(prs.length>1?'s':'')+'</div>';for(var pi=0;pi<prs.length;pi++){ph+='<div class="wo-pr-row"><span>'+esc(prs[pi].name)+'</span><span class="wo-pr-v">'+woFmtMetric(prs[pi].kind,prs[pi].val)+'</span></div>';}ph+='</div>';h+=ph;}}
   h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button>';
   if(sess.finished){var wpay={type:'workout',kind:'strength',name:woEffTemplate(tag).tag,start:new Date(sess.started||Date.now()).toISOString(),minutes:Math.max(1,Math.round((sess.elapsed||0)/60))};h+='<a class="wo-health" href="'+healthWriteURL(wpay)+'">&#10084;&#65039; Add to Apple Health</a>';}
@@ -1406,8 +1437,13 @@ var WO_REPS=(function(){var a=[];for(var i=1;i<=24;i++)a.push(i);return a;})();
 var woRepsCtx=null;
 function woOpenReps(ei,si){sheetMode='';var set=woSession.exercises[ei].sets[si];woRepsCtx={ei:ei,si:si};document.getElementById('shtTitle').textContent=woSession.exercises[ei].name;document.getElementById('shtSub').textContent='Tap to set reps';var h='<div class="num-grid">';for(var i=0;i<WO_REPS.length;i++){var n=WO_REPS[i];h+='<div class="num-btn'+(n===set.reps?' sel':'')+'" onclick="woPickReps('+n+')">'+n+'</div>';}h+='</div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function woPickReps(n){if(woRepsCtx){woSession.exercises[woRepsCtx.ei].sets[woRepsCtx.si].reps=n;woSave();}woRepsCtx=null;closeSheet();renderWorkout();}
+var WO_RPE=[6,6.5,7,7.5,8,8.5,9,9.5,10],woRpeCtx=null;
+function woOpenRpe(ei,si){sheetMode='';woRpeCtx={ei:ei,si:si};var set=woSession.exercises[ei].sets[si];document.getElementById('shtTitle').textContent='Perceived exertion';document.getElementById('shtSub').textContent='How hard was that set? (RPE)';var h='<div class="num-grid">';for(var i=0;i<WO_RPE.length;i++){var n=WO_RPE[i];h+='<div class="num-btn'+(n===set.rpe?' sel':'')+'" onclick="woPickRpe('+n+')">'+n+'</div>';}h+='</div><div class="undo-row"><button class="undo-btn" onclick="woClearRpe()">Clear</button></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+function woPickRpe(n){if(woRpeCtx){woSession.exercises[woRpeCtx.ei].sets[woRpeCtx.si].rpe=n;woSave();}woRpeCtx=null;closeSheet();renderWorkout();}
+function woClearRpe(){if(woRpeCtx){delete woSession.exercises[woRpeCtx.ei].sets[woRpeCtx.si].rpe;woSave();}woRpeCtx=null;closeSheet();renderWorkout();}
 function woNextLabel(ei,si){var ex=woSession.exercises[ei];for(var s=si+1;s<ex.sets.length;s++)if(!ex.sets[s].done)return 'Next: '+ex.name;for(var e=ei+1;e<woSession.exercises.length;e++)return 'Next: '+woSession.exercises[e].name;return 'Last set done';}
 function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si),set.mobility,ei,si);}
+function woSaveNotes(v){if(woSession){woSession.notes=v;woSave();}}
 function woFinish(){if(!woSession)return;var hadPR=woSessionPRs().length>0;woSession.finished=true;woSession.elapsed=Math.round((Date.now()-(woSession.started||Date.now()))/1000);woSave();state['lift']=true;save();renderWorkout();try{if(hadPR)woFanfare();else beep();}catch(e){}}
 /* rest timer */
 var woRestRemain=0,woRestEndAt=0,woRestTimer=null,woRestCtx=null,woRestExName='',woMobCb=null;
