@@ -505,7 +505,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .hl-guide li{font-size:12.5px;color:var(--muted);line-height:1.55;margin:6px 0}
 .hl-guide li b{color:var(--text);font-weight:600}
 .hl-guide code{background:var(--surf);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11.5px;color:var(--text);font-family:ui-monospace,Menlo,monospace}
-.hl-json{background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--text);overflow-x:auto;white-space:pre;margin:7px 0;line-height:1.4}
+.hl-json{background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-word;margin:7px 0;line-height:1.45}
 .hl-note{font-size:12px;color:var(--muted);background:rgba(212,168,67,.07);border:1px solid #6B5420;border-radius:8px;padding:10px 12px;margin-top:14px;line-height:1.5}
 .hl-note b{color:var(--accent)}
 .reset-wrap{margin:28px 16px 0;display:flex;justify-content:center}
@@ -1019,19 +1019,32 @@ function healthMetricsHTML(dt){var hd=loadHealth(dt);if(!hd)return '';var h='',a
 var healthGuide=false;
 function healthToggleGuide(){healthGuide=!healthGuide;renderHealthSheet();}
 function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">';
-  h+='<h4>Part A &middot; Export shortcut (app &rarr; Health)</h4>';
-  h+='<div class="hl-sec-b">When you tap <b>&#10084;&#65039; Add to Apple Health</b> on a finished session, the app runs a shortcut named <b>Log to Health</b> and passes this JSON as text:</div>';
-  h+='<div class="hl-json">{"type":"workout","kind":"strength",\n "name":"UPPER PUSH",\n "start":"2026-06-10T17:32:00Z",\n "minutes":41}</div>';
-  h+='<div class="hl-sec-b"><code>kind</code> is <code>strength</code> for workouts, <code>mobility</code> / <code>flexibility</code> for stretches.</div>';
-  h+='<div class="hl-sec-b" style="margin-top:8px">In Shortcuts, create a new shortcut named exactly <b>Log to Health</b>:</div>';
-  h+='<ol><li><b>Get Dictionary from Input</b></li><li><b>Get Dictionary Value</b> &rarr; key <code>minutes</code> &rarr; name it <b>Mins</b></li><li><b>Get Dictionary Value</b> &rarr; key <code>start</code> &rarr; <b>Get Dates from Input</b> &rarr; <b>StartDate</b> <i>(or just use Current Date)</i></li><li><b>Adjust Date</b> &rarr; StartDate <b>+ Mins Minutes</b> &rarr; <b>EndDate</b></li><li><i>Optional:</i> <b>Get Dictionary Value</b> key <code>kind</code>, then <b>If</b> it is <code>strength</code> &rarr; <i>Functional Strength Training</i>, otherwise <i>Flexibility</i></li><li><b>Log Workout</b> &rarr; Type from step 5, <b>Start</b> = StartDate, <b>End</b> = EndDate</li></ol>';
-  h+='<div class="hl-sec-b">On first run, allow <b>write access</b> to Health.</div>';
-  h+='<h4>Part B &middot; Import automation (Health &rarr; app)</h4>';
-  h+='<div class="hl-sec-b">A daily automation reads Health and opens <code>'+u+'?hl=&lt;json&gt;</code>. Accepted keys (all optional): <code>'+HEALTH_FIELDS.join('</code> <code>')+'</code> &middot; <code>date</code> as YYYY-MM-DD.</div>';
-  h+='<div class="hl-sec-b" style="margin-top:8px">Shortcuts &rarr; <b>Automation</b> &rarr; <b>+</b> &rarr; <b>Time of Day</b> (e.g. 7 AM, Daily) &rarr; <b>Run Immediately</b> (turn off &ldquo;Ask Before Running&rdquo;). Then:</div>';
-  h+='<ol><li>Per stat: <b>Find Health Samples</b> (Today) &rarr; <b>Calculate Statistics</b> (Sum) &mdash; Steps&rarr;<code>steps</code>, Active Energy&rarr;<code>activeKcal</code>, Apple Exercise Time&rarr;<code>exerciseMin</code>, Sleep&rarr;<code>sleepHr</code></li><li><b>Find Health Samples</b> Body Mass, latest 1 &rarr;<code>weightLb</code> <i>(set Health units to lb)</i></li><li><b>Format Current Date</b> as <code>yyyy-MM-dd</code> &rarr;<code>date</code></li><li><b>Dictionary</b> &rarr; add the keys above with their values</li><li><b>Text</b> &rarr; put the Dictionary variable inside it (becomes JSON)</li><li><b>URL Encode</b> that text &rarr; <b>Encoded</b></li><li><b>Text</b> &rarr; <code>'+u+'?hl=</code> then <b>Encoded</b></li><li><b>Open URLs</b> &rarr; that text</li></ol>';
-  h+='<div class="hl-sec-b">It opens the app, saves the day&rsquo;s stats, and the strip above fills in.</div>';
-  h+='<div class="hl-note"><b>Two gotchas.</b> The export shortcut must be named exactly <b>Log to Health</b>. And if you launch from the Home-Screen app, an automation that opens the URL in Safari can write to a separate storage box &mdash; check that the strip fills in; if not, open the app the same way the automation does.</div>';
+  h+='<div class="hl-note" style="margin-top:0"><b>New to Shortcuts?</b> Open the <b>Shortcuts</b> app. To build the export, tap <b>+</b> (top-right) for a new shortcut, then tap its title and rename it to exactly <b>Log to Health</b>. For each step below, tap the <b>search bar</b> at the bottom (&ldquo;Add Action&rdquo;), type the <b>bold action name</b>, and tap it. The colored chips inside an action are filled by tapping them and choosing a result from an earlier step.</div>';
+  h+='<h4>Part A &middot; Export: the &ldquo;Log to Health&rdquo; shortcut</h4>';
+  h+='<div class="hl-sec-b">When you tap <b>&#10084;&#65039; Add to Apple Health</b> after a session, the app sends this text to the shortcut &mdash; you only need the <code>minutes</code> from it:</div>';
+  h+='<div class="hl-json">{"type":"workout","kind":"strength", "name":"UPPER PUSH", "start":"…", "minutes":41}</div>';
+  h+='<div class="hl-sec-b">Add these <b>4 actions</b> in order:</div>';
+  h+='<ol>';
+  h+='<li><b>Get Dictionary from Input</b><br>This reads the text above and turns it into key&hairsp;/&hairsp;value pairs the shortcut can use. Leave its blue field set to <b>Shortcut Input</b>.</li>';
+  h+='<li><b>Get Dictionary Value</b><br>It reads &ldquo;Get&nbsp;<b>Value</b>&nbsp;for&nbsp;<b>key</b>&nbsp;in&nbsp;<b>Dictionary</b>.&rdquo; Tap <b>key</b> and type <code>minutes</code>. (The Dictionary fills in from step&nbsp;1.) This now holds your workout length, e.g.&nbsp;41.</li>';
+  h+='<li><b>Adjust Date</b><br>Make it read: <b>Subtract</b> &nbsp;[Dictionary Value]&nbsp; <b>Minutes</b> from <b>Current Date</b>. &mdash; tap the date and choose <b>Current Date</b>; switch <i>Add</i> to <b>Subtract</b>; tap the number and choose the <b>Dictionary Value</b> from step&nbsp;2; set the unit to <b>Minutes</b>. This is when the workout started.</li>';
+  h+='<li><b>Log Workout</b> <i>(on some versions, &ldquo;Log Health Workout&rdquo;)</i><br>Set <b>Activity Type</b> &mdash; e.g.&nbsp;Functional Strength Training. Tap <b>Start</b> and choose <b>Adjusted Date</b> (step&nbsp;3). Tap <b>End</b> and choose <b>Current Date</b>.</li>';
+  h+='</ol>';
+  h+='<div class="hl-sec-b">Tap <b>Done</b>. The first time it runs, iOS asks to <b>allow writing to Health</b> &mdash; tap Allow. Test it by finishing a session and tapping <b>Add to Apple Health</b>.</div>';
+  h+='<div class="hl-sec-b" style="margin-top:6px"><i>Optional &mdash; vary the type:</i> before <b>Log Workout</b>, add <b>Get Dictionary Value</b> for <code>kind</code> and an <b>If</b> (is <code>strength</code> &rarr; a strength type, Otherwise &rarr; Flexibility).</div>';
+  h+='<h4>Part B &middot; Import: the daily &ldquo;update&rdquo; automation</h4>';
+  h+='<div class="hl-sec-b"><i>Optional and more involved &mdash; this pulls stats into the app.</i> In Shortcuts open the <b>Automation</b> tab &rarr; <b>+</b> &rarr; <b>Time of Day</b> &rarr; set e.g. 7:00&nbsp;AM, <b>Daily</b> &rarr; Next. Turn on <b>Run Immediately</b> and turn off <b>Ask Before Running</b>. Then add actions:</div>';
+  h+='<ol>';
+  h+='<li>For each stat, add <b>Find Health Samples</b> (set its <b>Type</b>, with <b>Date</b> within <b>Today</b>), then <b>Calculate Statistics</b> (Operation <b>Sum</b>). Do this for Steps&nbsp;&rarr;<code>steps</code>, Active Energy&nbsp;&rarr;<code>activeKcal</code>, Apple Exercise Time&nbsp;&rarr;<code>exerciseMin</code>, Sleep&nbsp;&rarr;<code>sleepHr</code>.</li>';
+  h+='<li>For weight: <b>Find Health Samples</b>, Type <b>Body Mass</b>, <b>Limit</b> 1, newest first &rarr;<code>weightLb</code> <i>(set Health units to lb)</i>.</li>';
+  h+='<li><b>Format Date</b> on <b>Current Date</b>, custom format <code>yyyy-MM-dd</code> &rarr;<code>date</code>.</li>';
+  h+='<li><b>Dictionary</b> &mdash; add one row per stat: the <b>key</b> is the code word above, the <b>value</b> is that step&rsquo;s result. Include only the ones you measured. All accepted keys: <code>'+HEALTH_FIELDS.join('</code> <code>')+'</code>.</li>';
+  h+='<li><b>Text</b> &mdash; put the <b>Dictionary</b> variable inside it (this becomes JSON text).</li>';
+  h+='<li><b>URL Encode</b> that Text &rarr; call it <b>Encoded</b>.</li>';
+  h+='<li><b>Text</b> &mdash; type <code>'+u+'?hl=</code> then insert <b>Encoded</b> right after it.</li>';
+  h+='<li><b>Open URLs</b> &mdash; pass that last Text. It opens the app, which saves the stats; the strip at the top of this sheet fills in.</li>';
+  h+='</ol>';
+  h+='<div class="hl-note"><b>Two gotchas.</b> The export shortcut must be named exactly <b>Log to Health</b>. And if you launch the app from its Home-Screen icon, an automation that opens the URL in Safari can save to a separate place &mdash; after it runs, open the app and check the strip filled in; if not, open the app the same way the automation does.</div>';
   return h+'</div>';}
 function renderHealthSheet(){document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';
   var vd=getDateForDow(viewDow),metrics=healthMetricsHTML(vd),u=importUrl();
