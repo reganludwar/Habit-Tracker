@@ -589,6 +589,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-edit-b .ar{color:var(--accent);margin:0 5px}
 .cch-edit-w{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px}
 .cch-edit-apply{width:100%;background:var(--accent);color:#000;font-size:12px;font-weight:700;padding:10px;border:none;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
+.cch-edit.approved{border-color:rgba(106,176,106,.5);background:rgba(106,176,106,.07)}
+.cch-edit.dismissed{opacity:.5}
+.cch-edit-row{display:flex;gap:8px}
+.cch-edit-row .cch-edit-apply{flex:2}
+.cch-edit-no{flex:1;background:var(--surf);border:1.5px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:10px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;border-radius:6px}
+.cch-edit-done{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--green)}
+.cch-edit-done.off{color:var(--muted)}
+.cch-edit-done .cch-link{font-weight:600}
 </style>
 </head>
 <body>
@@ -1901,10 +1909,14 @@ function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;
     .then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j};},function(){return {ok:res.ok,status:res.status,j:null};});})
     .then(function(r){coachBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);coachErr=coachFriendlyErr(r.status,msg);coachRender('error');return;}var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;coachResult=txt||'(empty response)';coachAddReport({ts:Date.now(),rangeKey:coachRange,rangeLabel:coachRangeLabel(),model:coachModel(),modelLabel:coachModelLabel(),len:coachLen(),focus:coachFocus(),text:coachResult});coachRender('result');})
     .catch(function(e){coachBusy=false;coachErr='Network error: '+(e&&e.message?e.message:e)+'. Confirm your connection and that your key allows direct browser access.';coachRender('error');});}
-/* One-tap template edits: the model may append a ```json {"edits":[…]} block. We strip it from
-   the prose, validate each edit against the live template, and render an Apply button. Only
-   per-exercise fields the override model allows (rep target, sets, rest) are accepted. */
-var coachEdits=[],coachFlash='',coachMode='home';
+/* Approvable template edits: the model may append a ```json {"edits":[…]} block. We strip it from
+   the prose, validate each edit against the live template, and render an Approve / Dismiss card per
+   suggestion. Only per-exercise fields the override model allows (rep target, sets, rest) are
+   accepted. Nothing changes the template until you Approve; every approval keeps the prior value so
+   it can be undone. coachEditState is keyed per report so a suggestion's status survives re-renders. */
+var coachEdits=[],coachFlash='',coachMode='home',coachEditState={};
+function coachCurReportTs(){if(coachMode==='view')return coachViewTs;var lp=coachLastReport();return lp?lp.ts:0;}
+function coachEditKey(e){return coachCurReportTs()+'|'+e.day+'|'+e.field+'|'+e.exercise+'|'+e.newStr;}
 function coachDayName(d){return ({mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri'})[d]||d;}
 function coachFmtRest(s){s=s||0;if(!s)return 'no rest';var m=Math.floor(s/60),x=s%60;return m?(m+':'+(x<10?'0':'')+x):(s+'s');}
 function coachParseRange(v){if(Array.isArray(v)&&v.length===2)v=v[0]+'-'+v[1];var m=String(v).match(/(\d+)\s*(?:[-–]|to)\s*(\d+)/);if(!m)return null;var lo=parseInt(m[1],10),hi=parseInt(m[2],10);return (lo>=1&&hi>lo&&hi<=50)?[lo,hi]:null;}
@@ -1917,14 +1929,46 @@ function coachParseEdits(text){text=text||'';var raw=null,re=/```json\s*([\s\S]*
   var prose=text.replace(/```json\s*[\s\S]*?```/gi,'').replace(/\n{3,}/g,'\n\n').trim();
   var edits=[];if(raw&&raw.length)for(var i=0;i<raw.length&&edits.length<5;i++){var v=coachValidEdit(raw[i]);if(v)edits.push(v);}
   return {prose:prose,edits:edits};}
-function coachEditsHTML(){if(!coachEdits.length)return '';var h='<div class="cch-pad"><div class="cch-lbl">Suggested template edits — one tap to apply</div>';
-  for(var i=0;i<coachEdits.length;i++){var e=coachEdits[i];h+='<div class="cch-edit"><div class="cch-edit-h"><span class="d">'+coachDayName(e.day)+'</span>'+esc(e.exercise)+'</div><div class="cch-edit-b">'+esc(e.curStr)+'<span class="ar">&rarr;</span><b>'+esc(e.newStr)+'</b></div>'+(e.why?'<div class="cch-edit-w">'+esc(e.why)+'</div>':'<div style="height:6px"></div>')+'<button class="cch-edit-apply" onclick="coachApplyEdit('+i+')">Apply to '+coachDayName(e.day)+' template</button></div>';}
+/* Parse a report's prose + edits ONCE and cache (single slot, keyed by report). Approving an edit
+   mutates the live template, which would otherwise make that edit re-validate as a no-op and vanish
+   on the next render — caching keeps the card (and its Undo) visible until you leave the report. */
+var coachParsedCache=null;
+function coachGetParsed(ts,text){if(coachParsedCache&&coachParsedCache.ts===ts&&coachParsedCache.text===text)return coachParsedCache.val;var v=coachParseEdits(text);coachParsedCache={ts:ts,text:text,val:v};return v;}
+function coachEditsHTML(){if(!coachEdits.length)return '';
+  var pend=0;for(var k=0;k<coachEdits.length;k++)if(!coachEditState[coachEditKey(coachEdits[k])])pend++;
+  var h='<div class="cch-pad"><div class="cch-lbl">Coach recommendations — approve to update your template</div>';
+  if(pend>1)h+='<button class="cch-edit-apply" style="margin-bottom:12px" onclick="coachApproveAll()">Approve all '+pend+' changes</button>';
+  for(var i=0;i<coachEdits.length;i++){var e=coachEdits[i],st=coachEditState[coachEditKey(e)];
+    h+='<div class="cch-edit'+(st?(st.status==='approved'?' approved':' dismissed'):'')+'">';
+    h+='<div class="cch-edit-h"><span class="d">'+coachDayName(e.day)+'</span>'+esc(e.exercise)+'</div>';
+    h+='<div class="cch-edit-b">'+esc(e.curStr)+'<span class="ar">&rarr;</span><b>'+esc(e.newStr)+'</b></div>';
+    h+=(e.why?'<div class="cch-edit-w">'+esc(e.why)+'</div>':'<div style="height:6px"></div>');
+    if(!st)h+='<div class="cch-edit-row"><button class="cch-edit-apply" onclick="coachApproveEdit('+i+')">Approve</button><button class="cch-edit-no" onclick="coachDismissEdit('+i+')">Dismiss</button></div>';
+    else if(st.status==='approved')h+='<div class="cch-edit-done"><span>&#10003; Approved &middot; live on '+coachDayName(e.day)+' template</span><span class="cch-link" onclick="coachUndoEdit('+i+')">Undo</span></div>';
+    else h+='<div class="cch-edit-done off"><span>Dismissed</span><span class="cch-link" onclick="coachRestoreEdit('+i+')">Restore</span></div>';
+    h+='</div>';}
   return h+'</div>';}
-function coachApplyEdit(idx){var e=coachEdits[idx];if(!e)return;var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}if(!ex)return;
-  if(e.field==='repTarget')ex.target=[e.value[0],e.value[1]];else if(e.field==='sets'){ex.sets=e.value;t=woNormTmpl(t);}else if(e.field==='workRest')ex.workRest=e.value;
-  woSaveTmplOverride(e.day,t);coachFlash='Applied: '+e.exercise+' → '+e.newStr+' on '+coachDayName(e.day)+'. It takes effect next time you start that day.';
-  if(typeof viewMode!=='undefined'&&viewMode==='workout'&&typeof render==='function'){/* leave any in-progress session intact */}
-  coachRender(coachMode);}
+/* Write one approved edit into the day-template override, capturing the prior value for Undo. */
+function coachDoApprove(e){var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}if(!ex)return false;var prev;
+  if(e.field==='repTarget'){prev=ex.target?[ex.target[0],ex.target[1]]:null;ex.target=[e.value[0],e.value[1]];}
+  else if(e.field==='sets'){prev=ex.sets;ex.sets=e.value;t=woNormTmpl(t);}
+  else if(e.field==='workRest'){prev=ex.workRest||0;ex.workRest=e.value;}
+  else return false;
+  woSaveTmplOverride(e.day,t);coachEditState[coachEditKey(e)]={status:'approved',prev:prev};return true;}
+function coachApproveEdit(idx){var e=coachEdits[idx];if(!e)return;if(coachDoApprove(e))coachFlash='Approved: '+e.exercise+' → '+e.newStr+' on '+coachDayName(e.day)+'. Takes effect next time you start that day.';coachRender(coachMode);}
+function coachApproveAll(){var n=0;for(var i=0;i<coachEdits.length;i++){if(coachEditState[coachEditKey(coachEdits[i])])continue;if(coachDoApprove(coachEdits[i]))n++;}coachFlash=n?('Approved '+n+' change'+(n>1?'s':'')+' to your templates. They take effect next time you start each day.'):'';coachRender(coachMode);}
+function coachUndoEdit(idx){var e=coachEdits[idx];if(!e)return;var st=coachEditState[coachEditKey(e)];
+  if(st&&st.status==='approved'){var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}
+    if(ex){if(e.field==='repTarget'){if(st.prev)ex.target=[st.prev[0],st.prev[1]];else delete ex.target;}
+      else if(e.field==='sets'){ex.sets=st.prev;t=woNormTmpl(t);}
+      else if(e.field==='workRest'){ex.workRest=st.prev;}
+      woSaveTmplOverride(e.day,t);}
+    coachFlash='Reverted '+e.exercise+' on '+coachDayName(e.day)+'.';}
+  delete coachEditState[coachEditKey(e)];coachRender(coachMode);}
+function coachDismissEdit(idx){var e=coachEdits[idx];if(!e)return;coachEditState[coachEditKey(e)]={status:'dismissed'};coachFlash='';coachRender(coachMode);}
+function coachRestoreEdit(idx){var e=coachEdits[idx];if(!e)return;delete coachEditState[coachEditKey(e)];coachFlash='';coachRender(coachMode);}
+/* Back-compat alias: approving an edit is what "apply" used to do. */
+function coachApplyEdit(idx){coachApproveEdit(idx);}
 function coachMd(src){var lines=esc(src).split(/\r?\n/),html='',inUl=false;
   function inl(s){s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');s=s.replace(/`([^`]+)`/g,'<code>$1</code>');s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');return s;}
   for(var i=0;i<lines.length;i++){var ln=lines[i];var mh=ln.match(/^(#{2,3})\s+(.*)$/),mli=ln.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
@@ -1960,7 +2004,7 @@ function coachHistoryHTML(){var a=coachLoadReports();var h='<div class="cch-bar"
 function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return;
   if(mode==='setup'){b.innerHTML=coachSetupHTML();var el=document.getElementById('cchKey');if(el)setTimeout(function(){try{el.focus();}catch(e){}},80);return;}
   if(mode==='history'){coachFlash='';b.innerHTML=coachHistoryHTML();return;}
-  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}coachMode='view';var pe=coachParseEdits(r.text||'');coachEdits=pe.edits;
+  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}coachMode='view';var pe=coachGetParsed(coachViewTs,r.text||'');coachEdits=pe.edits;
     var foc=(r.focus&&r.focus!=='balanced')?(' &middot; '+esc(r.focus)):'';
     var bh='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'history\')">&lsaquo; History</span><span class="cch-link" onclick="coachRender(\'home\')">Home</span></div><div class="cch-meta">'+esc(r.rangeLabel)+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+foc+'</div>';
     if(coachFlash)bh+='<div class="cch-pad" style="padding-top:0"><div class="cch-flash">'+esc(coachFlash)+'</div></div>';
@@ -1978,7 +2022,7 @@ function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return
   h+='<div style="text-align:center;margin-top:12px">'+(coachLoadReports().length?'<span class="cch-link" onclick="coachRender(\'history\')">History ('+coachLoadReports().length+')</span> &nbsp;&middot;&nbsp; ':'')+'<span class="cch-link" onclick="coachRender(\'setup\')">API key &amp; model</span></div></div>';
   if(mode==='busy')h+='<div class="cch-spin"><span class="cch-dot"></span>Analyzing with '+esc(coachModelLabel())+'…</div>';
   if(mode==='error'&&coachErr)h+='<div class="cch-pad"><div class="cch-err">'+esc(coachErr)+'</div></div>';
-  if(mode==='result'&&coachResult){coachMode='result';var pe=coachParseEdits(coachResult);coachEdits=pe.edits;
+  if(mode==='result'&&coachResult){coachMode='result';var pe=coachGetParsed(coachCurReportTs(),coachResult);coachEdits=pe.edits;
     h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+' &middot; saved to history</div>';
     if(coachFlash)h+='<div class="cch-pad" style="padding-top:0"><div class="cch-flash">'+esc(coachFlash)+'</div></div>';
     h+='<div class="cch-out">'+coachMd(pe.prose)+'</div>'+coachEditsHTML()+'<div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';}
