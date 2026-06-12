@@ -298,6 +298,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   text-transform:uppercase;padding:12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:9px;-webkit-user-select:none;user-select:none}
 .wo-wheel-save:active{background:var(--border)}
 .wo-wheel-save.done{color:var(--green);border-color:rgba(106,176,106,.5);background:rgba(106,176,106,.08)}
+.wo-wheel-unpin{text-align:center;font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer;margin:0 0 11px;-webkit-user-select:none;user-select:none}
 .wo-coach{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border);background:rgba(212,168,67,.05)}
 .wo-coach.stall{background:rgba(224,96,96,.06)}
 .wo-coach-msg{flex:1;font-size:11.5px;color:var(--text);line-height:1.35}
@@ -1378,10 +1379,10 @@ function woSeed(dow,key){
   for(var e=0;e<tmpl.ex.length;e++){
     var t=tmpl.ex[e],prev=loadWoLast(t.name,key);
     var wW=null,wR=null,wT=null;
-    if(t.load==='pb')wW=woSnap(prev&&prev.weight!=null?prev.weight:t.seedW);
+    if(t.load==='pb')wW=woSnap(t.pinW!=null?t.pinW:(prev&&prev.weight!=null?prev.weight:t.seedW));
     if(t.input!=='time')wR=prev&&prev.reps!=null?prev.reps:t.seedR;
     if(t.input==='time')wT=prev&&prev.time!=null?prev.time:t.seedT;
-    var pq=prog[t.name];if(pq){if(pq.weight!=null&&t.load==='pb')wW=woSnap(pq.weight);if(pq.reps!=null&&t.input!=='time')wR=pq.reps;}
+    var pq=prog[t.name];if(pq){if(pq.weight!=null&&t.load==='pb'&&t.pinW==null)wW=woSnap(pq.weight);if(pq.reps!=null&&t.input!=='time')wR=pq.reps;}
     var sets=[];
     if(t.warmup){
       var warm={tag:'W',rest:t.warmRest||60,done:false};
@@ -1449,8 +1450,11 @@ function woCoachHTML(ex,ei){
   if(ex.load==='pb'&&woStalled(ex.name))return '<div class="wo-coach stall"><span class="wo-coach-msg">&#9888;&#65039; No gain in 3 sessions — a deload may help</span><span class="wo-coach-btn" onclick="woApplyDeload('+ei+')">Deload 10% &rsaquo;</span></div>';
   return '';
 }
-function woApplyProgress(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();if(ex.load==='pb'){var cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);prog[ex.name]={weight:nx,reps:ex.target?ex.target[0]:null};}else{var lr=works.length?(works[works.length-1].reps||0):0;prog[ex.name]={weight:null,reps:lr+1};}saveProg(prog);renderWorkout();}
-function woApplyDeload(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();var cur=works.length?(works[works.length-1].weight||0):0;prog[ex.name]={weight:woSnap(cur*0.9),reps:ex.target?ex.target[0]:null,deload:true};saveProg(prog);renderWorkout();}
+/* If an exercise's starting weight is pinned, an explicit Add-weight/Deload must move the pin
+   itself (the pin wins over the one-time prog queue at seed time, so otherwise it'd be ignored). */
+function woBumpPin(name,w){var tag=woSession&&woSession.dayTag;if(tag==null||w==null)return;var t=woNormTmpl(woEffTemplate(tag)),te=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===name){te=t.ex[i];break;}if(!te||te.pinW==null)return;te.pinW=w;te.seedW=w;woSaveTmplOverride(tag,t);}
+function woApplyProgress(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();if(ex.load==='pb'){var cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);prog[ex.name]={weight:nx,reps:ex.target?ex.target[0]:null};woBumpPin(ex.name,nx);}else{var lr=works.length?(works[works.length-1].reps||0):0;prog[ex.name]={weight:null,reps:lr+1};}saveProg(prog);renderWorkout();}
+function woApplyDeload(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();var cur=works.length?(works[works.length-1].weight||0):0,dl=woSnap(cur*0.9);prog[ex.name]={weight:dl,reps:ex.target?ex.target[0]:null,deload:true};woBumpPin(ex.name,dl);saveProg(prog);renderWorkout();}
 function woClearProg(ei){var prog=loadProg();delete prog[woSession.exercises[ei].name];saveProg(prog);renderWorkout();}
 function woRowType(ex){return ex.input==='time'?'t-time':((ex.input==='wr'||ex.load==='pb')?'t-wr':'t-reps');}
 function woPrevCol(ex){if(!ex.prev)return '&mdash;';var p=ex.prev;if(p.time!=null)return woFmtTime(p.time);var a=[];if(p.weight!=null)a.push(p.weight);if(p.reps!=null)a.push(p.reps);return a.length?a.join('&times;'):'&mdash;';}
@@ -1542,13 +1546,14 @@ function woOpenWheel(ei,si){
   if(!set||set.weight==null)return;
   woHintMark();sheetMode='woWheel';
   woWheel={ei:ei,si:si,idx:woSnapIdx(set.weight)};
+  var woPin=woExPinW(woSession.exercises[ei].name);
   document.getElementById('shtTitle').textContent=woSession.exercises[ei].name;
   document.getElementById('shtSub').textContent='Spin to set weight · lb';
   var h='<div class="wo-wheel-wrap"><div class="wo-wheel-band"></div><div class="wo-wheel-unit">lb</div>'
       +'<div class="wo-wheel" id="woWheel" onscroll="woWheelScroll()"><div class="wo-wheel-pad"></div>';
   for(var i=0;i<WO_LADDER.length;i++)h+='<div class="wo-wheel-item" id="wo-wi-'+i+'" onclick="woWheelTap('+i+')">'+WO_LADDER[i]+'</div>';
   h+='<div class="wo-wheel-pad"></div></div></div>'
-      +'<div class="wo-wheel-foot"><button class="wo-wheel-save" id="woWheelSave" onclick="woSaveWeightToTmpl()">Save as starting weight</button><button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
+      +'<div class="wo-wheel-foot"><button class="wo-wheel-save'+(woPin!=null?' done':'')+'" id="woWheelSave" onclick="woSaveWeightToTmpl()">'+(woPin!=null?('Saved '+woPin+' lb · always starts here ✓'):'Save as starting weight')+'</button><div class="wo-wheel-unpin" id="woWheelUnpin" onclick="woUnpinWeight()"'+(woPin!=null?'':' style="display:none"')+'>Remove pin — use last session instead</div><button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
   document.getElementById('shtBody').innerHTML=h;
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
@@ -1566,16 +1571,18 @@ function woWheelSet(idx){
   if(navigator.vibrate)try{navigator.vibrate(8);}catch(_){}
   try{beepTick();}catch(_){}
 }
+function woExPinW(name){var tag=woSession&&woSession.dayTag;if(tag==null)return null;var t=woNormTmpl(woEffTemplate(tag));for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===name)return t.ex[i].pinW!=null?t.ex[i].pinW:null;return null;}
+function woWheelTmplEx(){if(!woSession||!woWheel||woWheel.ei<0)return null;var ex=woSession.exercises[woWheel.ei],tag=woSession.dayTag;if(tag==null)return null;var t=woNormTmpl(woEffTemplate(tag)),te=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===ex.name){te=t.ex[i];break;}return te?{t:t,te:te,tag:tag,ex:ex}:null;}
 function woSaveWeightToTmpl(){
-  if(!woSession||!woWheel||woWheel.ei<0)return;
-  var ex=woSession.exercises[woWheel.ei],w=ex.sets[woWheel.si].weight,tag=woSession.dayTag;
-  if(tag==null||w==null)return;
-  var t=woNormTmpl(woEffTemplate(tag)),te=null;
-  for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===ex.name){te=t.ex[i];break;}
-  if(!te)return;
-  te.seedW=w;woSaveTmplOverride(tag,t);
-  var b=document.getElementById('woWheelSave');
-  if(b){b.className='wo-wheel-save done';b.textContent='Saved '+w+' lb as default ✓';}
+  var c=woWheelTmplEx();if(!c)return;var w=c.ex.sets[woWheel.si].weight;if(w==null)return;
+  c.te.seedW=w;c.te.pinW=w;woSaveTmplOverride(c.tag,c.t);
+  var b=document.getElementById('woWheelSave');if(b){b.className='wo-wheel-save done';b.textContent='Saved '+w+' lb · always starts here ✓';}
+  var u=document.getElementById('woWheelUnpin');if(u)u.style.display='';
+}
+function woUnpinWeight(){
+  var c=woWheelTmplEx();if(!c)return;delete c.te.pinW;woSaveTmplOverride(c.tag,c.t);
+  var b=document.getElementById('woWheelSave');if(b){b.className='wo-wheel-save';b.textContent='Save as starting weight';}
+  var u=document.getElementById('woWheelUnpin');if(u)u.style.display='none';
 }
 function woWheelScroll(){var el=document.getElementById('woWheel');if(!el)return;woWheelSet(Math.round((el.scrollTop||0)/48));}
 function woWheelTap(i){var el=document.getElementById('woWheel');if(el&&el.scrollTo)el.scrollTo({top:i*48,behavior:'smooth'});woWheelSet(i);}
