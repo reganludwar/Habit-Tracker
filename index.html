@@ -1438,11 +1438,19 @@ function woDayTag(dow){return ({1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'})[dow]||
 function woKeyForDow(d){var x=getDateForDow(d);return 'wo_'+x.getFullYear()+'_'+(x.getMonth()+1)+'_'+x.getDate();}
 function woClone(o){return JSON.parse(JSON.stringify(o));}
 function woLoadTmplOverrides(){try{return JSON.parse(localStorage.getItem('wo_tmpl')||'{}')||{};}catch(e){return {};}}
-/* An override is only valid if its exercises match the built-in template for that day — the editor
-   can change sets/rest/mobility but never the exercise identity. A mismatch means the override was
-   saved against the wrong day (e.g. the editor was opened on one day then Done'd on another), so we
-   ignore it and fall back to the built-in template. */
-function woTmplValid(ov,tag){var base=WO_TEMPLATES[tag];if(!base||!ov||!ov.ex||ov.ex.length!==base.ex.length)return false;for(var i=0;i<base.ex.length;i++){if(!ov.ex[i]||ov.ex[i].name!==base.ex[i].name)return false;}return true;}
+/* An override is valid if it's a well-formed, non-empty exercise list that still belongs to THIS day.
+   Day-membership is enforced by requiring at least one exercise in common with the built-in template
+   — that keeps the v13 protection (an override accidentally saved as a whole different day's template
+   shares no exercises and is rejected) while allowing intentional structural edits: the coach may add
+   or remove individual exercises, so the list no longer has to match the built-in one for one. */
+function woTmplValid(ov,tag){var base=WO_TEMPLATES[tag];if(!base||!ov||!ov.ex||!ov.ex.length)return false;
+  for(var i=0;i<ov.ex.length;i++){var x=ov.ex[i];if(!x||typeof x.name!=='string'||!x.name)return false;}
+  for(var j=0;j<ov.ex.length;j++)for(var k=0;k<base.ex.length;k++)if(ov.ex[j].name===base.ex[k].name)return true;
+  return false;}
+/* Every exercise definition known across the built-in week, keyed by name — the source of a proven
+   spec (load/input/sets/target/seed/rest/mobility) when the coach adds an exercise to a day. */
+function woExLibrary(){var lib={},tags=['mon','tue','wed','thu','fri'];for(var i=0;i<tags.length;i++){var ex=WO_TEMPLATES[tags[i]].ex;for(var e=0;e<ex.length;e++)if(!lib[ex[e].name])lib[ex[e].name]=ex[e];}return lib;}
+function woLibFind(name){if(!name)return null;var lib=woExLibrary();if(lib[name])return lib[name];var n=String(name).toLowerCase().replace(/[^a-z0-9]/g,'');for(var k in lib)if(lib.hasOwnProperty(k)&&k.toLowerCase().replace(/[^a-z0-9]/g,'')===n)return lib[k];return null;}
 function woEffTemplate(tag){var ov=woLoadTmplOverrides();return (ov[tag]&&woTmplValid(ov[tag],tag))?ov[tag]:WO_TEMPLATES[tag];}
 function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return;var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
@@ -1868,7 +1876,7 @@ var COACH_FOCUS=[['balanced','Balanced'],['progression','Progression'],['imbalan
 var coachRange='this',coachBusy=false,coachResult='',coachErr='',coachViewTs=0;
 function coachLen(){return coachGet('coach_len','standard');}
 function coachFocus(){return coachGet('coach_focus','balanced');}
-var COACH_EDIT_INSTR=' WHENEVER your prose recommends a concrete change to an existing exercise — its starting load, sets, rep target, or rest — you MUST also encode it so I can approve it with one tap. Append ONE fenced ```json code block AFTER the markdown, of the form {"edits":[{"day":"mon","exercise":"<exact name from weeklyTemplates>","field":"seedW" | "sets" | "repTarget" | "workRest","value":<whole pounds for seedW, an integer for sets, "6-12" for repTarget, or seconds for workRest>,"why":"short reason"}]}. Rules: edit ONLY existing exercises by their EXACT weeklyTemplates name; use "seedW" only for weighted (PowerBlock) exercises and never to add load to a bodyweight movement; never invent exercises or use other fields. Up to 6 edits, one per parameter. Every numeric recommendation in your prose that fits these fields should also appear here. Omit the block only if you truly recommend no parameter changes (you can still suggest new exercises in prose).';
+var COACH_EDIT_INSTR=' WHENEVER your prose recommends a concrete change to my day-templates — a starting load, sets, rep target, rest, or ADDING / REMOVING an exercise — you MUST also encode it so I can approve it with one tap. Append ONE fenced ```json code block AFTER the markdown, of the form {"edits":[{"day":"mon","exercise":"<exact exercise name>","field":"seedW" | "sets" | "repTarget" | "workRest" | "addExercise" | "removeExercise","value":<whole pounds for seedW, an integer for sets, "6-12" for repTarget, seconds for workRest; for add/remove just repeat the exercise name>,"why":"short reason"}]}. Rules: for seedW/sets/repTarget/workRest, edit ONLY an existing exercise by its EXACT name on that day, and use "seedW" only for weighted (PowerBlock) exercises. For "addExercise", the exercise MUST be one that already appears somewhere in weeklyTemplates (any day) — give its exact name and never invent a new movement; it is added to that day with its proven setup. For "removeExercise", name an exercise currently on that day (never the last one left). Up to 6 edits. Every actionable recommendation in your prose that fits these should also appear here. Omit the block only if you recommend no template changes at all.';
 function coachSystem(){
   var len=coachLen(),lenTxt=len==='lean'?'Keep it very tight: under ~200 words, almost all short bullets, no preamble.':len==='detailed'?'You may go in depth: up to ~800 words, briefly explaining the "why" where it helps.':'Keep the whole reply under ~450 words.';
   var foc=coachFocus(),focMap={balanced:'',progression:' Emphasize progression: concrete next steps to add load, reps, sets, or exercises, with specific numbers.',imbalances:' Emphasize muscle and movement-pattern imbalances and injury risk (push/pull, squat/hinge, vertical/horizontal, unilateral, core).',mobility:' Emphasize mobility and flexibility: judge whether my mobility/stretch routine matches what my training demands, and what to add or drop.'};
@@ -1930,9 +1938,14 @@ function coachValidEdit(e){if(!e||['mon','tue','wed','thu','fri'].indexOf(e.day)
   if(e.field==='workRest'){var r=parseInt(e.value,10);if(!(r>=0&&r<=600)||(ex.workRest||0)===r)return null;return {day:e.day,exercise:nm,field:'workRest',value:r,why:e.why||'',curStr:coachFmtRest(ex.workRest||0)+' rest',newStr:coachFmtRest(r)+' rest'};}
   if(e.field==='seedW'){if(ex.load!=='pb')return null;var w=woSnap(parseFloat(e.value));if(!(w>0)||(+ex.seedW||0)===w)return null;return {day:e.day,exercise:nm,field:'seedW',value:w,why:e.why||'',curStr:(ex.seedW!=null?ex.seedW+' lb':'—')+' start',newStr:w+' lb start'};}
   return null;}
+/* Structural edits validate differently: they change WHICH exercises a day has, not a field on one. */
+function coachValidStruct(e){if(!e||['mon','tue','wed','thu','fri'].indexOf(e.day)<0||!e.exercise)return null;var t=woNormTmpl(woEffTemplate(e.day));
+  if(e.field==='addExercise'){var def=woLibFind(e.exercise);if(!def||coachFindEx(t,def.name))return null;return {day:e.day,exercise:def.name,field:'addExercise',value:def.name,why:e.why||'',curStr:'not on '+coachDayName(e.day),newStr:'add exercise'};}
+  if(e.field==='removeExercise'){if(t.ex.length<=1)return null;var rex=coachFindEx(t,e.exercise);if(!rex)return null;return {day:e.day,exercise:rex.name,field:'removeExercise',value:rex.name,why:e.why||'',curStr:'on '+coachDayName(e.day),newStr:'remove exercise'};}
+  return null;}
 function coachParseEdits(text){text=text||'';var raw=null,re=/```json\s*([\s\S]*?)```/gi,m;while((m=re.exec(text))){try{var o=JSON.parse(m[1]);if(o&&o.edits)raw=o.edits;}catch(e){}}
   var prose=text.replace(/```json\s*[\s\S]*?```/gi,'').replace(/\n{3,}/g,'\n\n').trim();
-  var edits=[];if(raw&&raw.length)for(var i=0;i<raw.length&&edits.length<6;i++){var v=coachValidEdit(raw[i]);if(v)edits.push(v);}
+  var edits=[];if(raw&&raw.length)for(var i=0;i<raw.length&&edits.length<6;i++){var v=coachValidEdit(raw[i])||coachValidStruct(raw[i]);if(v)edits.push(v);}
   return {prose:prose,edits:edits};}
 /* Parse a report's prose + edits ONCE and cache (single slot, keyed by report). Approving an edit
    mutates the live template, which would otherwise make that edit re-validate as a no-op and vanish
@@ -1957,22 +1970,28 @@ function coachEditsHTML(){if(!coachEdits.length)return '';
     h+='</div>';}
   return h+'</div>';}
 /* Write one approved edit into the day-template override, capturing the prior value for Undo. */
-function coachDoApprove(e){var t=woNormTmpl(woEffTemplate(e.day)),ex=coachFindEx(t,e.exercise);if(!ex)return false;var prev;
-  if(e.field==='repTarget'){prev=ex.target?[ex.target[0],ex.target[1]]:null;ex.target=[e.value[0],e.value[1]];}
-  else if(e.field==='sets'){prev=ex.sets;ex.sets=e.value;t=woNormTmpl(t);}
-  else if(e.field==='workRest'){prev=ex.workRest||0;ex.workRest=e.value;}
-  else if(e.field==='seedW'){prev=(ex.seedW!=null?ex.seedW:null);ex.seedW=e.value;}
-  else return false;
+function coachDoApprove(e){var t=woNormTmpl(woEffTemplate(e.day)),prev;
+  if(e.field==='addExercise'){var def=woLibFind(e.value);if(!def||coachFindEx(t,def.name))return false;t.ex.push(woClone(def));t=woNormTmpl(t);prev={added:def.name};}
+  else{var ex=coachFindEx(t,e.exercise);if(!ex)return false;
+    if(e.field==='repTarget'){prev=ex.target?[ex.target[0],ex.target[1]]:null;ex.target=[e.value[0],e.value[1]];}
+    else if(e.field==='sets'){prev=ex.sets;ex.sets=e.value;t=woNormTmpl(t);}
+    else if(e.field==='workRest'){prev=ex.workRest||0;ex.workRest=e.value;}
+    else if(e.field==='seedW'){prev=(ex.seedW!=null?ex.seedW:null);ex.seedW=e.value;}
+    else if(e.field==='removeExercise'){var ri=-1;for(var q=0;q<t.ex.length;q++)if(t.ex[q].name===ex.name){ri=q;break;}if(ri<0||t.ex.length<=1)return false;prev={removed:woClone(t.ex[ri]),idx:ri};t.ex.splice(ri,1);}
+    else return false;}
   woSaveTmplOverride(e.day,t);coachEditState[coachEditKey(e)]={status:'approved',prev:prev};return true;}
 function coachApproveEdit(idx){var e=coachEdits[idx];if(!e)return;if(coachDoApprove(e))coachFlash='Approved: '+e.exercise+' → '+e.newStr+' on '+coachDayName(e.day)+'. Takes effect next time you start that day.';coachRender(coachMode);}
 function coachApproveAll(){var n=0;for(var i=0;i<coachEdits.length;i++){if(coachEditState[coachEditKey(coachEdits[i])])continue;if(coachDoApprove(coachEdits[i]))n++;}coachFlash=n?('Approved '+n+' change'+(n>1?'s':'')+' to your templates. They take effect next time you start each day.'):'';coachRender(coachMode);}
 function coachUndoEdit(idx){var e=coachEdits[idx];if(!e)return;var st=coachEditState[coachEditKey(e)];
-  if(st&&st.status==='approved'){var t=woNormTmpl(woEffTemplate(e.day)),ex=coachFindEx(t,e.exercise);
-    if(ex){if(e.field==='repTarget'){if(st.prev)ex.target=[st.prev[0],st.prev[1]];else delete ex.target;}
-      else if(e.field==='sets'){ex.sets=st.prev;t=woNormTmpl(t);}
-      else if(e.field==='workRest'){ex.workRest=st.prev;}
-      else if(e.field==='seedW'){if(st.prev==null)delete ex.seedW;else ex.seedW=st.prev;}
-      woSaveTmplOverride(e.day,t);}
+  if(st&&st.status==='approved'){var t=woNormTmpl(woEffTemplate(e.day));
+    if(e.field==='addExercise'){for(var q=0;q<t.ex.length;q++)if(t.ex[q].name===e.value){t.ex.splice(q,1);break;}woSaveTmplOverride(e.day,t);}
+    else if(e.field==='removeExercise'){if(st.prev&&st.prev.removed){var idx=Math.min(st.prev.idx,t.ex.length);t.ex.splice(idx,0,woClone(st.prev.removed));woSaveTmplOverride(e.day,t);}}
+    else{var ex=coachFindEx(t,e.exercise);
+      if(ex){if(e.field==='repTarget'){if(st.prev)ex.target=[st.prev[0],st.prev[1]];else delete ex.target;}
+        else if(e.field==='sets'){ex.sets=st.prev;t=woNormTmpl(t);}
+        else if(e.field==='workRest'){ex.workRest=st.prev;}
+        else if(e.field==='seedW'){if(st.prev==null)delete ex.seedW;else ex.seedW=st.prev;}
+        woSaveTmplOverride(e.day,t);}}
     coachFlash='Reverted '+e.exercise+' on '+coachDayName(e.day)+'.';}
   delete coachEditState[coachEditKey(e)];coachRender(coachMode);}
 function coachDismissEdit(idx){var e=coachEdits[idx];if(!e)return;coachEditState[coachEditKey(e)]={status:'dismissed'};coachFlash='';coachRender(coachMode);}
