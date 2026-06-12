@@ -351,6 +351,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-rest-swap{margin-top:12px;text-align:center;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
 .wo-rest-swap span{cursor:pointer;color:var(--accent);padding:8px 10px;-webkit-user-select:none;user-select:none}
 .wo-rest-swap span.dim{color:var(--muted)}
+.wo-rest-save{margin:16px auto 0;max-width:300px;text-align:center;font-size:13px;padding:11px 14px;border:1px solid var(--border);border-radius:10px;color:var(--text);background:var(--card);-webkit-user-select:none;user-select:none;cursor:pointer}
+.wo-rest-save:active{background:var(--border)}
+.wo-rest-save.done{color:var(--green);border-color:rgba(77,184,133,.5);background:rgba(77,184,133,.08)}
+.wo-rest-mini{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;gap:12px;padding:11px 16px calc(var(--safe-bot) + 11px);background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 22px rgba(0,0,0,.35)}
+.wo-rest-mini-main{flex:1;display:flex;align-items:baseline;gap:11px;min-width:0;cursor:pointer}
+.wo-rest-mini-time{font-size:27px;font-weight:700;letter-spacing:-.03em;color:var(--accent);font-variant-numeric:tabular-nums}
+.wo-rest-mini-time.ending{color:var(--red)}
+.wo-rest-mini-lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wo-rest-mini-skip{flex-shrink:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 13px;border:1px solid var(--border);border-radius:9px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.wo-rest-mini-skip:active{background:var(--border)}
 .wo-mob-line{font-size:13px;color:var(--green);text-align:center;padding:5px 16px 7px;letter-spacing:.03em;border-bottom:1px solid var(--border);background:rgba(77,184,133,.04)}
 .wo-edit-link{margin:14px 16px 0;display:flex;gap:8px;justify-content:center}
 .wo-edit-link span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
@@ -693,8 +703,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 </div>
 <div class="st-timer" id="woRest" style="display:none">
   <div class="st-timer-hdr">
-    <div class="st-timer-close" onclick="woRestEnd()">&#215; SKIP REST</div>
+    <div class="st-timer-close" onclick="woRestMinimize()">&#8249; WORKOUT</div>
     <div class="st-progress-txt" id="woRestProg">Rest</div>
+    <div class="st-timer-close" onclick="woRestEnd()">SKIP &#215;</div>
   </div>
   <div class="st-timer-body">
     <div class="st-stretch-name" id="woRestEx">Rest</div>
@@ -704,12 +715,17 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
     <div class="wo-rest-count" id="woRestCount">3:00</div>
     <div class="wo-rest-next" id="woRestNext"></div>
     <div class="wo-rest-swap" id="woRestSwap" style="display:none"><span onclick="woRestSwap()">Swap mobility</span><span class="dim" onclick="woRestSkipMob()">Skip mobility</span></div>
+    <div class="wo-rest-save" id="woRestSave" style="display:none" onclick="woRestSaveTmpl()">Save rest to template</div>
   </div>
   <div class="st-controls">
     <div class="st-ctrl" onclick="woRestAdd(30)">+30</div>
     <div class="st-ctrl main" onclick="woRestEnd()">&#10003;</div>
     <div class="st-ctrl" onclick="woRestAdd(-30)">&minus;30</div>
   </div>
+</div>
+<div class="wo-rest-mini" id="woRestMini" style="display:none">
+  <div class="wo-rest-mini-main" onclick="woRestExpand()"><span class="wo-rest-mini-time" id="woRestMiniTime">0:00</span><span class="wo-rest-mini-lbl" id="woRestMiniLbl">Rest</span></div>
+  <div class="wo-rest-mini-skip" onclick="woRestEnd()">Skip &#10003;</div>
 </div>
 <div class="st-timer" id="woStop" style="display:none">
   <div class="st-timer-hdr">
@@ -1628,10 +1644,11 @@ function woSaveNotes(v){if(woSession){woSession.notes=v;woSave();}}
 function woFinish(){if(!woSession)return;var hadPR=woSessionPRs().length>0;woSession.finished=true;woSession.elapsed=Math.round((Date.now()-(woSession.started||Date.now()))/1000);woSave();state['lift']=true;save();renderWorkout();try{if(hadPR)woFanfare();else beep();}catch(e){}}
 /* rest timer */
 var woRestRemain=0,woRestEndAt=0,woRestTimer=null,woRestCtx=null,woRestExName='',woMobCb=null;
+var woRestDur=0,woRestBase=0,woRestMin=false;
 /* deadline-based: compute remaining from wall clock each tick so iOS suspending the
    interval (screen lock) can't make the rest under-count when the app resumes. */
 function woRestTick(){var rem=Math.ceil((woRestEndAt-Date.now())/1000);if(rem<0)rem=0;if(rem===woRestRemain)return;woRestRemain=rem;if(rem<=0){woRestPaint();beep();woRestEnd();return;}if(rem<=5)beepTick();woRestPaint();}
-function woRestPaint(){var el=document.getElementById('woRestCount');if(el){el.textContent=fmtMMSSVal(Math.max(0,woRestRemain));el.className='wo-rest-count'+(woRestRemain<=10?' ending':'');}}
+function woRestPaint(){var v=fmtMMSSVal(Math.max(0,woRestRemain)),end=woRestRemain<=10;var el=document.getElementById('woRestCount');if(el){el.textContent=v;el.className='wo-rest-count'+(end?' ending':'');}var mt=document.getElementById('woRestMiniTime');if(mt){mt.textContent=v;mt.className='wo-rest-mini-time'+(end?' ending':'');}}
 function woRestPaintMob(){
   var mobId=null;if(woRestCtx&&woSession){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];mobId=st?st.mobility:null;}
   var nameEl=document.getElementById('woRestEx'),noteEl=document.getElementById('woRestNote'),anim=document.getElementById('woRestMobAnim'),cue=document.getElementById('woRestCue'),swap=document.getElementById('woRestSwap');
@@ -1641,8 +1658,11 @@ function woRestPaintMob(){
 }
 function woStartRest(sec,exName,nextLbl,mobId,ei,si){
   woRestRemain=sec;woRestExName=exName;woRestCtx=(ei!=null)?{ei:ei,si:si}:null;
+  woRestDur=woRestBase=sec;woRestMin=false;
   document.getElementById('woRestNext').textContent=nextLbl||'';
-  woRestPaintMob();woRestPaint();
+  var ml=document.getElementById('woRestMiniLbl');if(ml)ml.textContent=nextLbl||(exName||'Rest');
+  woRestPaintMob();woRestPaint();woRestUpdSave();
+  var mini=document.getElementById('woRestMini');if(mini)mini.style.display='none';
   document.getElementById('woRest').style.display='flex';
   var hh=document.querySelector('.hdr');if(hh)hh.style.display='none';
   var ctx=getCtx();if(ctx&&ctx.state==='suspended')ctx.resume();acquireWakeLock();startNoSleep();
@@ -1652,8 +1672,16 @@ function woStartRest(sec,exName,nextLbl,mobId,ei,si){
   woRestEndAt=Date.now()+sec*1000;woRestRemain=sec;
   woRestTimer=setInterval(woRestTick,250);
 }
-function woRestAdd(d){woRestEndAt=Math.max(Date.now()+1000,woRestEndAt+d*1000);woRestRemain=Math.max(1,Math.round((woRestEndAt-Date.now())/1000));woRestPaint();}
-function woRestEnd(){if(woRestTimer){clearInterval(woRestTimer);woRestTimer=null;}if(window._woKeepAlive){clearInterval(window._woKeepAlive);window._woKeepAlive=null;}document.getElementById('woRest').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();stopNoSleep();}
+function woRestAdd(d){woRestEndAt=Math.max(Date.now()+1000,woRestEndAt+d*1000);woRestRemain=Math.max(1,Math.round((woRestEndAt-Date.now())/1000));woRestDur=Math.max(0,woRestDur+d);woRestPaint();woRestUpdSave();}
+/* the +30/-30 buttons retune the live countdown AND the running target duration; if it now
+   differs from what the template seeded, offer to persist it to warmRest/workRest. */
+function woRestUpdSave(){var b=document.getElementById('woRestSave');if(!b)return;if(woRestCtx&&woRestDur!==woRestBase){b.style.display='';b.className='wo-rest-save';b.textContent='Save rest ('+fmtMMSSVal(woRestDur)+') to template';}else b.style.display='none';}
+function woRestSaveTmpl(){if(!woRestCtx||!woSession)return;var ex=woSession.exercises[woRestCtx.ei],set=ex.sets[woRestCtx.si];var field=(set&&set.tag==='W')?'warmRest':'workRest';if(!woTmplSet(ex.name,field,woRestDur))return;woRestBase=woRestDur;var b=document.getElementById('woRestSave');if(b){b.className='wo-rest-save done';b.textContent='Saved '+fmtMMSSVal(woRestDur)+' rest to template ✓';}}
+/* minimize: drop back to the workout page while the rest keeps counting (a floating pill shows
+   the time and dings at zero); expand re-opens the full timer. */
+function woRestMinimize(){woRestMin=true;document.getElementById('woRest').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';var ml=document.getElementById('woRestMiniLbl');if(ml)ml.textContent=document.getElementById('woRestNext').textContent||woRestExName||'Rest';var mini=document.getElementById('woRestMini');if(mini)mini.style.display='flex';woRestPaint();}
+function woRestExpand(){woRestMin=false;var mini=document.getElementById('woRestMini');if(mini)mini.style.display='none';document.getElementById('woRest').style.display='flex';var hh=document.querySelector('.hdr');if(hh)hh.style.display='none';woRestPaintMob();woRestPaint();}
+function woRestEnd(){if(woRestTimer){clearInterval(woRestTimer);woRestTimer=null;}if(window._woKeepAlive){clearInterval(window._woKeepAlive);window._woKeepAlive=null;}woRestMin=false;document.getElementById('woRest').style.display='none';var mini=document.getElementById('woRestMini');if(mini)mini.style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();stopNoSleep();}
 function woRestSwap(){if(!woRestCtx)return;woMobCb=function(id){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];st.mobility=id;woSave();woRestPaintMob();};woOpenMobSheet('Swap mobility');}
 function woRestSkipMob(){if(woRestCtx){woSession.exercises[woRestCtx.ei].sets[woRestCtx.si].mobility=null;woSave();}woRestPaintMob();}
 function woCatalogList(){var out=[],i;for(i=0;i<MOB_BASE.length;i++)out.push({id:'m'+i,name:MOB_BASE[i].name,note:MOB_BASE[i].note,sec:MOB_BASE[i].sec,area:MOB_BASE[i].area});var cm=loadCustomMobility();for(i=0;i<cm.length;i++)out.push({id:cm[i].id,name:cm[i].name,note:cm[i].note||'',sec:cm[i].sec,area:'Custom'});return out;}
