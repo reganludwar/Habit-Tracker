@@ -294,6 +294,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-wheel-done{width:100%;background:var(--accent);color:#000;font-size:15px;font-weight:700;letter-spacing:.08em;
   text-transform:uppercase;padding:15px;border:none;border-radius:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
 .wo-wheel-done:active{opacity:.85}
+.wo-wheel-save{width:100%;background:var(--surf);color:var(--text);font-size:12px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;padding:12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:9px;-webkit-user-select:none;user-select:none}
+.wo-wheel-save:active{background:var(--border)}
+.wo-wheel-save.done{color:var(--green);border-color:rgba(106,176,106,.5);background:rgba(106,176,106,.08)}
 .wo-coach{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border);background:rgba(212,168,67,.05)}
 .wo-coach.stall{background:rgba(224,96,96,.06)}
 .wo-coach-msg{flex:1;font-size:11.5px;color:var(--text);line-height:1.35}
@@ -1370,14 +1374,12 @@ function woSeed(dow,key){
   var x=getDateForDow(dow);x.setHours(0,0,0,0);
   var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,showRPE:(tmpl?tmpl.showRPE!==false:true),exercises:[]};
   if(!tmpl)return sess;
-  var prog=loadProg();
   for(var e=0;e<tmpl.ex.length;e++){
     var t=tmpl.ex[e],prev=loadWoLast(t.name,key);
     var wW=null,wR=null,wT=null;
-    if(t.load==='pb')wW=woSnap(prev&&prev.weight!=null?prev.weight:t.seedW);
-    if(t.input!=='time')wR=prev&&prev.reps!=null?prev.reps:t.seedR;
-    if(t.input==='time')wT=prev&&prev.time!=null?prev.time:t.seedT;
-    var pq=prog[t.name];if(pq){if(pq.weight!=null&&t.load==='pb')wW=woSnap(pq.weight);if(pq.reps!=null&&t.input!=='time')wR=pq.reps;}
+    if(t.load==='pb')wW=woSnap(t.seedW);
+    if(t.input!=='time')wR=t.seedR;
+    if(t.input==='time')wT=t.seedT;
     var sets=[];
     if(t.warmup){
       var warm={tag:'W',rest:t.warmRest||60,done:false};
@@ -1433,21 +1435,25 @@ function woPrevTxt(ex){if(!ex.prev)return 'last: —';var p=ex.prev,parts=[];if(
 function woWorks(ex){var w=[];for(var i=0;i<ex.sets.length;i++)if(ex.sets[i].tag!=='W')w.push(ex.sets[i]);return w;}
 function woReadyToProgress(ex){if(!ex.target)return false;var works=woWorks(ex);if(!works.length)return false;for(var j=0;j<works.length;j++){if(!works[j].done)return false;if((works[j].reps||0)<ex.target[1])return false;}return true;}
 function woStalled(name){var h=woHistory(name,null);if(h.length<3)return false;return h[h.length-1].best<=h[h.length-3].best+1e-9;}
-function loadProg(){try{return JSON.parse(localStorage.getItem('wo_prog'))||{};}catch(e){return {};}}
-function saveProg(p){try{localStorage.setItem('wo_prog',JSON.stringify(p));}catch(e){}}
+/* The day template is the single source of truth. These helpers read/write the live template
+   exercise; every change (manual save or a suggestion) goes through them. */
+function woTmplFor(name){var tag=woSession&&woSession.dayTag;if(tag==null)return null;var t=woNormTmpl(woEffTemplate(tag)),te=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===name){te=t.ex[i];break;}return te?{t:t,te:te,tag:tag}:null;}
+function woTmplSet(name,field,val){var c=woTmplFor(name);if(!c)return false;c.te[field]=val;woSaveTmplOverride(c.tag,c.t);return true;}
 function woCoachHTML(ex,ei){
-  var q=loadProg()[ex.name];
-  if(q){var qt=(q.weight!=null?q.weight+' lb':'')+(q.weight!=null&&q.reps!=null?' × ':'')+(q.reps!=null?q.reps+' reps':'');return '<div class="wo-coach"><span class="wo-coach-msg">'+(q.deload?'&#8595; Deload queued':'&#9650; Next session')+': <b>'+qt+'</b></span><span class="wo-coach-btn ghost" onclick="woClearProg('+ei+')">Undo</span></div>';}
+  if(ex.bump){var dl=ex.bump.kind==='deload';return '<div class="wo-coach'+(dl?' stall':'')+'"><span class="wo-coach-msg">'+(dl?'&#8595; Deloaded in template':'&#9650; Saved to template')+': <b>'+ex.bump.label+'</b></span><span class="wo-coach-btn ghost" onclick="woUndoBump('+ei+')">Undo</span></div>';}
   if(woReadyToProgress(ex)){
-    if(ex.load==='pb'){var works=woWorks(ex),cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);if(nx>cur)return '<div class="wo-coach"><span class="wo-coach-msg">&#9650; Hit top of range — ready to add weight</span><span class="wo-coach-btn" onclick="woApplyProgress('+ei+')">Add '+nx+' lb &rsaquo;</span></div>';return '';}
-    return '<div class="wo-coach"><span class="wo-coach-msg">&#9650; Hit top of range — progress next time</span><span class="wo-coach-btn" onclick="woApplyProgress('+ei+')">Queue +1 rep &rsaquo;</span></div>';
+    if(ex.load==='pb'){var works=woWorks(ex),cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);if(nx>cur)return '<div class="wo-coach"><span class="wo-coach-msg">&#9650; Hit top of range — add weight</span><span class="wo-coach-btn" onclick="woApplyProgress('+ei+')">Save '+nx+' lb &rsaquo;</span></div>';return '';}
+    return '<div class="wo-coach"><span class="wo-coach-msg">&#9650; Hit top of range — progress</span><span class="wo-coach-btn" onclick="woApplyProgress('+ei+')">Save +1 rep &rsaquo;</span></div>';
   }
   if(ex.load==='pb'&&woStalled(ex.name))return '<div class="wo-coach stall"><span class="wo-coach-msg">&#9888;&#65039; No gain in 3 sessions — a deload may help</span><span class="wo-coach-btn" onclick="woApplyDeload('+ei+')">Deload 10% &rsaquo;</span></div>';
   return '';
 }
-function woApplyProgress(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();if(ex.load==='pb'){var cur=works.length?(works[works.length-1].weight||0):0,nx=woLadderStep(cur,1);prog[ex.name]={weight:nx,reps:ex.target?ex.target[0]:null};}else{var lr=works.length?(works[works.length-1].reps||0):0;prog[ex.name]={weight:null,reps:lr+1};}saveProg(prog);renderWorkout();}
-function woApplyDeload(ei){var ex=woSession.exercises[ei],works=woWorks(ex),prog=loadProg();var cur=works.length?(works[works.length-1].weight||0):0;prog[ex.name]={weight:woSnap(cur*0.9),reps:ex.target?ex.target[0]:null,deload:true};saveProg(prog);renderWorkout();}
-function woClearProg(ei){var prog=loadProg();delete prog[woSession.exercises[ei].name];saveProg(prog);renderWorkout();}
+function woApplyProgress(ei){var ex=woSession.exercises[ei],works=woWorks(ex),c=woTmplFor(ex.name);if(!c)return;
+  if(ex.load==='pb'){var cur=works.length?(works[works.length-1].weight||0):(c.te.seedW||0),nx=woLadderStep(cur,1);ex.bump={kind:'progress',field:'seedW',from:c.te.seedW,to:nx,label:nx+' lb'};c.te.seedW=nx;}
+  else{var lr=works.length?(works[works.length-1].reps||0):(c.te.seedR||0),nr=lr+1;ex.bump={kind:'progress',field:'seedR',from:c.te.seedR,to:nr,label:nr+' reps'};c.te.seedR=nr;}
+  woSaveTmplOverride(c.tag,c.t);woSave();renderWorkout();}
+function woApplyDeload(ei){var ex=woSession.exercises[ei],works=woWorks(ex),c=woTmplFor(ex.name);if(!c)return;var cur=works.length?(works[works.length-1].weight||0):(c.te.seedW||0),dl=woSnap(cur*0.9);ex.bump={kind:'deload',field:'seedW',from:c.te.seedW,to:dl,label:dl+' lb'};c.te.seedW=dl;woSaveTmplOverride(c.tag,c.t);woSave();renderWorkout();}
+function woUndoBump(ei){var ex=woSession.exercises[ei],c=woTmplFor(ex.name);if(!c||!ex.bump)return;c.te[ex.bump.field]=ex.bump.from;woSaveTmplOverride(c.tag,c.t);delete ex.bump;woSave();renderWorkout();}
 function woRowType(ex){return ex.input==='time'?'t-time':((ex.input==='wr'||ex.load==='pb')?'t-wr':'t-reps');}
 function woPrevCol(ex){if(!ex.prev)return '&mdash;';var p=ex.prev;if(p.time!=null)return woFmtTime(p.time);var a=[];if(p.weight!=null)a.push(p.weight);if(p.reps!=null)a.push(p.reps);return a.length?a.join('&times;'):'&mdash;';}
 function woHintSeen(){try{return localStorage.getItem('wo_whint')==='1';}catch(e){return true;}}
@@ -1544,7 +1550,7 @@ function woOpenWheel(ei,si){
       +'<div class="wo-wheel" id="woWheel" onscroll="woWheelScroll()"><div class="wo-wheel-pad"></div>';
   for(var i=0;i<WO_LADDER.length;i++)h+='<div class="wo-wheel-item" id="wo-wi-'+i+'" onclick="woWheelTap('+i+')">'+WO_LADDER[i]+'</div>';
   h+='<div class="wo-wheel-pad"></div></div></div>'
-      +'<div class="wo-wheel-foot"><button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
+      +'<div class="wo-wheel-foot"><button class="wo-wheel-save" id="woWheelSave" onclick="woSaveWeightToTmpl()">Save weight to template</button><button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
   document.getElementById('shtBody').innerHTML=h;
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
@@ -1558,8 +1564,15 @@ function woWheelSet(idx){
   woWheel.idx=idx;
   var cur=document.getElementById('wo-wi-'+idx);if(cur)cur.className='wo-wheel-item sel';
   if(woWheel.ei>=0&&woSession)woSession.exercises[woWheel.ei].sets[woWheel.si].weight=WO_LADDER[idx];
+  var sb=document.getElementById('woWheelSave');if(sb&&sb.className.indexOf('done')>=0){sb.className='wo-wheel-save';sb.textContent='Save weight to template';}
   if(navigator.vibrate)try{navigator.vibrate(8);}catch(_){}
   try{beepTick();}catch(_){}
+}
+function woSaveWeightToTmpl(){
+  if(!woSession||!woWheel||woWheel.ei<0)return;
+  var ex=woSession.exercises[woWheel.ei],w=ex.sets[woWheel.si].weight;
+  if(w==null||!woTmplSet(ex.name,'seedW',w))return;
+  var b=document.getElementById('woWheelSave');if(b){b.className='wo-wheel-save done';b.textContent='Saved '+w+' lb to template ✓';}
 }
 function woWheelScroll(){var el=document.getElementById('woWheel');if(!el)return;woWheelSet(Math.round((el.scrollTop||0)/48));}
 function woWheelTap(i){var el=document.getElementById('woWheel');if(el&&el.scrollTo)el.scrollTo({top:i*48,behavior:'smooth'});woWheelSet(i);}
@@ -1610,7 +1623,7 @@ function woOpenRpe(ei,si){sheetMode='';woRpeCtx={ei:ei,si:si};var set=woSession.
 function woPickRpe(n){if(woRpeCtx){woSession.exercises[woRpeCtx.ei].sets[woRpeCtx.si].rpe=n;woSave();}woRpeCtx=null;closeSheet();renderWorkout();}
 function woClearRpe(){if(woRpeCtx){delete woSession.exercises[woRpeCtx.ei].sets[woRpeCtx.si].rpe;woSave();}woRpeCtx=null;closeSheet();renderWorkout();}
 function woNextLabel(ei,si){var ex=woSession.exercises[ei];for(var s=si+1;s<ex.sets.length;s++)if(!ex.sets[s].done)return 'Next: '+ex.name;for(var e=ei+1;e<woSession.exercises.length;e++)return 'Next: '+woSession.exercises[e].name;return 'Last set done';}
-function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;if(set.done&&set.tag!=='W'){var nm=woSession.exercises[ei].name,pr=loadProg();if(pr[nm]){delete pr[nm];saveProg(pr);}}woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si),set.mobility,ei,si);}
+function woLogSet(ei,si){var set=woSession.exercises[ei].sets[si];set.done=!set.done;woSave();renderWorkout();if(set.done&&set.rest>0)woStartRest(set.rest,woSession.exercises[ei].name,woNextLabel(ei,si),set.mobility,ei,si);}
 function woSaveNotes(v){if(woSession){woSession.notes=v;woSave();}}
 function woFinish(){if(!woSession)return;var hadPR=woSessionPRs().length>0;woSession.finished=true;woSession.elapsed=Math.round((Date.now()-(woSession.started||Date.now()))/1000);woSave();state['lift']=true;save();renderWorkout();try{if(hadPR)woFanfare();else beep();}catch(e){}}
 /* rest timer */
