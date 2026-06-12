@@ -1030,19 +1030,77 @@ function handleImportFile(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=
    - READ: a user automation opens this app with ?hl=<json|base64> of daily metrics,
      which we ingest into hl_YYYY_M_D and surface in the Day view. */
 var HEALTH_SHORTCUT='Log to Health';
-var HEALTH_FIELDS=['steps','walkMin','exerciseMin','activeKcal','standHr','weightLb','sleepHr','restHr','hrv'];
-var HEALTH_LABELS={steps:'Steps',walkMin:'Walk',exerciseMin:'Exercise',activeKcal:'Active kcal',standHr:'Stand',weightLb:'Weight',sleepHr:'Sleep',restHr:'Rest HR',hrv:'HRV'};
+/* Every metric we can pull from Apple Health. Fields with no data simply don't render,
+   so it's safe to capture broadly now and fill in more later (e.g. a fitness tracker). */
+var HEALTH_META={
+  steps:{lbl:'Steps',comma:1},
+  distanceMi:{lbl:'Distance',dec:1,suf:' mi'},
+  flights:{lbl:'Flights'},
+  activeKcal:{lbl:'Active',suf:' kcal',comma:1},
+  restKcal:{lbl:'Resting',suf:' kcal',comma:1},
+  exerciseMin:{lbl:'Exercise',suf:'m'},
+  walkMin:{lbl:'Walk',suf:'m'},
+  standHr:{lbl:'Stand',suf:'h'},
+  weightLb:{lbl:'Weight',dec:1,suf:' lb'},
+  bodyFatPct:{lbl:'Body Fat',dec:1,suf:'%'},
+  leanMassLb:{lbl:'Lean Mass',dec:1,suf:' lb'},
+  bmi:{lbl:'BMI',dec:1},
+  sleepHr:{lbl:'Sleep',dec:1,suf:'h'},
+  restHr:{lbl:'Rest HR',suf:' bpm'},
+  heartRateAvg:{lbl:'Avg HR',suf:' bpm'},
+  hrv:{lbl:'HRV',suf:' ms'},
+  vo2max:{lbl:'VO₂max',dec:1},
+  spo2:{lbl:'Blood O₂',suf:'%'},
+  respRate:{lbl:'Resp Rate',dec:1},
+  mindfulMin:{lbl:'Mindful',suf:'m'},
+  waterOz:{lbl:'Water',suf:' oz'},
+  dietKcal:{lbl:'Diet',suf:' kcal',comma:1}
+};
+var HEALTH_FIELDS=[];for(var _hf in HEALTH_META){if(HEALTH_META.hasOwnProperty(_hf))HEALTH_FIELDS.push(_hf);}
+/* Forgiving alias map: lower-cased, alphanumerics only. Lets the Health shortcut use
+   natural names ("Body Mass", "Active Energy", "Heart Rate Variability"...) and still land. */
+var HEALTH_ALIAS={
+  step:'steps',steps:'steps',stepcount:'steps',
+  distance:'distanceMi',distancemi:'distanceMi',distancemiles:'distanceMi',miles:'distanceMi',walkingrunningdistance:'distanceMi',walkrundistance:'distanceMi',
+  flights:'flights',flightsclimbed:'flights',floors:'flights',floorsclimbed:'flights',
+  activekcal:'activeKcal',activeenergy:'activeKcal',activecalories:'activeKcal',activeenergyburned:'activeKcal',move:'activeKcal',
+  restkcal:'restKcal',restingenergy:'restKcal',basalenergy:'restKcal',restingcalories:'restKcal',
+  exercisemin:'exerciseMin',exercise:'exerciseMin',exerciseminutes:'exerciseMin',appleexercisetime:'exerciseMin',exercisetime:'exerciseMin',
+  walkmin:'walkMin',walk:'walkMin',walkingminutes:'walkMin',walkingtime:'walkMin',
+  standhr:'standHr',stand:'standHr',standhours:'standHr',applestandhours:'standHr',standtime:'standHr',
+  weightlb:'weightLb',weight:'weightLb',bodymass:'weightLb',bodyweight:'weightLb',
+  bodyfatpct:'bodyFatPct',bodyfat:'bodyFatPct',bodyfatpercentage:'bodyFatPct',fat:'bodyFatPct',
+  leanmasslb:'leanMassLb',leanmass:'leanMassLb',leanbodymass:'leanMassLb',
+  bmi:'bmi',bodymassindex:'bmi',
+  sleephr:'sleepHr',sleep:'sleepHr',sleephours:'sleepHr',sleepanalysis:'sleepHr',timeasleep:'sleepHr',
+  resthr:'restHr',restinghr:'restHr',restingheartrate:'restHr',rhr:'restHr',
+  heartrateavg:'heartRateAvg',avghr:'heartRateAvg',heartrate:'heartRateAvg',hr:'heartRateAvg',averageheartrate:'heartRateAvg',
+  hrv:'hrv',heartratevariability:'hrv',hrvsdnn:'hrv',sdnn:'hrv',
+  vo2max:'vo2max',vo2:'vo2max',cardiofitness:'vo2max',vo2maximum:'vo2max',
+  spo2:'spo2',bloodoxygen:'spo2',oxygensaturation:'spo2',oxygen:'spo2',o2:'spo2',
+  resprate:'respRate',respiratoryrate:'respRate',breathing:'respRate',respiration:'respRate',breathingrate:'respRate',
+  mindfulmin:'mindfulMin',mindful:'mindfulMin',mindfulminutes:'mindfulMin',mindfulness:'mindfulMin',mindfulsession:'mindfulMin',
+  wateroz:'waterOz',water:'waterOz',waterintake:'waterOz',dietarywater:'waterOz',
+  dietkcal:'dietKcal',dietaryenergy:'dietKcal',calories:'dietKcal',caloriesconsumed:'dietKcal',dietarycalories:'dietKcal'
+};
+function canonHealthField(k){if(k==null)return null;var raw=String(k);if(HEALTH_META[raw])return raw;var norm=raw.toLowerCase().replace(/[^a-z0-9]/g,'');if(HEALTH_ALIAS[norm])return HEALTH_ALIAS[norm];for(var f in HEALTH_META){if(HEALTH_META.hasOwnProperty(f)&&f.toLowerCase()===norm)return f;}return null;}
+function healthNum(v){if(v==null)return null;if(typeof v==='number')return isNaN(v)?null:v;var s=String(v).replace(/,/g,'').replace(/[^0-9.\-]/g,' ').trim();var m=/-?\d+(\.\d+)?/.exec(s);if(!m)return null;var n=parseFloat(m[0]);return isNaN(n)?null:n;}
 function healthKey(y,m,d){return 'hl_'+y+'_'+m+'_'+d;}
 function healthKeyForDate(dt){return healthKey(dt.getFullYear(),dt.getMonth()+1,dt.getDate());}
 function loadHealth(dt){try{var r=localStorage.getItem(healthKeyForDate(dt));return r?JSON.parse(r):null;}catch(e){return null;}}
 function healthKeyFromStr(s){if(!s)return null;var p=String(s).split(/[-_\/]/);if(p.length<3)return null;var y=parseInt(p[0],10),m=parseInt(p[1],10),d=parseInt(p[2],10);if(!y||!m||!d)return null;return healthKey(y,m,d);}
-function ingestHealth(data){var days=Array.isArray(data)?data:[data],n=0;for(var i=0;i<days.length;i++){var d=days[i];if(!d||typeof d!=='object')continue;var key=d.date?healthKeyFromStr(d.date):healthKeyForDate(new Date());if(!key)continue;var cur={};try{var ex=localStorage.getItem(key);if(ex)cur=JSON.parse(ex);}catch(e){}var got=false;for(var f=0;f<HEALTH_FIELDS.length;f++){var fld=HEALTH_FIELDS[f];if(d[fld]!=null&&d[fld]!==''&&!isNaN(+d[fld])){cur[fld]=+d[fld];got=true;}}if(!got)continue;cur.updated=Date.now();try{localStorage.setItem(key,JSON.stringify(cur));n++;}catch(e){}}return n;}
+function ingestHealth(data){var days=Array.isArray(data)?data:[data],n=0;for(var i=0;i<days.length;i++){var d=days[i];if(!d||typeof d!=='object')continue;var key=d.date?healthKeyFromStr(d.date):healthKeyForDate(new Date());if(!key)continue;var cur={};try{var ex=localStorage.getItem(key);if(ex)cur=JSON.parse(ex);}catch(e){}var got=false;for(var rk in d){if(!d.hasOwnProperty(rk)||rk==='date')continue;var fld=canonHealthField(rk);if(!fld)continue;var val=healthNum(d[rk]);if(val==null)continue;if((fld==='spo2'||fld==='bodyFatPct')&&val>0&&val<=1)val=val*100;/* fraction -> percent */cur[fld]=val;got=true;}if(!got)continue;cur.updated=Date.now();try{localStorage.setItem(key,JSON.stringify(cur));n++;}catch(e){}}return n;}
 function decodeB64(s){try{return decodeURIComponent(escape(atob(String(s).replace(/-/g,'+').replace(/_/g,'/'))));}catch(e){try{return atob(s);}catch(e2){return '';}}}
 function ingestHealthFromURL(){try{if(typeof location==='undefined')return 0;var src=(location.search||'')+'&'+(location.hash||'');var m=/[?&#]hl=([^&]+)/.exec(src);if(!m)return 0;var raw=decodeURIComponent(m[1]),data;try{data=JSON.parse(raw);}catch(e){try{data=JSON.parse(decodeB64(raw));}catch(e2){return 0;}}var n=ingestHealth(data);try{if(history&&history.replaceState)history.replaceState(null,'',location.pathname);}catch(e3){}return n;}catch(e){return 0;}}
 function importUrl(){try{return location.origin+location.pathname;}catch(e){return '';}}
 function healthWriteURL(payload){return 'shortcuts://run-shortcut?name='+encodeURIComponent(HEALTH_SHORTCUT)+'&input=text&text='+encodeURIComponent(JSON.stringify(payload));}
 function healthCopyURL(){var u=importUrl();try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u);alert('Import URL copied:\n'+u);return;}}catch(e){}try{prompt('Copy this import URL:',u);}catch(e2){}}
-function healthMetricsHTML(dt){var hd=loadHealth(dt);if(!hd)return '';var h='',any=false;for(var f=0;f<HEALTH_FIELDS.length;f++){var fld=HEALTH_FIELDS[f];if(hd[fld]==null)continue;any=true;var v=hd[fld],txt;if(fld==='steps')txt=Math.round(v).toLocaleString();else if(fld==='weightLb')txt=(Math.round(v*10)/10)+' lb';else if(fld==='sleepHr')txt=(Math.round(v*10)/10)+'h';else if(fld.indexOf('Min')>0||fld==='standHr')txt=Math.round(v)+(fld==='standHr'?'h':'m');else txt=''+Math.round(v);h+='<div class="hl-metric"><div class="hl-val">'+txt+'</div><div class="hl-lbl">'+HEALTH_LABELS[fld]+'</div></div>';}return any?('<div class="hl-strip">'+h+'</div>'):'';}
+function fmtHealthVal(fld,v){var m=HEALTH_META[fld]||{},n=+v;if(isNaN(n))return '';var s;if(m.dec){var p=Math.pow(10,m.dec);s=(Math.round(n*p)/p).toFixed(m.dec);}else if(m.comma)s=Math.round(n).toLocaleString();else s=''+Math.round(n);return s+(m.suf||'');}
+function healthMetricsHTML(dt){var hd=loadHealth(dt);if(!hd)return '';var h='',any=false;for(var f=0;f<HEALTH_FIELDS.length;f++){var fld=HEALTH_FIELDS[f];if(hd[fld]==null)continue;any=true;h+='<div class="hl-metric"><div class="hl-val">'+fmtHealthVal(fld,hd[fld])+'</div><div class="hl-lbl">'+HEALTH_META[fld].lbl+'</div></div>';}return any?('<div class="hl-strip">'+h+'</div>'):'';}
+/* Loose fallback so a paste like "steps: 8421, weight 164" still imports even if it
+   isn't strict JSON (a Shortcut's "Copy to Clipboard" of a Dictionary is usually JSON). */
+function parseLooseHealth(raw){var obj={},any=false;var parts=String(raw).split(/[\n,;]+/);for(var i=0;i<parts.length;i++){var m=/^\s*"?([A-Za-z][A-Za-z _]*[A-Za-z])"?\s*[:=]?\s*"?([-0-9][-0-9.,:]*)/.exec(parts[i]);if(!m)continue;obj[m[1].trim()]=m[2];any=true;}return any?obj:null;}
+function healthImportPaste(){var el=document.getElementById('hlPaste');if(!el)return;var raw=(el.value||'').trim();if(!raw){alert('Paste the data your shortcut copied first.');return;}var data=null;try{data=JSON.parse(raw);}catch(e){try{data=JSON.parse(decodeB64(raw));}catch(e2){data=parseLooseHealth(raw);}}if(!data){alert('Could not read that. Paste the stats your shortcut copied — e.g. {"steps":8421,"weightLb":164,"sleepHr":7.2}');return;}var n=ingestHealth(data);if(n>0){el.value='';healthGuide=healthGuide;renderHealthSheet();}else{alert('No recognized metrics in that text. Make sure it includes things like steps, weight, sleep, etc.');}}
 var healthGuide=false;
 function healthToggleGuide(){healthGuide=!healthGuide;renderHealthSheet();}
 function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">';
@@ -1071,6 +1129,7 @@ function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">'
   h+='<li><b>Text</b> &mdash; type <code>'+u+'?hl=</code> then insert <b>Encoded</b> right after it.</li>';
   h+='<li><b>Open URLs</b> &mdash; pass that last Text. It opens the app, which saves the stats; the strip at the top of this sheet fills in.</li>';
   h+='</ol>';
+  h+='<div class="hl-note" style="background:rgba(77,184,133,.07);border-color:#2F6B4E"><b style="color:var(--green)">Easier alternative.</b> Instead of steps 6&ndash;8 (URL Encode &middot; Text &middot; Open URLs), just add a <b>Copy to Clipboard</b> action and pass it the <b>Text</b> from step 5. Then run the shortcut, come back to this sheet, and use <b>Paste import</b> at the top. No URL, no Safari hand-off.</div>';
   h+='<div class="hl-note"><b>Two gotchas.</b> The export shortcut must be named exactly <b>Log to Health</b>. And if you launch the app from its Home-Screen icon, an automation that opens the URL in Safari can save to a separate place &mdash; after it runs, open the app and check the strip filled in; if not, open the app the same way the automation does.</div>';
   return h+'</div>';}
 function renderHealthSheet(){document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';
@@ -1078,8 +1137,11 @@ function renderHealthSheet(){document.getElementById('shtTitle').textContent='Ap
   var h='<div style="padding:14px 18px;">';
   h+=metrics?('<div style="font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Imported · '+DAYS[viewDow]+'</div>'+metrics):'<div style="color:var(--muted);font-size:13px;margin-bottom:6px">No Health data imported yet for this day.</div>';
   h+='</div>';
+  h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Paste import &middot; most reliable</div><div class="hl-sec-b">Run a shortcut that <b>copies your stats to the clipboard</b>, come back here, paste below and tap Import. This skips the URL/Safari hiccup. Whatever has data lands; the rest is ignored.</div>';
+  h+='<textarea id="hlPaste" rows="3" placeholder=\'{"steps":8421,"weightLb":164,"sleepHr":7.2}\' style="width:100%;margin-top:9px;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:13px;padding:10px;border-radius:6px;-webkit-appearance:none;outline:none;resize:vertical;line-height:1.4;font-family:ui-monospace,Menlo,monospace"></textarea>';
+  h+='<button onclick="healthImportPaste()" style="width:100%;margin-top:8px;background:var(--accent);color:#000;font-size:13px;font-weight:700;padding:12px;border:none;border-radius:6px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase">Import pasted data</button></div>';
   h+='<div class="hl-sec"><div class="hl-sec-t">&#10003; Export to Apple Health</div><div class="hl-sec-b">Finish a workout or stretch / mobility session, then tap <b>Add to Apple Health</b> on the summary. It runs your <b>'+esc(HEALTH_SHORTCUT)+'</b> shortcut with the session as JSON (type, kind, name, start, minutes).</div></div>';
-  h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Import from Apple Health</div><div class="hl-sec-b">A daily automation reads Steps / Sleep / Weight &hellip; and opens:<div class="hl-url" onclick="healthCopyURL()">'+esc(u)+'?hl=&lt;json&gt;</div><span class="hl-copy" onclick="healthCopyURL()">Tap to copy base URL</span></div>';
+  h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Import via URL automation</div><div class="hl-sec-b">Or run a fully-automatic daily automation that reads your stats and opens:<div class="hl-url" onclick="healthCopyURL()">'+esc(u)+'?hl=&lt;json&gt;</div><span class="hl-copy" onclick="healthCopyURL()">Tap to copy base URL</span></div>';
   h+='<span class="hl-toggle" onclick="healthToggleGuide()">'+(healthGuide?'&#9660; Hide step-by-step setup guide':'&#9654; Show step-by-step setup guide')+'</span></div>';
   if(healthGuide)h+=healthGuideHTML();
   document.getElementById('shtBody').innerHTML=h;}
