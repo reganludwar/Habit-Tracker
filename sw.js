@@ -1,11 +1,11 @@
 /* Training PWA service worker.
    Document is network-first (so deploys land immediately, offline falls back to the
    cached shell); static assets are cache-first. Bump CACHE to invalidate old caches. */
-var CACHE = 'ht-v19';
+var CACHE = 'ht-v20';
 var ASSETS = [
   './', './index.html', './manifest.json',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png',
-  './couch_stretch.webp', './pigeon_pose.webp', './forward_fold.webp',
+  './couch_stretch.webp', './pigeon_pose.png', './forward_fold.webp',
   './thoracic_rotation.webp', './doorway_chest_opener.webp', './90_90.webp',
   './double_pigeon.webp', './folded_butterfly.webp', './seated_straddle.webp'
 ];
