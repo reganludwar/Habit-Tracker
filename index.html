@@ -7,16 +7,31 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Training">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#09090C">
+<meta name="theme-color" content="#080A0F">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Training</title>
+<script>(function(){try{var t=localStorage.getItem('theme')||'system';var d=t==='dark'||(t==='system'&&(!window.matchMedia||matchMedia('(prefers-color-scheme: dark)').matches));document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
 <style>
 :root{
-  --bg:#09090C;--surf:#111116;--card:#18181F;--border:#252530;
-  --text:#E8E6E0;--muted:#9999AA;--accent:#D4A843;--green:#4DB885;
-  --blue:#5B8EE6;--red:#E06060;
+  /* Aurora — dark (default) */
+  --bg:#080A0F;--surf:#0E1118;--card:#161A24;--border:rgba(255,255,255,.085);
+  --text:#EAF0FF;--muted:#8A93AC;--accent:#9C8CFF;--green:#2BE49B;
+  --blue:#7C5CFF;--red:#FF6B6B;
+  --a1:#7C5CFF;--a2:#27E0FF;--grad:linear-gradient(120deg,#7C5CFF,#27E0FF);
+  --glass:rgba(20,24,34,.66);--glassbd:rgba(255,255,255,.10);--glow:0 14px 40px rgba(0,0,0,.5);
+  --ringtrack:rgba(255,255,255,.10);--onacc:#ffffff;
+  --bgimg:radial-gradient(120% 80% at 85% -8%,rgba(124,92,255,.20),transparent 60%),radial-gradient(120% 70% at -10% 8%,rgba(39,224,255,.13),transparent 55%),linear-gradient(180deg,#0E1118,#080A0F);
   --safe-top:env(safe-area-inset-top,44px);
   --safe-bot:env(safe-area-inset-bottom,20px);
+}
+:root[data-theme="light"]{
+  --bg:#EFF2FA;--surf:#FFFFFF;--card:#FFFFFF;--border:rgba(18,22,40,.09);
+  --text:#13151E;--muted:#6C7689;--accent:#6D4BFF;--green:#10B07F;
+  --blue:#6D4BFF;--red:#E5484D;
+  --a1:#6D4BFF;--a2:#11B6D8;--grad:linear-gradient(120deg,#6D4BFF,#11B6D8);
+  --glass:rgba(255,255,255,.72);--glassbd:rgba(255,255,255,.92);--glow:0 12px 34px rgba(40,42,80,.12);
+  --ringtrack:rgba(18,22,40,.08);--onacc:#ffffff;
+  --bgimg:radial-gradient(120% 70% at 88% -8%,rgba(109,75,255,.18),transparent 58%),radial-gradient(120% 70% at -12% 8%,rgba(17,182,216,.16),transparent 55%),radial-gradient(90% 60% at 50% 108%,rgba(109,75,255,.10),transparent 60%),linear-gradient(180deg,#F7F8FD,#EFF2FA);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;
@@ -617,17 +632,61 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-edit-done.off{color:var(--muted)}
 .cch-edit-done .cch-link{font-weight:600}
 .cch-banner{background:rgba(212,168,67,.10);border:1px solid #6B5420;color:var(--accent);font-size:12px;font-weight:600;padding:9px 12px;border-radius:8px;line-height:1.4;margin-top:10px}
+/* ===================== AURORA THEME LAYER ===================== */
+body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var(--safe-bot) + 104px)}
+/* glassy sticky header */
+.hdr{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--glassbd)}
+.day-name,.week-title{letter-spacing:-.02em}
+.nav-btn{border-radius:14px;background:var(--glass);border:1px solid var(--glassbd)}
+.nav-btn:active{background:var(--grad);color:var(--onacc)}
+/* floating glass bottom tab bar */
+.view-tabs{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-bot) + 12px);
+  width:min(434px,93vw);z-index:120;display:flex;gap:4px;margin:0;
+  background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid var(--glassbd);border-radius:24px;padding:8px;box-shadow:var(--glow)}
+.vtab{border:none;border-radius:16px;background:transparent;padding:11px 3px;transition:all .18s}
+.vtab.active{background:var(--grad);color:var(--onacc);border-color:transparent;box-shadow:0 6px 18px rgba(124,92,255,.42)}
+/* theme toggle */
+#themeBtn{position:fixed;top:calc(var(--safe-top) + 6px);right:14px;z-index:130;width:38px;height:38px;border-radius:50%;
+  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glassbd);
+  box-shadow:var(--glow);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;-webkit-user-select:none;user-select:none}
+/* rounded glass surfaces */
+.sec-card,.wcard,.wo-ex,.wo-ed-ex,.st-list,.wo-notes,.wo-pr-card,.cmodal-card,.sec-card.cscore-card{
+  border-radius:20px;border:1px solid var(--glassbd);background:var(--glass);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:var(--glow)}
+.sheet{border-radius:26px 26px 0 0;background:var(--glass);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--glassbd)}
+.cmodal-card{box-shadow:0 24px 70px rgba(0,0,0,.5)}
+.panel{background:transparent}
+/* gradient fills on primary/active elements */
+.pill.active-pill,.st-tog.active,.num-btn.sel,.num-btn:active,.wo-chk.on,.wo-wheel-done,
+.cmodal-btn.primary,.wo-ed-btn.primary,.wo-undo-btn,.coach-btn,.wo-finish:not(.muted){
+  background:var(--grad);color:var(--onacc);border-color:transparent}
+.wo-coach-btn:not(.ghost){background:var(--grad);color:var(--onacc)}
+.coach-btn{border:none;border-radius:13px;padding:11px 18px;font-weight:700}
+/* gradient check / count chips */
+.item.done .chk,.rrow.done .rchk,.co-chk.sel,.mob-cnt.c2,.wdot.hit{background:var(--grad);border-color:transparent}
+.mob-cnt.c1{background:var(--a1);border-color:transparent;color:#fff}
+.item.done .chk-mark,.rrow.done .rchk-mark,.co-chk.sel .co-chk-mark,.wo-chk.on{color:#fff}
+.chk{border-radius:7px}.co-chk{border-radius:7px}.rchk{border-radius:5px}.mob-cnt{border-radius:9px}
+/* progress bars + rings */
+.pb-fill,.wbar-fill,.wbar-fill.ok{background:var(--grad)}
+.pb-wrap,.wbar{border-radius:999px;overflow:hidden}
+.cscore-num,.ah-num{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* small controls rounding */
+.gcell,.sblk,.num-btn,.ah-cell,.wdot{border-radius:11px}
+.gcell,.sblk,.num-btn{border:1px solid var(--glassbd)}
+.wo-finish,.wo-ed-btn,.cmodal-btn{border-radius:14px}
+.vtab,.pill,.st-tog,.day-tag{border-radius:12px}
+/* rest mini bar sits above the floating tabs */
+.wo-rest-mini{bottom:calc(var(--safe-bot) + 92px);left:50%;transform:translateX(-50%);width:min(434px,93vw);
+  border-radius:20px;border:1px solid var(--glassbd);background:var(--glass);backdrop-filter:blur(20px)}
+.backup-nag{border-radius:14px}
+/* subtle accent glow on the day eyebrow/labels stays via --accent (violet) */
 </style>
 </head>
 <body>
+<div id="themeBtn" onclick="toggleTheme()" title="Toggle light / dark">🌙</div>
 <div class="hdr">
-  <div class="view-tabs">
-    <div class="vtab active" id="tabDay"     onclick="setView('day')">Day</div>
-    <div class="vtab"        id="tabWeek"    onclick="setView('week')">Week</div>
-    <div class="vtab"        id="tabStretch" onclick="setView('stretch')">Stretch</div>
-    <div class="vtab"        id="tabTest"    onclick="setView('test')">Test</div>
-    <div class="vtab"        id="tabWorkout" onclick="setView('workout')">Workout</div>
-  </div>
   <div id="dayHdr">
     <div class="hdr-top">
       <div class="nav-btn" onclick="navDay(-1)">&#8592;</div>
@@ -676,6 +735,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   </div>
 </div>
 <div id="root"></div>
+<div class="view-tabs">
+  <div class="vtab active" id="tabDay"     onclick="setView('day')">Day</div>
+  <div class="vtab"        id="tabWeek"    onclick="setView('week')">Week</div>
+  <div class="vtab"        id="tabStretch" onclick="setView('stretch')">Stretch</div>
+  <div class="vtab"        id="tabTest"    onclick="setView('test')">Test</div>
+  <div class="vtab"        id="tabWorkout" onclick="setView('workout')">Workout</div>
+</div>
 <div class="reset-wrap" id="resetWrap">
   <button class="reset-btn" id="resetBtn" onclick="doReset()">Reset Day</button>
 </div>
@@ -2129,6 +2195,13 @@ function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return
   b.innerHTML=h;}
 function openCoach(){sheetMode='coach';coachBusy=false;coachResult='';coachErr='';document.getElementById('shtTitle').textContent='AI Coach';document.getElementById('shtSub').textContent='Training analysis & programming review';coachRender(coachKey()?'home':'setup');document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 
+function applyTheme(){var t='system';try{t=localStorage.getItem('theme')||'system';}catch(e){}
+  var dark=t==='dark'||(t==='system'&&(typeof matchMedia==='undefined'?true:matchMedia('(prefers-color-scheme: dark)').matches));
+  try{document.documentElement.setAttribute('data-theme',dark?'dark':'light');}catch(e){}
+  var b=document.getElementById('themeBtn');if(b)b.textContent=dark?'☀️':'🌙';}
+function toggleTheme(){var cur='dark';try{cur=document.documentElement.getAttribute('data-theme')||'dark';}catch(e){}
+  var next=cur==='light'?'dark':'light';try{localStorage.setItem('theme',next);}catch(e){}applyTheme();}
+applyTheme();
 migrate();
 var _hlN=ingestHealthFromURL();
 loadState();render();updateBackupNag();
