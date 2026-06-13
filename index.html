@@ -369,7 +369,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-edit-link span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
   cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
 .wo-ed-ex{background:var(--card);border:1px solid var(--border);margin:14px 16px 0;padding:4px 14px 10px}
-.wo-ed-name{font-size:15px;font-weight:600;padding:10px 0 4px}
+.wo-ed-name{font-size:15px;font-weight:600;padding:10px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wo-ed-rm{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;flex-shrink:0}
+.wo-ed-rm:active{color:#E06060}
+.wo-ed-add{background:var(--card);border:1px dashed var(--border);margin:14px 16px 0;padding:14px;text-align:center;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;letter-spacing:.06em}
+.wo-ed-add:active{background:rgba(212,168,67,.06)}
 .wo-ed-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
 .wo-ed-lbl{font-size:12px;color:var(--muted);flex:1;min-width:0}
 .wo-ed-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0}
@@ -589,6 +593,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-edit-b .ar{color:var(--accent);margin:0 5px}
 .cch-edit-w{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px}
 .cch-edit-apply{width:100%;background:var(--accent);color:#000;font-size:12px;font-weight:700;padding:10px;border:none;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
+.cch-edit.approved{border-color:rgba(106,176,106,.5);background:rgba(106,176,106,.07)}
+.cch-edit.dismissed{opacity:.5}
+.cch-edit-row{display:flex;gap:8px}
+.cch-edit-row .cch-edit-apply{flex:2}
+.cch-edit-no{flex:1;background:var(--surf);border:1.5px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:10px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;border-radius:6px}
+.cch-edit-done{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--green)}
+.cch-edit-done.off{color:var(--muted)}
+.cch-edit-done .cch-link{font-weight:600}
+.cch-banner{background:rgba(212,168,67,.10);border:1px solid #6B5420;color:var(--accent);font-size:12px;font-weight:600;padding:9px 12px;border-radius:8px;line-height:1.4;margin-top:10px}
 </style>
 </head>
 <body>
@@ -1117,20 +1130,31 @@ function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">'
   h+='</ol>';
   h+='<div class="hl-sec-b">Tap <b>Done</b>. The first time it runs, iOS asks to <b>allow writing to Health</b> &mdash; tap Allow. Test it by finishing a session and tapping <b>Add to Apple Health</b>.</div>';
   h+='<div class="hl-sec-b" style="margin-top:6px"><i>Optional &mdash; vary the type:</i> before <b>Log Workout</b>, add <b>Get Dictionary Value</b> for <code>kind</code> and an <b>If</b> (is <code>strength</code> &rarr; a strength type, Otherwise &rarr; Flexibility).</div>';
-  h+='<h4>Part B &middot; Import: the daily &ldquo;update&rdquo; automation</h4>';
-  h+='<div class="hl-sec-b"><i>Optional and more involved &mdash; this pulls stats into the app.</i> In Shortcuts open the <b>Automation</b> tab &rarr; <b>+</b> &rarr; <b>Time of Day</b> &rarr; set e.g. 7:00&nbsp;AM, <b>Daily</b> &rarr; Next. Turn on <b>Run Immediately</b> and turn off <b>Ask Before Running</b>. Then add actions:</div>';
+  h+='<h4>Part B &middot; Import: the &ldquo;Copy My Stats&rdquo; shortcut</h4>';
+  h+='<div class="hl-sec-b">This reads your stats and <b>copies</b> them, so you just <b>Paste import</b> at the top of this sheet &mdash; no URL, no Safari hand-off. In Shortcuts tap <b>+</b>, name it <b>Copy My Stats</b>, then add the actions below.</div>';
+  h+='<div class="hl-sec-b" style="margin-top:8px"><b>For each stat, add the same two actions:</b></div>';
   h+='<ol>';
-  h+='<li>For each stat, add <b>Find Health Samples</b> (set its <b>Type</b>, with <b>Date</b> within <b>Today</b>), then <b>Calculate Statistics</b> (Operation <b>Sum</b>). Do this for Steps&nbsp;&rarr;<code>steps</code>, Active Energy&nbsp;&rarr;<code>activeKcal</code>, Apple Exercise Time&nbsp;&rarr;<code>exerciseMin</code>, Sleep&nbsp;&rarr;<code>sleepHr</code>.</li>';
-  h+='<li>For weight: <b>Find Health Samples</b>, Type <b>Body Mass</b>, <b>Limit</b> 1, newest first &rarr;<code>weightLb</code> <i>(set Health units to lb)</i>.</li>';
-  h+='<li><b>Format Date</b> on <b>Current Date</b>, custom format <code>yyyy-MM-dd</code> &rarr;<code>date</code>.</li>';
-  h+='<li><b>Dictionary</b> &mdash; add one row per stat: the <b>key</b> is the code word above, the <b>value</b> is that step&rsquo;s result. Include only the ones you measured. All accepted keys: <code>'+HEALTH_FIELDS.join('</code> <code>')+'</code>.</li>';
-  h+='<li><b>Text</b> &mdash; put the <b>Dictionary</b> variable inside it (this becomes JSON text).</li>';
-  h+='<li><b>URL Encode</b> that Text &rarr; call it <b>Encoded</b>.</li>';
-  h+='<li><b>Text</b> &mdash; type <code>'+u+'?hl=</code> then insert <b>Encoded</b> right after it.</li>';
-  h+='<li><b>Open URLs</b> &mdash; pass that last Text. It opens the app, which saves the stats; the strip at the top of this sheet fills in.</li>';
+  h+='<li><b>Find Health Samples</b> &mdash; set its <b>Type</b>, then <b>Add Filter</b> &rarr; <b>Start Date</b> &rarr; <b>is</b> &rarr; <b>Today</b>.</li>';
+  h+='<li><b>Calculate Statistics</b> &mdash; choose <b>Sum</b> or <b>Average</b> (per the list) over those samples. This turns the readings into one plain number.</li>';
   h+='</ol>';
-  h+='<div class="hl-note" style="background:rgba(77,184,133,.07);border-color:#2F6B4E"><b style="color:var(--green)">Easier alternative.</b> Instead of steps 6&ndash;8 (URL Encode &middot; Text &middot; Open URLs), just add a <b>Copy to Clipboard</b> action and pass it the <b>Text</b> from step 5. Then run the shortcut, come back to this sheet, and use <b>Paste import</b> at the top. No URL, no Safari hand-off.</div>';
-  h+='<div class="hl-note"><b>Two gotchas.</b> The export shortcut must be named exactly <b>Log to Health</b>. And if you launch the app from its Home-Screen icon, an automation that opens the URL in Safari can save to a separate place &mdash; after it runs, open the app and check the strip filled in; if not, open the app the same way the automation does.</div>';
+  h+='<div class="hl-sec-b">Do that pair once for each stat &mdash; <b>Type</b> &middot; operation &rarr; <b>code word</b>:</div>';
+  h+='<ol>';
+  h+='<li><b>Steps</b> &middot; Sum &rarr; <code>steps</code></li>';
+  h+='<li><b>Active Energy</b> &middot; Sum &rarr; <code>activeKcal</code></li>';
+  h+='<li><b>Walking + Running Distance</b> &middot; Sum &rarr; <code>distanceMi</code> <i>(comes out in miles)</i></li>';
+  h+='<li><b>Weight</b> &middot; Average &rarr; <code>weightLb</code></li>';
+  h+='<li><b>Resting Heart Rate</b> &middot; Average &rarr; <code>restHr</code></li>';
+  h+='<li><b>Heart Rate Variability</b> &middot; Average &rarr; <code>hrv</code></li>';
+  h+='</ol>';
+  h+='<div class="hl-sec-b">Then finish with <b>two</b> actions that bundle and copy:</div>';
+  h+='<ol>';
+  h+='<li><b>Text</b> &mdash; type one line per stat: the <b>code word</b>, a colon, then tap the variable chip and insert that stat&rsquo;s <b>Calculate Statistics</b> result. So it reads like:<div class="hl-json">steps: [Steps Sum]\nactiveKcal: [Active Sum]\ndistanceMi: [Distance Sum]\nweightLb: [Weight Avg]\nrestHr: [Resting HR Avg]\nhrv: [HRV Avg]</div><i>Tip: long-press each Calculate Statistics action &rarr; Rename, so the chips are easy to tell apart when inserting.</i></li>';
+  h+='<li><b>Copy to Clipboard</b> &mdash; it grabs the Text automatically.</li>';
+  h+='</ol>';
+  h+='<div class="hl-sec-b">Tap <b>Done</b>. <b>To use it:</b> run <b>Copy My Stats</b>, come back here, and <b>Paste import</b> at the top. A blank line just means there was no reading today &mdash; it&rsquo;s skipped, not an error.</div>';
+  h+='<div class="hl-sec-b" style="margin-top:6px"><i>Add more stats later</i> with the same two-action pattern. All accepted code words: <code>'+HEALTH_FIELDS.join('</code> <code>')+'</code>.</div>';
+  h+='<div class="hl-note" style="margin-top:14px"><b>Want it fully hands-free</b> (no paste)? Instead of <b>Copy to Clipboard</b>, you can run the same stats from a daily <b>Time of Day</b> automation that opens the app at <code>'+u+'?hl=&lt;json&gt;</code> &mdash; more setup, and subject to one gotcha: if you launch the app from its Home-Screen icon, an automation that opens the URL in Safari can save to a separate place. After it runs, check the strip above filled in. The paste flow avoids this entirely.</div>';
+  h+='<div class="hl-note">The export shortcut in Part A must be named exactly <b>Log to Health</b> for the <b>Add to Apple Health</b> button to find it.</div>';
   return h+'</div>';}
 function renderHealthSheet(){document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';
   var vd=getDateForDow(viewDow),metrics=healthMetricsHTML(vd),u=importUrl();
@@ -1418,11 +1442,19 @@ function woDayTag(dow){return ({1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'})[dow]||
 function woKeyForDow(d){var x=getDateForDow(d);return 'wo_'+x.getFullYear()+'_'+(x.getMonth()+1)+'_'+x.getDate();}
 function woClone(o){return JSON.parse(JSON.stringify(o));}
 function woLoadTmplOverrides(){try{return JSON.parse(localStorage.getItem('wo_tmpl')||'{}')||{};}catch(e){return {};}}
-/* An override is only valid if its exercises match the built-in template for that day — the editor
-   can change sets/rest/mobility but never the exercise identity. A mismatch means the override was
-   saved against the wrong day (e.g. the editor was opened on one day then Done'd on another), so we
-   ignore it and fall back to the built-in template. */
-function woTmplValid(ov,tag){var base=WO_TEMPLATES[tag];if(!base||!ov||!ov.ex||ov.ex.length!==base.ex.length)return false;for(var i=0;i<base.ex.length;i++){if(!ov.ex[i]||ov.ex[i].name!==base.ex[i].name)return false;}return true;}
+/* An override is valid if it's a well-formed, non-empty exercise list that still belongs to THIS day.
+   Day-membership is enforced by requiring at least one exercise in common with the built-in template
+   — that keeps the v13 protection (an override accidentally saved as a whole different day's template
+   shares no exercises and is rejected) while allowing intentional structural edits: the coach may add
+   or remove individual exercises, so the list no longer has to match the built-in one for one. */
+function woTmplValid(ov,tag){var base=WO_TEMPLATES[tag];if(!base||!ov||!ov.ex||!ov.ex.length)return false;
+  for(var i=0;i<ov.ex.length;i++){var x=ov.ex[i];if(!x||typeof x.name!=='string'||!x.name)return false;}
+  for(var j=0;j<ov.ex.length;j++)for(var k=0;k<base.ex.length;k++)if(ov.ex[j].name===base.ex[k].name)return true;
+  return false;}
+/* Every exercise definition known across the built-in week, keyed by name — the source of a proven
+   spec (load/input/sets/target/seed/rest/mobility) when the coach adds an exercise to a day. */
+function woExLibrary(){var lib={},tags=['mon','tue','wed','thu','fri'];for(var i=0;i<tags.length;i++){var ex=WO_TEMPLATES[tags[i]].ex;for(var e=0;e<ex.length;e++)if(!lib[ex[e].name])lib[ex[e].name]=ex[e];}return lib;}
+function woLibFind(name){if(!name)return null;var lib=woExLibrary();if(lib[name])return lib[name];var n=String(name).toLowerCase().replace(/[^a-z0-9]/g,'');for(var k in lib)if(lib.hasOwnProperty(k)&&k.toLowerCase().replace(/[^a-z0-9]/g,'')===n)return lib[k];return null;}
 function woEffTemplate(tag){var ov=woLoadTmplOverrides();return (ov[tag]&&woTmplValid(ov[tag],tag))?ov[tag]:WO_TEMPLATES[tag];}
 function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return;var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
@@ -1816,7 +1848,7 @@ function renderWoEditor(tag){
   h+='<div class="wo-ed-ex"><div class="wo-ed-row"><div class="wo-ed-lbl">Track RPE (per set)</div><div class="wo-toggle'+(woEditTmpl.showRPE!==false?' on':'')+'" onclick="woEdToggleRPE()"><div class="wo-toggle-knob"></div></div></div></div>';
   for(var e=0;e<woEditTmpl.ex.length;e++){
     var x=woEditTmpl.ex[e];
-    h+='<div class="wo-ed-ex"><div class="wo-ed-name">'+x.name+'</div>';
+    h+='<div class="wo-ed-ex"><div class="wo-ed-name">'+esc(x.name)+(woEditTmpl.ex.length>1?'<span class="wo-ed-rm" onclick="woEdRemove('+e+')">Remove</span>':'')+'</div>';
     h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Warm-up set</div><div class="wo-toggle'+(x.warmup?' on':'')+'" onclick="woEdToggleWarm('+e+')"><div class="wo-toggle-knob"></div></div></div>';
     h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Working sets</div><div class="wo-ed-ctrl"><div class="wo-sbtn" onclick="woEdSets('+e+',-1)">&minus;</div><div class="wo-sval">'+x.sets+'</div><div class="wo-sbtn" onclick="woEdSets('+e+',1)">+</div></div></div>';
     h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Rest after final set</div><div class="wo-toggle'+(x.restLast?' on':'')+'" onclick="woEdToggleRestLast('+e+')"><div class="wo-toggle-knob"></div></div></div>';
@@ -1826,6 +1858,7 @@ function renderWoEditor(tag){
     for(var r=0;r<needM;r++){var mn=(x.restMob&&x.restMob[r]!=null)?woMobName(x.restMob[r]):'None';var rlbl=(x.restLast&&r===needM-1)?'after final set':('rest '+(r+1));h+='<div class="wo-ed-row"><div class="wo-ed-lbl">Mobility · '+rlbl+'</div><div class="wo-mob-pick" onclick="woEditPickMob('+e+','+r+')">'+esc(mn)+' &rsaquo;</div></div>';}
     h+='</div>';
   }
+  h+='<div class="wo-ed-add" onclick="woEdOpenAddSheet()">+ Add exercise</div>';
   h+='<div class="wo-ed-actions"><div class="wo-ed-btn" onclick="woEdReset()">Reset to default</div><div class="wo-ed-btn primary" onclick="woEdDone()">Done</div></div>';
   document.getElementById('root').innerHTML=h;
 }
@@ -1836,8 +1869,16 @@ function woEdSets(e,dir){var x=woEditTmpl.ex[e];x.sets=Math.max(1,Math.min(4,x.s
 function woEdToggleRestLast(e){var x=woEditTmpl.ex[e];x.restLast=!x.restLast;woEdNeedMob(x);renderWoEditor();}
 function woEdRest(e,which,dir){var x=woEditTmpl.ex[e],k=which==='warm'?'warmRest':'workRest';x[k]=Math.max(0,Math.min(600,(x[k]||0)+dir*15));renderWoEditor();}
 function woEditPickMob(e,r){woMobCb=function(id){if(!woEditTmpl.ex[e].restMob)woEditTmpl.ex[e].restMob=[];woEditTmpl.ex[e].restMob[r]=id;renderWoEditor();};woOpenMobSheet('Mobility · rest '+(r+1));}
+/* Add / remove exercises in the editor. Adds come from the program's own exercise library (so they
+   arrive with a proven setup); removes keep at least one exercise on the day. */
+function woEdRemove(e){if(woEditTmpl.ex.length<=1)return;var nm=woEditTmpl.ex[e]?woEditTmpl.ex[e].name:'';if(!confirm('Remove '+nm+' from this template?'))return;woEditTmpl.ex.splice(e,1);renderWoEditor();}
+function woEdAvail(){var lib=woExLibrary(),have={};for(var i=0;i<woEditTmpl.ex.length;i++)have[woEditTmpl.ex[i].name]=1;var out=[];for(var k in lib)if(lib.hasOwnProperty(k)&&!have[k])out.push(lib[k]);return out;}
+function woEdAddMeta(d){return [d.load==='pb'?'Weighted':'Bodyweight',d.target?(d.target[0]+'-'+d.target[1]+' reps'):(d.input==='time'?'timed':'reps')].filter(Boolean).join(' · ');}
+function woEdRenderAddSheet(){var list=woEdAvail(),h='';if(!list.length)h='<div style="padding:28px 20px;text-align:center;color:var(--muted);font-size:13px">Every exercise in your program is already on this day.</div>';else for(var i=0;i<list.length;i++){var d=list[i];h+='<div class="co-row" onclick="woEdAddPick('+i+')"><div class="co-body"><div class="co-lbl">'+esc(d.name)+'</div><div class="co-sub">'+woEdAddMeta(d)+'</div></div></div>';}document.getElementById('shtBody').innerHTML=h;}
+function woEdOpenAddSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Add exercise';document.getElementById('shtSub').textContent='From your program · keeps its proven setup';woEdRenderAddSheet();document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+function woEdAddPick(idx){var def=woEdAvail()[idx];closeSheet();if(!def)return;woEditTmpl.ex.push(woClone(def));woEditTmpl=woNormTmpl(woEditTmpl);renderWoEditor();}
 function woEdReset(){var tag=woEditTag||woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
-function woEdDone(){woSaveTmplOverride(woEditTag||woDayTag(viewDow),woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
+function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditTmpl,tag)){alert('Keep at least one of this day’s original '+woEditTmpl.tag+' exercises so the template stays linked to that day. Add one back before saving.');return;}woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
 function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed this day from the updated template? This clears sets logged so far for this day.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
 /* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
 var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
@@ -1848,7 +1889,7 @@ var COACH_FOCUS=[['balanced','Balanced'],['progression','Progression'],['imbalan
 var coachRange='this',coachBusy=false,coachResult='',coachErr='',coachViewTs=0;
 function coachLen(){return coachGet('coach_len','standard');}
 function coachFocus(){return coachGet('coach_focus','balanced');}
-var COACH_EDIT_INSTR=' If (and only if) you recommend concrete changes to my existing day-templates, append ONE fenced ```json code block AFTER the markdown, of the form {"edits":[{"day":"mon","exercise":"<exact name from weeklyTemplates>","field":"repTarget" | "sets" | "workRest","value":"6-12" for repTarget, an integer for sets, or seconds for workRest,"why":"short reason"}]}. Only edit EXISTING exercises by their exact names — never invent exercises or use any other field. At most 5 edits. Omit the json block entirely if you have no template-parameter changes (you can still suggest adding exercises in prose).';
+var COACH_EDIT_INSTR=' WHENEVER your prose recommends a concrete change to my day-templates — a starting load, sets, rep target, rest, or ADDING / REMOVING an exercise — you MUST also encode it so I can approve it with one tap. Append ONE fenced ```json code block AFTER the markdown, of the form {"edits":[{"day":"mon","exercise":"<exact exercise name>","field":"seedW" | "sets" | "repTarget" | "workRest" | "addExercise" | "removeExercise","value":<whole pounds for seedW, an integer for sets, "6-12" for repTarget, seconds for workRest; for add/remove just repeat the exercise name>,"why":"short reason"}]}. Rules: for seedW/sets/repTarget/workRest, edit ONLY an existing exercise by its EXACT name on that day, and use "seedW" only for weighted (PowerBlock) exercises. For "addExercise", the exercise MUST be one that already appears somewhere in weeklyTemplates (any day) — give its exact name and never invent a new movement; it is added to that day with its proven setup. For "removeExercise", name an exercise currently on that day (never the last one left). Up to 6 edits. Every actionable recommendation in your prose that fits these should also appear here. Omit the block only if you recommend no template changes at all.';
 function coachSystem(){
   var len=coachLen(),lenTxt=len==='lean'?'Keep it very tight: under ~200 words, almost all short bullets, no preamble.':len==='detailed'?'You may go in depth: up to ~800 words, briefly explaining the "why" where it helps.':'Keep the whole reply under ~450 words.';
   var foc=coachFocus(),focMap={balanced:'',progression:' Emphasize progression: concrete next steps to add load, reps, sets, or exercises, with specific numbers.',imbalances:' Emphasize muscle and movement-pattern imbalances and injury risk (push/pull, squat/hinge, vertical/horizontal, unilateral, core).',mobility:' Emphasize mobility and flexibility: judge whether my mobility/stretch routine matches what my training demands, and what to add or drop.'};
@@ -1890,30 +1931,86 @@ function coachAnalyze(){var key=coachKey();if(!key){coachRender('setup');return;
     .then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j};},function(){return {ok:res.ok,status:res.status,j:null};});})
     .then(function(r){coachBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);coachErr=coachFriendlyErr(r.status,msg);coachRender('error');return;}var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;coachResult=txt||'(empty response)';coachAddReport({ts:Date.now(),rangeKey:coachRange,rangeLabel:coachRangeLabel(),model:coachModel(),modelLabel:coachModelLabel(),len:coachLen(),focus:coachFocus(),text:coachResult});coachRender('result');})
     .catch(function(e){coachBusy=false;coachErr='Network error: '+(e&&e.message?e.message:e)+'. Confirm your connection and that your key allows direct browser access.';coachRender('error');});}
-/* One-tap template edits: the model may append a ```json {"edits":[…]} block. We strip it from
-   the prose, validate each edit against the live template, and render an Apply button. Only
-   per-exercise fields the override model allows (rep target, sets, rest) are accepted. */
-var coachEdits=[],coachFlash='',coachMode='home';
+/* Approvable template edits: the model may append a ```json {"edits":[…]} block. We strip it from
+   the prose, validate each edit against the live template, and render an Approve / Dismiss card per
+   suggestion. Only per-exercise fields the override model allows (rep target, sets, rest) are
+   accepted. Nothing changes the template until you Approve; every approval keeps the prior value so
+   it can be undone. coachEditState is keyed per report so a suggestion's status survives re-renders. */
+var coachEdits=[],coachFlash='',coachMode='home',coachEditState={};
+function coachCurReportTs(){if(coachMode==='view')return coachViewTs;var lp=coachLastReport();return lp?lp.ts:0;}
+function coachEditKey(e){return coachCurReportTs()+'|'+e.day+'|'+e.field+'|'+e.exercise+'|'+e.newStr;}
 function coachDayName(d){return ({mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri'})[d]||d;}
 function coachFmtRest(s){s=s||0;if(!s)return 'no rest';var m=Math.floor(s/60),x=s%60;return m?(m+':'+(x<10?'0':'')+x):(s+'s');}
 function coachParseRange(v){if(Array.isArray(v)&&v.length===2)v=v[0]+'-'+v[1];var m=String(v).match(/(\d+)\s*(?:[-–]|to)\s*(\d+)/);if(!m)return null;var lo=parseInt(m[1],10),hi=parseInt(m[2],10);return (lo>=1&&hi>lo&&hi<=50)?[lo,hi]:null;}
-function coachValidEdit(e){if(!e||['mon','tue','wed','thu','fri'].indexOf(e.day)<0||!e.exercise)return null;var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}if(!ex)return null;
-  if(e.field==='repTarget'){var v=coachParseRange(e.value);if(!v)return null;var cur=ex.target?(ex.target[0]+'-'+ex.target[1]):'—',nw=v[0]+'-'+v[1];if(cur===nw)return null;return {day:e.day,exercise:e.exercise,field:'repTarget',value:v,why:e.why||'',curStr:cur+' reps',newStr:nw+' reps'};}
-  if(e.field==='sets'){var n=parseInt(e.value,10);if(!(n>=1&&n<=12)||ex.sets===n)return null;return {day:e.day,exercise:e.exercise,field:'sets',value:n,why:e.why||'',curStr:ex.sets+(ex.sets===1?' set':' sets'),newStr:n+(n===1?' set':' sets')};}
-  if(e.field==='workRest'){var r=parseInt(e.value,10);if(!(r>=0&&r<=600)||(ex.workRest||0)===r)return null;return {day:e.day,exercise:e.exercise,field:'workRest',value:r,why:e.why||'',curStr:coachFmtRest(ex.workRest||0)+' rest',newStr:coachFmtRest(r)+' rest'};}
+/* Find a template exercise by name: exact first, then a normalized (case/punctuation-insensitive)
+   fallback so small naming differences from the model still match. */
+function coachFindEx(t,name){if(!name)return null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===name)return t.ex[i];var n=String(name).toLowerCase().replace(/[^a-z0-9]/g,'');for(var j=0;j<t.ex.length;j++)if(t.ex[j].name.toLowerCase().replace(/[^a-z0-9]/g,'')===n)return t.ex[j];return null;}
+function coachValidEdit(e){if(!e||['mon','tue','wed','thu','fri'].indexOf(e.day)<0||!e.exercise)return null;var t=woNormTmpl(woEffTemplate(e.day)),ex=coachFindEx(t,e.exercise);if(!ex)return null;var nm=ex.name;
+  if(e.field==='repTarget'){var v=coachParseRange(e.value);if(!v)return null;var cur=ex.target?(ex.target[0]+'-'+ex.target[1]):'—',nw=v[0]+'-'+v[1];if(cur===nw)return null;return {day:e.day,exercise:nm,field:'repTarget',value:v,why:e.why||'',curStr:cur+' reps',newStr:nw+' reps'};}
+  if(e.field==='sets'){var n=parseInt(e.value,10);if(!(n>=1&&n<=12)||ex.sets===n)return null;return {day:e.day,exercise:nm,field:'sets',value:n,why:e.why||'',curStr:ex.sets+(ex.sets===1?' set':' sets'),newStr:n+(n===1?' set':' sets')};}
+  if(e.field==='workRest'){var r=parseInt(e.value,10);if(!(r>=0&&r<=600)||(ex.workRest||0)===r)return null;return {day:e.day,exercise:nm,field:'workRest',value:r,why:e.why||'',curStr:coachFmtRest(ex.workRest||0)+' rest',newStr:coachFmtRest(r)+' rest'};}
+  if(e.field==='seedW'){if(ex.load!=='pb')return null;var w=woSnap(parseFloat(e.value));if(!(w>0)||(+ex.seedW||0)===w)return null;return {day:e.day,exercise:nm,field:'seedW',value:w,why:e.why||'',curStr:(ex.seedW!=null?ex.seedW+' lb':'—')+' start',newStr:w+' lb start'};}
+  return null;}
+/* Structural edits validate differently: they change WHICH exercises a day has, not a field on one. */
+function coachValidStruct(e){if(!e||['mon','tue','wed','thu','fri'].indexOf(e.day)<0||!e.exercise)return null;var t=woNormTmpl(woEffTemplate(e.day));
+  if(e.field==='addExercise'){var def=woLibFind(e.exercise);if(!def||coachFindEx(t,def.name))return null;return {day:e.day,exercise:def.name,field:'addExercise',value:def.name,why:e.why||'',curStr:'not on '+coachDayName(e.day),newStr:'add exercise'};}
+  if(e.field==='removeExercise'){if(t.ex.length<=1)return null;var rex=coachFindEx(t,e.exercise);if(!rex)return null;return {day:e.day,exercise:rex.name,field:'removeExercise',value:rex.name,why:e.why||'',curStr:'on '+coachDayName(e.day),newStr:'remove exercise'};}
   return null;}
 function coachParseEdits(text){text=text||'';var raw=null,re=/```json\s*([\s\S]*?)```/gi,m;while((m=re.exec(text))){try{var o=JSON.parse(m[1]);if(o&&o.edits)raw=o.edits;}catch(e){}}
   var prose=text.replace(/```json\s*[\s\S]*?```/gi,'').replace(/\n{3,}/g,'\n\n').trim();
-  var edits=[];if(raw&&raw.length)for(var i=0;i<raw.length&&edits.length<5;i++){var v=coachValidEdit(raw[i]);if(v)edits.push(v);}
+  var edits=[];if(raw&&raw.length)for(var i=0;i<raw.length&&edits.length<6;i++){var v=coachValidEdit(raw[i])||coachValidStruct(raw[i]);if(v)edits.push(v);}
   return {prose:prose,edits:edits};}
-function coachEditsHTML(){if(!coachEdits.length)return '';var h='<div class="cch-pad"><div class="cch-lbl">Suggested template edits — one tap to apply</div>';
-  for(var i=0;i<coachEdits.length;i++){var e=coachEdits[i];h+='<div class="cch-edit"><div class="cch-edit-h"><span class="d">'+coachDayName(e.day)+'</span>'+esc(e.exercise)+'</div><div class="cch-edit-b">'+esc(e.curStr)+'<span class="ar">&rarr;</span><b>'+esc(e.newStr)+'</b></div>'+(e.why?'<div class="cch-edit-w">'+esc(e.why)+'</div>':'<div style="height:6px"></div>')+'<button class="cch-edit-apply" onclick="coachApplyEdit('+i+')">Apply to '+coachDayName(e.day)+' template</button></div>';}
+/* Parse a report's prose + edits ONCE and cache (single slot, keyed by report). Approving an edit
+   mutates the live template, which would otherwise make that edit re-validate as a no-op and vanish
+   on the next render — caching keeps the card (and its Undo) visible until you leave the report. */
+var coachParsedCache=null;
+function coachGetParsed(ts,text){if(coachParsedCache&&coachParsedCache.ts===ts&&coachParsedCache.text===text)return coachParsedCache.val;var v=coachParseEdits(text);coachParsedCache={ts:ts,text:text,val:v};return v;}
+/* A heads-up banner near the top of a report so the approve cards (which sit below the full
+   prose, after Watch-outs) are discoverable rather than buried. */
+function coachEditBanner(){var p=0;for(var i=0;i<coachEdits.length;i++)if(!coachEditState[coachEditKey(coachEdits[i])])p++;if(!p)return '';return '<div class="cch-pad" style="padding-bottom:0"><div class="cch-banner">&#9889; '+p+' recommendation'+(p>1?'s':'')+' can update your template &mdash; review &amp; approve at the bottom &darr;</div></div>';}
+function coachEditsHTML(){if(!coachEdits.length)return '';
+  var pend=0;for(var k=0;k<coachEdits.length;k++)if(!coachEditState[coachEditKey(coachEdits[k])])pend++;
+  var h='<div class="cch-pad"><div class="cch-lbl">Coach recommendations — approve to update your template</div>';
+  if(pend>1)h+='<button class="cch-edit-apply" style="margin-bottom:12px" onclick="coachApproveAll()">Approve all '+pend+' changes</button>';
+  for(var i=0;i<coachEdits.length;i++){var e=coachEdits[i],st=coachEditState[coachEditKey(e)];
+    h+='<div class="cch-edit'+(st?(st.status==='approved'?' approved':' dismissed'):'')+'">';
+    h+='<div class="cch-edit-h"><span class="d">'+coachDayName(e.day)+'</span>'+esc(e.exercise)+'</div>';
+    h+='<div class="cch-edit-b">'+esc(e.curStr)+'<span class="ar">&rarr;</span><b>'+esc(e.newStr)+'</b></div>';
+    h+=(e.why?'<div class="cch-edit-w">'+esc(e.why)+'</div>':'<div style="height:6px"></div>');
+    if(!st)h+='<div class="cch-edit-row"><button class="cch-edit-apply" onclick="coachApproveEdit('+i+')">Approve</button><button class="cch-edit-no" onclick="coachDismissEdit('+i+')">Dismiss</button></div>';
+    else if(st.status==='approved')h+='<div class="cch-edit-done"><span>&#10003; Approved &middot; live on '+coachDayName(e.day)+' template</span><span class="cch-link" onclick="coachUndoEdit('+i+')">Undo</span></div>';
+    else h+='<div class="cch-edit-done off"><span>Dismissed</span><span class="cch-link" onclick="coachRestoreEdit('+i+')">Restore</span></div>';
+    h+='</div>';}
   return h+'</div>';}
-function coachApplyEdit(idx){var e=coachEdits[idx];if(!e)return;var t=woNormTmpl(woEffTemplate(e.day)),ex=null;for(var i=0;i<t.ex.length;i++)if(t.ex[i].name===e.exercise){ex=t.ex[i];break;}if(!ex)return;
-  if(e.field==='repTarget')ex.target=[e.value[0],e.value[1]];else if(e.field==='sets'){ex.sets=e.value;t=woNormTmpl(t);}else if(e.field==='workRest')ex.workRest=e.value;
-  woSaveTmplOverride(e.day,t);coachFlash='Applied: '+e.exercise+' → '+e.newStr+' on '+coachDayName(e.day)+'. It takes effect next time you start that day.';
-  if(typeof viewMode!=='undefined'&&viewMode==='workout'&&typeof render==='function'){/* leave any in-progress session intact */}
-  coachRender(coachMode);}
+/* Write one approved edit into the day-template override, capturing the prior value for Undo. */
+function coachDoApprove(e){var t=woNormTmpl(woEffTemplate(e.day)),prev;
+  if(e.field==='addExercise'){var def=woLibFind(e.value);if(!def||coachFindEx(t,def.name))return false;t.ex.push(woClone(def));t=woNormTmpl(t);prev={added:def.name};}
+  else{var ex=coachFindEx(t,e.exercise);if(!ex)return false;
+    if(e.field==='repTarget'){prev=ex.target?[ex.target[0],ex.target[1]]:null;ex.target=[e.value[0],e.value[1]];}
+    else if(e.field==='sets'){prev=ex.sets;ex.sets=e.value;t=woNormTmpl(t);}
+    else if(e.field==='workRest'){prev=ex.workRest||0;ex.workRest=e.value;}
+    else if(e.field==='seedW'){prev=(ex.seedW!=null?ex.seedW:null);ex.seedW=e.value;}
+    else if(e.field==='removeExercise'){var ri=-1;for(var q=0;q<t.ex.length;q++)if(t.ex[q].name===ex.name){ri=q;break;}if(ri<0||t.ex.length<=1)return false;prev={removed:woClone(t.ex[ri]),idx:ri};t.ex.splice(ri,1);}
+    else return false;}
+  woSaveTmplOverride(e.day,t);coachEditState[coachEditKey(e)]={status:'approved',prev:prev};return true;}
+function coachApproveEdit(idx){var e=coachEdits[idx];if(!e)return;if(coachDoApprove(e))coachFlash='Approved: '+e.exercise+' → '+e.newStr+' on '+coachDayName(e.day)+'. Takes effect next time you start that day.';coachRender(coachMode);}
+function coachApproveAll(){var n=0;for(var i=0;i<coachEdits.length;i++){if(coachEditState[coachEditKey(coachEdits[i])])continue;if(coachDoApprove(coachEdits[i]))n++;}coachFlash=n?('Approved '+n+' change'+(n>1?'s':'')+' to your templates. They take effect next time you start each day.'):'';coachRender(coachMode);}
+function coachUndoEdit(idx){var e=coachEdits[idx];if(!e)return;var st=coachEditState[coachEditKey(e)];
+  if(st&&st.status==='approved'){var t=woNormTmpl(woEffTemplate(e.day));
+    if(e.field==='addExercise'){for(var q=0;q<t.ex.length;q++)if(t.ex[q].name===e.value){t.ex.splice(q,1);break;}woSaveTmplOverride(e.day,t);}
+    else if(e.field==='removeExercise'){if(st.prev&&st.prev.removed){var idx=Math.min(st.prev.idx,t.ex.length);t.ex.splice(idx,0,woClone(st.prev.removed));woSaveTmplOverride(e.day,t);}}
+    else{var ex=coachFindEx(t,e.exercise);
+      if(ex){if(e.field==='repTarget'){if(st.prev)ex.target=[st.prev[0],st.prev[1]];else delete ex.target;}
+        else if(e.field==='sets'){ex.sets=st.prev;t=woNormTmpl(t);}
+        else if(e.field==='workRest'){ex.workRest=st.prev;}
+        else if(e.field==='seedW'){if(st.prev==null)delete ex.seedW;else ex.seedW=st.prev;}
+        woSaveTmplOverride(e.day,t);}}
+    coachFlash='Reverted '+e.exercise+' on '+coachDayName(e.day)+'.';}
+  delete coachEditState[coachEditKey(e)];coachRender(coachMode);}
+function coachDismissEdit(idx){var e=coachEdits[idx];if(!e)return;coachEditState[coachEditKey(e)]={status:'dismissed'};coachFlash='';coachRender(coachMode);}
+function coachRestoreEdit(idx){var e=coachEdits[idx];if(!e)return;delete coachEditState[coachEditKey(e)];coachFlash='';coachRender(coachMode);}
+/* Back-compat alias: approving an edit is what "apply" used to do. */
+function coachApplyEdit(idx){coachApproveEdit(idx);}
 function coachMd(src){var lines=esc(src).split(/\r?\n/),html='',inUl=false;
   function inl(s){s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');s=s.replace(/`([^`]+)`/g,'<code>$1</code>');s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');return s;}
   for(var i=0;i<lines.length;i++){var ln=lines[i];var mh=ln.match(/^(#{2,3})\s+(.*)$/),mli=ln.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
@@ -1949,9 +2046,9 @@ function coachHistoryHTML(){var a=coachLoadReports();var h='<div class="cch-bar"
 function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return;
   if(mode==='setup'){b.innerHTML=coachSetupHTML();var el=document.getElementById('cchKey');if(el)setTimeout(function(){try{el.focus();}catch(e){}},80);return;}
   if(mode==='history'){coachFlash='';b.innerHTML=coachHistoryHTML();return;}
-  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}coachMode='view';var pe=coachParseEdits(r.text||'');coachEdits=pe.edits;
+  if(mode==='view'){var r=coachReportByTs(coachViewTs);if(!r){coachRender('history');return;}coachMode='view';var pe=coachGetParsed(coachViewTs,r.text||'');coachEdits=pe.edits;
     var foc=(r.focus&&r.focus!=='balanced')?(' &middot; '+esc(r.focus)):'';
-    var bh='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'history\')">&lsaquo; History</span><span class="cch-link" onclick="coachRender(\'home\')">Home</span></div><div class="cch-meta">'+esc(r.rangeLabel)+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+foc+'</div>';
+    var bh='<div class="cch-bar"><span class="cch-link" onclick="coachRender(\'history\')">&lsaquo; History</span><span class="cch-link" onclick="coachRender(\'home\')">Home</span></div><div class="cch-meta">'+esc(r.rangeLabel)+' &middot; '+esc(coachAgo(r.ts))+' &middot; '+esc(r.modelLabel||r.model)+foc+'</div>'+coachEditBanner();
     if(coachFlash)bh+='<div class="cch-pad" style="padding-top:0"><div class="cch-flash">'+esc(coachFlash)+'</div></div>';
     bh+='<div class="cch-out">'+coachMd(pe.prose)+'</div>'+coachEditsHTML()+'<div class="cch-pad"><button class="cch-ghost" onclick="coachCopyView()">Copy report</button></div>';
     b.innerHTML=bh;return;}
@@ -1967,8 +2064,8 @@ function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return
   h+='<div style="text-align:center;margin-top:12px">'+(coachLoadReports().length?'<span class="cch-link" onclick="coachRender(\'history\')">History ('+coachLoadReports().length+')</span> &nbsp;&middot;&nbsp; ':'')+'<span class="cch-link" onclick="coachRender(\'setup\')">API key &amp; model</span></div></div>';
   if(mode==='busy')h+='<div class="cch-spin"><span class="cch-dot"></span>Analyzing with '+esc(coachModelLabel())+'…</div>';
   if(mode==='error'&&coachErr)h+='<div class="cch-pad"><div class="cch-err">'+esc(coachErr)+'</div></div>';
-  if(mode==='result'&&coachResult){coachMode='result';var pe=coachParseEdits(coachResult);coachEdits=pe.edits;
-    h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+' &middot; saved to history</div>';
+  if(mode==='result'&&coachResult){coachMode='result';var pe=coachGetParsed(coachCurReportTs(),coachResult);coachEdits=pe.edits;
+    h+='<div class="cch-meta">'+esc(coachModelLabel())+' &middot; '+esc(coachRangeLabel())+' &middot; saved to history</div>'+coachEditBanner();
     if(coachFlash)h+='<div class="cch-pad" style="padding-top:0"><div class="cch-flash">'+esc(coachFlash)+'</div></div>';
     h+='<div class="cch-out">'+coachMd(pe.prose)+'</div>'+coachEditsHTML()+'<div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';}
   b.innerHTML=h;}
