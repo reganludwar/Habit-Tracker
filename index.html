@@ -368,6 +368,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-edit-link{margin:14px 16px 0;display:flex;gap:8px;justify-content:center}
 .wo-edit-link span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
   cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
+.wo-undo{margin:14px 16px 0;display:flex;align-items:center;gap:10px;background:rgba(224,96,96,.08);border:1px solid #6B3030;border-radius:8px;padding:10px 12px}
+.wo-undo-msg{flex:1;font-size:12px;color:var(--text);line-height:1.4}
+.wo-undo-msg b{color:#E58A8A}
+.wo-undo-btn{flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#000;background:var(--accent);border:none;border-radius:6px;padding:9px 14px;cursor:pointer}
+.wo-undo-x{flex-shrink:0;color:var(--muted);font-size:17px;cursor:pointer;padding:0 2px;line-height:1}
 .wo-ed-ex{background:var(--card);border:1px solid var(--border);margin:14px 16px 0;padding:4px 14px 10px}
 .wo-ed-name{font-size:15px;font-weight:600;padding:10px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .wo-ed-rm{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;flex-shrink:0}
@@ -1545,7 +1550,17 @@ function woLoadOrSeed(dow,key){
   if(raw){try{localStorage.removeItem(key);}catch(e){}}
   woSession=woSeed(dow,key);
 }
-function woResetDay(){if(!woSession)return;if(!confirm('Reset this day to the current template? Anything logged for this day will be cleared.'))return;var key=woSession._key;try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}
+/* Safety net for the two destructive resets (Reset day, and the re-seed prompt after editing a
+   template). Before clearing a day's session we stash a copy to a single-slot trash so an accidental
+   tap can be undone. We only stash when there were actually logged sets to lose. */
+function woSessionHasWork(s){if(!s||!s.exercises)return false;if(s.notes)return true;for(var e=0;e<s.exercises.length;e++){var st=s.exercises[e].sets||[];for(var i=0;i<st.length;i++)if(st[i].done)return true;}return false;}
+function woStashSession(key){try{var raw=localStorage.getItem(key);if(!raw)return false;if(!woSessionHasWork(JSON.parse(raw)))return false;localStorage.setItem('wo_trash',JSON.stringify({key:key,data:raw,ts:Date.now()}));return true;}catch(e){return false;}}
+function woLoadTrash(){try{var t=JSON.parse(localStorage.getItem('wo_trash'));return (t&&t.key&&t.data&&(Date.now()-(t.ts||0)<864e5))?t:null;}catch(e){return null;}}
+function woClearTrash(){try{localStorage.removeItem('wo_trash');}catch(e){}}
+function woUndoReset(){var t=woLoadTrash();if(!t)return;try{localStorage.setItem(t.key,t.data);}catch(e){}woClearTrash();woSession=null;woEditing=false;renderWorkout();}
+function woDismissTrash(){woClearTrash();renderWorkout();}
+function woUndoBannerHTML(key){var t=woLoadTrash();if(!t||t.key!==key)return '';return '<div class="wo-undo"><span class="wo-undo-msg"><b>Logged sets were cleared.</b> Tap Undo to restore what you had on this day.</span><button class="wo-undo-btn" onclick="woUndoReset()">Undo</button><span class="wo-undo-x" onclick="woDismissTrash()">&#215;</span></div>';}
+function woResetDay(){if(!woSession)return;if(!confirm('Reset this day to the current template?\n\nThis ERASES the sets you have logged for this day. (You can Undo right after.)'))return;var key=woSession._key;woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}
 function woSave(){if(!woSession)return;try{localStorage.setItem(woSession._key,JSON.stringify(woSession));}catch(e){}}
 function woFmtTime(v){if(v==null)return '0:00';if(typeof v==='object')return 'L '+fmtMMSSVal(v.l||0)+' · R '+fmtMMSSVal(v.r||0);return fmtMMSSVal(v);}
 function woPrevTxt(ex){if(!ex.prev)return 'last: —';var p=ex.prev,parts=[];if(p.weight!=null)parts.push(p.weight+' lb');if(p.reps!=null)parts.push(p.reps+' reps');if(p.time!=null)parts.push(woFmtTime(p.time));return parts.length?'last: '+parts.join(' × '):'last: —';}
@@ -1644,6 +1659,7 @@ function renderWorkout(){
   var _sy=window.pageYOffset||(document.documentElement&&document.documentElement.scrollTop)||0;
   var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it</div>';
   h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span><span onclick="woResetDay()">&#8635; Reset day</span></div>';
+  h+=woUndoBannerHTML(key);
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
   h+='<div class="wo-notes-wrap"><textarea class="wo-notes" id="woNotes" placeholder="Session notes — how it felt, tweaks, aches…" oninput="woSaveNotes(this.value)">'+esc(sess.notes||'')+'</textarea></div>';
   if(sess.finished){var prs=woSessionPRs();if(prs.length){var ph='<div class="wo-pr-card"><div class="wo-pr-h">&#127942; New personal record'+(prs.length>1?'s':'')+'</div>';for(var pi=0;pi<prs.length;pi++){ph+='<div class="wo-pr-row"><span>'+esc(prs[pi].name)+'</span><span class="wo-pr-v">'+woFmtMetric(prs[pi].kind,prs[pi].val)+'</span></div>';}ph+='</div>';h+=ph;}}
@@ -1879,7 +1895,7 @@ function woEdOpenAddSheet(){sheetMode='';document.getElementById('shtTitle').tex
 function woEdAddPick(idx){var def=woEdAvail()[idx];closeSheet();if(!def)return;woEditTmpl.ex.push(woClone(def));woEditTmpl=woNormTmpl(woEditTmpl);renderWoEditor();}
 function woEdReset(){var tag=woEditTag||woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
 function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditTmpl,tag)){alert('Keep at least one of this day’s original '+woEditTmpl.tag+' exercises so the template stays linked to that day. Add one back before saving.');return;}woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
-function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed this day from the updated template? This clears sets logged so far for this day.')){try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
+function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed this day from the updated template?\n\nThis ERASES the sets you have logged for this day. Tap Cancel to KEEP them — your template change is already saved either way. (You can Undo right after.)')){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
 /* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
 var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
 var COACH_RANGES=[['this','This week'],['last','Last week'],['2w','Last 2 weeks'],['month','Last 30 days']];
