@@ -877,7 +877,7 @@ var S=[
 ];
 var todayDow=new Date().getDay(),viewDow=todayDow,viewMode='day',weekOffset=0;
 function getDateForDow(d){var x=new Date();x.setDate(x.getDate()+(d-x.getDay())+weekOffset*7);return x;}
-function storeKeyForDow(d){var x=getDateForDow(d);return 'tr_'+x.getFullYear()+'_'+(x.getMonth()+1)+'_'+x.getDate();}
+function storeKeyForDow(d){return storeKeyForDate(getDateForDow(d));}
 function getWeekDates(){var t=new Date(),a=[];for(var i=0;i<7;i++){var d=new Date(t);d.setDate(t.getDate()-t.getDay()+i+weekOffset*7);a.push(d);}return a;}
 function navDay(dir){var nd=viewDow+dir;if(nd>6){nd=0;weekOffset++;}else if(nd<0){nd=6;weekOffset--;}viewDow=nd;loadState();render();window.scrollTo(0,0);}
 function navWeek(dir){weekOffset+=dir;loadState();render();window.scrollTo(0,0);}
@@ -1049,7 +1049,7 @@ function fallbackDownload(blob,fname){try{var url=URL.createObjectURL(blob);var 
 function daysSince(ms){return ms?Math.floor((Date.now()-ms)/86400000):Infinity;}
 function lastBackupMs(){try{return +localStorage.getItem('last_backup')||0;}catch(e){return 0;}}
 function hasUserData(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&(k.indexOf('tr_')===0||k.indexOf('wo_')===0))return true;}}catch(e){}return false;}
-function updateBackupNag(){var el=document.getElementById('backupNag');if(!el)return;var lb=lastBackupMs(),sn=0;try{sn=+localStorage.getItem('backup_snooze')||0;}catch(e){}var due=hasUserData()&&daysSince(lb)>=14&&daysSince(sn)>=3;if(!due){el.style.display='none';el.innerHTML='';return;}var d=daysSince(lb);var txt=lb?('Last backup '+d+' day'+(d!==1?'s':'')+' ago'):'No backup yet — your data lives only on this device';el.style.display='';el.innerHTML='<span onclick="exportData()">&#9888;&#65039; '+txt+' &middot; <b>Export now</b></span><span class="bn-x" onclick="snoozeBackup()">&#215;</span>';}
+function updateBackupNag(){var el=document.getElementById('backupNag');if(!el)return;var lb=lastBackupMs(),sn=0;try{sn=+localStorage.getItem('backup_snooze')||0;}catch(e){}var due=hasUserData()&&daysSince(sn)>=3&&(lb?daysSince(lb)>=14:true);if(!due){el.style.display='none';el.innerHTML='';return;}var d=daysSince(lb);var txt=lb?('Last backup '+d+' day'+(d!==1?'s':'')+' ago'):'No backup yet — your data lives only on this device';el.style.display='';el.innerHTML='<span onclick="exportData()">&#9888;&#65039; '+txt+' &middot; <b>Export now</b></span><span class="bn-x" onclick="snoozeBackup()">&#215;</span>';}
 function snoozeBackup(){try{localStorage.setItem('backup_snooze',''+Date.now());}catch(e){}updateBackupNag();}
 function exportData(){try{localStorage.setItem('last_backup',''+Date.now());}catch(e){}updateBackupNag();var b=collectBackup();var n=0;for(var k in b.data)if(b.data.hasOwnProperty(k))n++;var payload=JSON.stringify(b,null,2);var fname=backupName();var blob=new Blob([payload],{type:'application/json'});try{var file=new File([blob],fname,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Training Backup'}).catch(function(){fallbackDownload(blob,fname);});return;}}catch(e){}fallbackDownload(blob,fname);}
 function importData(){var inp=document.getElementById('importFile');if(inp){inp.value='';inp.click();}}
@@ -1457,7 +1457,8 @@ var WO_TEMPLATES={
  ]}
 };
 function woDayTag(dow){return ({1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'})[dow]||null;}
-function woKeyForDow(d){var x=getDateForDow(d);return 'wo_'+x.getFullYear()+'_'+(x.getMonth()+1)+'_'+x.getDate();}
+function woKeyForDate(dt){return 'wo_'+dt.getFullYear()+'_'+(dt.getMonth()+1)+'_'+dt.getDate();}
+function woKeyForDow(d){return woKeyForDate(getDateForDow(d));}
 function woClone(o){return JSON.parse(JSON.stringify(o));}
 function woLoadTmplOverrides(){try{return JSON.parse(localStorage.getItem('wo_tmpl')||'{}')||{};}catch(e){return {};}}
 /* An override is valid if it's a well-formed, non-empty exercise list that still belongs to THIS day.
@@ -1477,6 +1478,13 @@ function woEffTemplate(tag){var ov=woLoadTmplOverrides();return (ov[tag]&&woTmpl
 function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return;var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 function woCleanOverrides(){var ov=woLoadTmplOverrides(),changed=false;for(var tag in ov){if(ov.hasOwnProperty(tag)&&!woTmplValid(ov[tag],tag)){delete ov[tag];changed=true;}}if(changed)try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
+/* Single startup migration gate. localStorage is the source of truth with no schema, so format
+   changes are healed here once at boot. Bump DATA_VERSION and add a branch when a format changes;
+   today's only step is purging corrupt template overrides (the v13-class heal). */
+var DATA_VERSION=1;
+function migrate(){var v=0;try{v=parseInt(localStorage.getItem('data_version'),10)||0;}catch(e){}
+  woCleanOverrides();
+  if(v!==DATA_VERSION){try{localStorage.setItem('data_version',''+DATA_VERSION);}catch(e){}}}
 function woNormTmpl(t){var c=woClone(t);c.showRPE=(c.showRPE!==false);for(var i=0;i<c.ex.length;i++){var x=c.ex[i];x.warmup=!!x.warmup;x.restLast=!!x.restLast;if(!x.sets||x.sets<1)x.sets=1;if(x.warmRest==null)x.warmRest=60;if(x.workRest==null)x.workRest=0;var need=Math.max(0,x.sets-(x.restLast?0:1));if(!x.restMob)x.restMob=[];while(x.restMob.length<need)x.restMob.push(null);if(x.restMob.length>need)x.restMob.length=need;}return c;}
 function woMobName(id){if(!id)return '';var m=getCatalogMap()[id];return m?m.name:'';}
 var woSession=null;
@@ -2114,7 +2122,7 @@ function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return
   b.innerHTML=h;}
 function openCoach(){sheetMode='coach';coachBusy=false;coachResult='';coachErr='';document.getElementById('shtTitle').textContent='AI Coach';document.getElementById('shtSub').textContent='Training analysis & programming review';coachRender(coachKey()?'home':'setup');document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 
-woCleanOverrides();
+migrate();
 var _hlN=ingestHealthFromURL();
 loadState();render();updateBackupNag();
 if(_hlN)setTimeout(function(){try{alert('Imported Apple Health data for '+_hlN+' day'+(_hlN>1?'s':'')+'.');}catch(e){}},300);
