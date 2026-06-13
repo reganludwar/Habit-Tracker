@@ -373,6 +373,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-undo-msg b{color:#E58A8A}
 .wo-undo-btn{flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#000;background:var(--accent);border:none;border-radius:6px;padding:9px 14px;cursor:pointer}
 .wo-undo-x{flex-shrink:0;color:var(--muted);font-size:17px;cursor:pointer;padding:0 2px;line-height:1}
+.cmodal{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:24px}
+.cmodal.show{display:flex}
+.cmodal-card{background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:360px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.cmodal-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:9px}
+.cmodal-b{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:18px}
+.cmodal-b b{color:var(--text)}
+.cmodal-btns{display:flex;flex-direction:column;gap:8px}
+.cmodal-btn{width:100%;padding:13px;border-radius:8px;font-size:13px;font-weight:700;letter-spacing:.04em;cursor:pointer;border:1px solid var(--border);background:var(--surf);color:var(--text);text-align:center}
+.cmodal-btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}
+.cmodal-btn.danger{background:none;color:#E06060;border-color:#6B3030}
 .wo-ed-ex{background:var(--card);border:1px solid var(--border);margin:14px 16px 0;padding:4px 14px 10px}
 .wo-ed-name{font-size:15px;font-weight:600;padding:10px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .wo-ed-rm{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;flex-shrink:0}
@@ -767,6 +777,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
   </div>
   <div class="sheet-body" id="shtBody"></div>
 </div>
+<div class="cmodal" id="woModal" onclick="if(event.target===this)woReseedKeep()"><div class="cmodal-card" id="woModalCard"></div></div>
 <script>
 var MON=[['DB Bench Press','1wu+2x5-8'],['DB Shoulder Press','1wu+2x5-8'],['DB Triceps Extension','2x8-10'],['Hanging Knee Raises','2x6-10']];
 var TUE=[['Goblet Squat','1wu+2x5-8'],['DB Romanian Deadlift','1wu+2x5-8'],['DB Reverse Lunge','2x8/leg']];
@@ -1894,8 +1905,25 @@ function woEdRenderAddSheet(){var list=woEdAvail(),h='';if(!list.length)h='<div 
 function woEdOpenAddSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Add exercise';document.getElementById('shtSub').textContent='From your program · keeps its proven setup';woEdRenderAddSheet();document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function woEdAddPick(idx){var def=woEdAvail()[idx];closeSheet();if(!def)return;woEditTmpl.ex.push(woClone(def));woEditTmpl=woNormTmpl(woEditTmpl);renderWoEditor();}
 function woEdReset(){var tag=woEditTag||woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
-function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditTmpl,tag)){alert('Keep at least one of this day’s original '+woEditTmpl.tag+' exercises so the template stays linked to that day. Add one back before saving.');return;}woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();renderWorkout();}
-function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),has=false;try{has=!!localStorage.getItem(key);}catch(e){}if(!has){woSession=null;return;}if(confirm('Re-seed this day from the updated template?\n\nThis ERASES the sets you have logged for this day. Tap Cancel to KEEP them — your template change is already saved either way. (You can Undo right after.)')){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;}}
+function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditTmpl,tag)){alert('Keep at least one of this day’s original '+woEditTmpl.tag+' exercises so the template stays linked to that day. Add one back before saving.');return;}woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();}
+/* After saving a template edit, decide what to do with the day's existing session. If nothing was
+   logged we silently refresh it; if sets were logged we ask — with a clear Keep vs Erase choice
+   (a native confirm can't relabel its buttons, so this is a small custom dialog). */
+var woReseedKey='';
+function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),raw=null;try{raw=localStorage.getItem(key);}catch(e){}
+  if(!raw){woSession=null;renderWorkout();return;}
+  if(!woSessionHasWork(JSON.parse(raw))){try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();return;}
+  woSession=null;renderWorkout();/* show the day (with its logged sets) behind the dialog */
+  woReseedKey=key;
+  var c=document.getElementById('woModalCard');
+  if(!c){if(confirm('Erase the sets logged for this day and re-seed from the new template? Cancel keeps them.')){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}woReseedKey='';return;}
+  c.innerHTML='<div class="cmodal-t">Template saved</div>'+
+    '<div class="cmodal-b">Your change is saved and applies going forward. You’ve already logged sets for this day &mdash; <b>keep</b> them, or erase them and re-seed this day from the new template?</div>'+
+    '<div class="cmodal-btns"><button class="cmodal-btn primary" onclick="woReseedKeep()">Keep my logged sets</button><button class="cmodal-btn danger" onclick="woReseedErase()">Erase &amp; re-seed this day</button></div>';
+  document.getElementById('woModal').classList.add('show');}
+function woHideReseed(){var m=document.getElementById('woModal');if(m)m.classList.remove('show');}
+function woReseedKeep(){woReseedKey='';woHideReseed();renderWorkout();}
+function woReseedErase(){var key=woReseedKey;woReseedKey='';woHideReseed();if(key){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;}renderWorkout();}
 /* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
 var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
 var COACH_RANGES=[['this','This week'],['last','Last week'],['2w','Last 2 weeks'],['month','Last 30 days']];
