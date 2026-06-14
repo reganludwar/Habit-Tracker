@@ -383,6 +383,58 @@ ok(/Tight areas/.test(sandbox.document.getElementById('shtTitle').textContent),'
 sandbox.localStorage.removeItem('tight_areas');sandbox.localStorage.removeItem('active_floor');sandbox.localStorage.removeItem('stretch_times');
 sandbox.stSuggAI=[];sandbox.stSuggState={};sandbox.stSet='floor';
 
+// ===== Feature B: dedicated Stretch & Mobility AI report =====
+sandbox.localStorage.removeItem('active_floor');sandbox.localStorage.removeItem('active_mobility');sandbox.localStorage.removeItem('stretch_times');
+sandbox.coachKind='mobility';sandbox.coachEditState={};
+// mobility payload shape
+var _mp=sandbox.coachMobilityPayload();
+ok(Array.isArray(_mp.mobilityRoutine)&&_mp.mobilityRoutine.length>0&&_mp.mobilityRoutine[0].areas!==undefined,'mobility payload lists the mobility routine with area tags');
+ok(Array.isArray(_mp.areaCoverage)&&_mp.areaCoverage.length===sandbox.TIGHT_AREAS.length&&typeof _mp.areaCoverage[0].drills==='number','payload reports per-area coverage (drills + seconds)');
+ok(Array.isArray(_mp.availableStretches)&&_mp.availableStretches.some(function(d){return d.name==='Double Pigeon';}),'payload offers catalog drills available to add');
+ok(_mp.trainingFocus.length===5&&'mobilityStreak' in _mp&&'mobilityDaysHit' in _mp,'payload includes training split + consistency metrics');
+// system prompt + edit instruction
+var _ms=sandbox.coachMobilitySystem();
+ok(/## Coverage & Balance/.test(_ms)&&/## Match to Training/.test(_ms),'mobility system prompt defines the report sections');
+ok(/"type":"mobility" \| "stretch"/.test(_ms)&&/availableMobility/.test(_ms),'mobility edit instruction is appended to the system prompt');
+// edit validation: add / duration / remove on real drills
+sandbox.saveActiveList('floor',['b0','b3']);sandbox.saveActiveList('mobility',['m0','m13']);sandbox.localStorage.removeItem('stretch_times');
+ok(sandbox.coachMobValid({type:'stretch',action:'add',drill:'Pigeon Pose'}).field==='addDrill','validates a stretch add (Pigeon Pose)');
+ok(sandbox.coachMobValid({type:'stretch',action:'add',drill:'Invented Drill'})===null,'rejects an add for a drill not in the catalog');
+ok(sandbox.coachMobValid({type:'mobility',action:'duration',drill:'Neck CARs',seconds:60}).value===60,'validates a mobility duration change');
+ok(sandbox.coachMobValid({type:'mobility',action:'duration',drill:'Neck CARs',seconds:9})===null,'rejects an out-of-range duration');
+sandbox.saveActiveList('mobility',['m0']);
+ok(sandbox.coachMobValid({type:'mobility',action:'remove',drill:'Neck CARs'})===null,'refuses to remove the last drill in a routine');
+sandbox.saveActiveList('mobility',['m0','m13']);
+ok(sandbox.coachMobValid({type:'mobility',action:'remove',drill:'Neck CARs'}).field==='removeDrill','validates a removal when more than one drill remains');
+// parse a model block -> only valid edits survive, deduped
+var _mtext='## Recommendations\n- add pigeon\n```json\n{"edits":[{"type":"stretch","action":"add","drill":"Pigeon Pose","why":"glutes"},{"type":"mobility","action":"duration","drill":"Neck CARs","seconds":55,"why":"x"},{"type":"stretch","action":"add","drill":"Nonexistent","why":"no"}]}\n```';
+var _mpe=sandbox.coachMobParseEdits(_mtext);
+ok(_mpe.edits.length===2&&!/```json/.test(_mpe.prose),'coachMobParseEdits keeps the 2 valid edits and strips the JSON from prose');
+ok(sandbox.coachGetParsed(999,_mtext,'mobility').edits.length===2&&sandbox.coachGetParsed(998,_mtext,'workout').edits.length===0,'coachGetParsed dispatches mobility vs workout parsing by kind');
+// apply: add inserts into the routine; undo removes it
+sandbox.saveActiveList('floor',['b3']);
+var _eAdd=sandbox.coachMobValid({type:'stretch',action:'add',drill:'Pigeon Pose'});
+ok(sandbox.coachDoApprove(_eAdd)===true&&sandbox.loadActiveList('floor').indexOf('b1')>=0,'approving a mobility add inserts the drill into the stretch routine');
+ok(sandbox.loadActiveList('floor').indexOf('b3')>=0,'the existing routine drill is left in place');
+sandbox.coachMobUndo(_eAdd,sandbox.coachEditState[sandbox.coachEditKey(_eAdd)]);
+ok(sandbox.loadActiveList('floor').indexOf('b1')<0,'undo removes the added drill');
+// apply: duration writes the global hold override; undo restores
+sandbox.saveActiveList('mobility',['m0','m13']);sandbox.localStorage.removeItem('stretch_times');sandbox.coachEditState={};
+var _eDur=sandbox.coachMobValid({type:'mobility',action:'duration',drill:'Neck CARs',seconds:60});
+sandbox.coachDoApprove(_eDur);
+ok(sandbox.getStretchTime('m0',40)===60,'approving a duration change writes the hold override');
+sandbox.coachMobUndo(_eDur,sandbox.coachEditState[sandbox.coachEditKey(_eDur)]);
+ok(sandbox.getStretchTime('m0',40)===40,'undo restores the original (unset) hold');
+// home render: mobility report hides the workout-only Focus row + relabels the button
+sandbox.coachKind='mobility';sandbox.coachRender('home');
+var _ch=sandbox.document.getElementById('shtBody').innerHTML;
+ok(/coachSetKind\('mobility'\)/.test(_ch)&&/Analyze my mobility/.test(_ch),'home shows the report-kind switch + mobility button label');
+ok(_ch.indexOf('>Focus<')<0,'Focus chips are hidden for the mobility report');
+sandbox.coachKind='workout';sandbox.coachRender('home');
+ok(/>Focus</.test(sandbox.document.getElementById('shtBody').innerHTML),'Focus chips return for the workout report');
+sandbox.coachKind='workout';sandbox.coachEditState={};
+sandbox.localStorage.removeItem('active_floor');sandbox.localStorage.removeItem('active_mobility');sandbox.localStorage.removeItem('stretch_times');sandbox.stSet='floor';
+
 // ===== v6: reps grid, rest-after-final-set, rest-tick audio, badge removed =====
 sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.loadState();sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
 // reps grid picker
