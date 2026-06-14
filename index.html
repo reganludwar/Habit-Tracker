@@ -109,6 +109,26 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .mob-body{flex:1;min-width:0;cursor:pointer;-webkit-user-select:none;user-select:none}
 .mob-lbl{font-size:15px;font-weight:500}
 .mob-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.mob-tight{flex-shrink:0;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--muted);border:1px solid var(--border);border-radius:11px;padding:5px 10px;margin-left:6px;cursor:pointer;-webkit-user-select:none;user-select:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.mob-tight.on{color:var(--accent);border-color:var(--accent);background:rgba(212,168,67,.08)}
+.mob-tight-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.st-sugg{margin:0 0 14px;border:1px solid var(--border);border-radius:14px;background:rgba(212,168,67,.04);padding:12px 14px}
+.st-sugg-hd{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:10px}
+.st-sugg-ttl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.st-sugg-areas{font-size:11px;color:var(--muted);text-align:right}
+.st-sugg-empty{font-size:12px;color:var(--muted);line-height:1.5;padding:2px 0 4px}
+.st-sugg-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
+.st-sugg-main{flex:1;min-width:0}
+.st-sugg-line{font-size:13px;line-height:1.4}
+.st-sugg-line b{color:var(--accent);font-weight:700}
+.st-sugg-ai{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;color:#000;background:var(--accent);border-radius:4px;padding:1px 5px;margin-right:6px;vertical-align:1px}
+.st-sugg-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.st-sugg-btns{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.st-sugg-ok{background:var(--accent);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:.04em;padding:7px 13px;cursor:pointer;text-transform:uppercase}
+.st-sugg-no{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:15px;line-height:1;padding:5px 9px;cursor:pointer}
+.st-sugg-tailor{width:100%;margin-top:10px;background:var(--surf);color:var(--text);border:1.5px solid var(--border);border-radius:9px;font-size:12px;font-weight:600;letter-spacing:.06em;padding:11px;cursor:pointer;text-transform:uppercase}
+.st-sugg-tailor:disabled{opacity:.6;cursor:default}
+.st-sugg-err{font-size:12px;color:var(--red);margin-top:8px;line-height:1.45}
 .panel{background:var(--surf);border-top:1px solid var(--border);
   overflow:hidden;max-height:0;transition:max-height .32s cubic-bezier(.4,0,.2,1)}
 .panel.open{max-height:1200px}
@@ -894,6 +914,30 @@ var MOB_BASE=[
   {name:'Ankle Rocks',area:'Ankles',note:'Each side',cue:'Half-kneel with the front foot flat. Drive the front knee forward past the toes and back, keeping the heel glued to the floor. About 8 reps.',sec:30},
   {name:'Wrist Circles & Rocks',area:'Wrists',note:'',cue:'Place the palms on the floor, fingers spread. Gently rock forward and back over the wrists, then circle them both ways. Preps the wrists for pushups and planks. About 8 reps.',sec:35}
 ];
+/* ── TIGHT-AREA TAXONOMY (adaptive mobility/stretch — Feature A) ──────────────
+   Canonical body areas the user can flag as chronically tight (on the Day page). Every catalog
+   drill is tagged with the areas it targets so the routine can adapt: longer holds on drills that
+   already hit a tight area, plus suggested adds when an area is thin. Suggestions are always
+   approved by the user — the routine order is never shuffled. */
+var TIGHT_AREAS=[
+  {key:'neck',lbl:'Neck'},
+  {key:'shoulders',lbl:'Shoulders'},
+  {key:'chest',lbl:'Chest'},
+  {key:'tspine',lbl:'Upper back / T-spine'},
+  {key:'lowerback',lbl:'Lower back'},
+  {key:'hips',lbl:'Hips'},
+  {key:'glutes',lbl:'Glutes'},
+  {key:'hamstrings',lbl:'Hamstrings'},
+  {key:'quads',lbl:'Quads / hip flexors'},
+  {key:'ankles',lbl:'Ankles'},
+  {key:'wrists',lbl:'Wrists'}
+];
+/* mobility 'area' label -> canonical tight-area keys (core/activation work maps to nothing tight) */
+var MOB_AREA_MAP={'Neck':['neck'],'Shoulders':['shoulders'],'Core / Shoulders':['shoulders'],'Spine':['tspine','lowerback'],'T-Spine':['tspine'],'Core':[],'Glutes':['glutes'],'Hips':['hips'],'Ankles':['ankles'],'Wrists':['wrists']};
+/* stretch catalog id (FLOOR_STR then EXTRA_STR => b0..b10) -> canonical tight-area keys */
+var STR_AREA_MAP={b0:['quads','hips'],b1:['hips','glutes'],b2:['hamstrings','lowerback'],b3:['tspine'],b4:['chest','shoulders'],b5:['hips'],b6:['hips','glutes'],b7:['hips'],b8:['hamstrings','hips'],b9:['shoulders'],b10:['tspine','glutes']};
+function areaLbl(k){for(var i=0;i<TIGHT_AREAS.length;i++)if(TIGHT_AREAS[i].key===k)return TIGHT_AREAS[i].lbl;return k;}
+function catalogAreas(id,mobAreaStr){if(id&&STR_AREA_MAP[id])return STR_AREA_MAP[id].slice();if(mobAreaStr&&MOB_AREA_MAP[mobAreaStr])return MOB_AREA_MAP[mobAreaStr].slice();return [];}
 var WOM=[[],['chest','shoulders','triceps'],['quads','glutes','hamstrings'],['back','biceps'],['quads','glutes','hamstrings'],['chest','back','biceps','shoulders','triceps'],[]];
 var SNM={'snk_pu':['chest','shoulders','triceps'],'snk_mt':['chest','shoulders','triceps'],'snk_pl':['back','biceps'],'snk_sq':['quads','glutes','hamstrings'],'snk_dh':[],'snk_pw':[]};
 function olap(a,b){for(var i=0;i<a.length;i++){for(var j=0;j<b.length;j++){if(a[i]===b[j])return true;}}return false;}
@@ -986,7 +1030,7 @@ function loadCustomStretches(){try{var s=localStorage.getItem('custom_stretches'
 function saveCustomStretches(arr){try{localStorage.setItem('custom_stretches',JSON.stringify(arr));}catch(e){storageFail();}}
 function loadCustomMobility(){try{var s=localStorage.getItem('custom_mobility');if(!s)return[];var arr=JSON.parse(s);var ch=false;for(var i=0;i<arr.length;i++){if(!arr[i].id){arr[i].id='cm_'+(Date.now()+i);ch=true;}}if(ch)localStorage.setItem('custom_mobility',JSON.stringify(arr));return arr;}catch(e){return[];}}
 function saveCustomMobility(arr){try{localStorage.setItem('custom_mobility',JSON.stringify(arr));}catch(e){storageFail();}}
-function getCatalogMap(){var map={},i;for(i=0;i<ALL_BASE.length;i++)map['b'+i]={id:'b'+i,name:ALL_BASE[i].name,note:ALL_BASE[i].note,sec:ALL_BASE[i].sec,cue:ALL_BASE[i].cue,builtin:true};for(i=0;i<MOB_BASE.length;i++)map['m'+i]={id:'m'+i,name:MOB_BASE[i].name,note:MOB_BASE[i].note,sec:MOB_BASE[i].sec,cue:MOB_BASE[i].cue,area:MOB_BASE[i].area,mob:true,builtin:true};var cs=loadCustomStretches();for(i=0;i<cs.length;i++){var c=cs[i];map[c.id]={id:c.id,name:c.name,note:c.note||'',sec:c.sec,cue:'',builtin:false};}var cm=loadCustomMobility();for(i=0;i<cm.length;i++){var m=cm[i];map[m.id]={id:m.id,name:m.name,note:m.note||'',sec:m.sec,cue:m.cue||'',area:'Custom',mob:true,builtin:false};}return map;}
+function getCatalogMap(){var map={},i;for(i=0;i<ALL_BASE.length;i++)map['b'+i]={id:'b'+i,name:ALL_BASE[i].name,note:ALL_BASE[i].note,sec:ALL_BASE[i].sec,cue:ALL_BASE[i].cue,areas:catalogAreas('b'+i,null),builtin:true};for(i=0;i<MOB_BASE.length;i++)map['m'+i]={id:'m'+i,name:MOB_BASE[i].name,note:MOB_BASE[i].note,sec:MOB_BASE[i].sec,cue:MOB_BASE[i].cue,area:MOB_BASE[i].area,areas:catalogAreas('m'+i,MOB_BASE[i].area),mob:true,builtin:true};var cs=loadCustomStretches();for(i=0;i<cs.length;i++){var c=cs[i];map[c.id]={id:c.id,name:c.name,note:c.note||'',sec:c.sec,cue:'',areas:[],builtin:false};}var cm=loadCustomMobility();for(i=0;i<cm.length;i++){var m=cm[i];map[m.id]={id:m.id,name:m.name,note:m.note||'',sec:m.sec,cue:m.cue||'',area:'Custom',areas:[],mob:true,builtin:false};}return map;}
 function defaultActive(mode){if(mode==='mobility')return['m0','m2','m5','m6','m7','m9','m10','m11','m13','m16'];if(mode==='full')return['b0','b1','b2','b3','b4','b5','b6','b7','b8','b9','b10'];return['b0','b1','b2','b3','b4'];}
 function loadActiveList(mode){try{var s=localStorage.getItem('active_'+mode);if(s)return JSON.parse(s);}catch(e){}return defaultActive(mode);}
 function saveActiveList(mode,list){try{localStorage.setItem('active_'+mode,JSON.stringify(list));}catch(e){storageFail();}}
@@ -997,6 +1041,100 @@ function loadStretchTimes(){try{var s=localStorage.getItem('stretch_times');if(s
 function saveStretchTimes(t){try{localStorage.setItem('stretch_times',JSON.stringify(t));}catch(e){}}
 function getStretchTime(id,def){var t=loadStretchTimes();return t[id]!==undefined?t[id]:def;}
 function setStretchTime(id,sec){var t=loadStretchTimes();t[id]=sec;saveStretchTimes(t);}
+/* ── CHRONIC TIGHT-AREA CHECK-IN (Feature A) ─────────────────────────────────
+   A standing list of body areas the user flags as chronically tight, set on the Day page.
+   Persists until cleared (no daily reset). Drives the Stretch-tab suggestion engine below. */
+function getTightAreas(){try{var s=localStorage.getItem('tight_areas');if(s){var a=JSON.parse(s);if(a&&a.length!==undefined){var keys={},out=[];for(var i=0;i<TIGHT_AREAS.length;i++)keys[TIGHT_AREAS[i].key]=1;for(var j=0;j<a.length;j++)if(keys[a[j]]&&out.indexOf(a[j])<0)out.push(a[j]);return out;}}}catch(e){}return [];}
+function saveTightAreas(a){try{localStorage.setItem('tight_areas',JSON.stringify(a));}catch(e){storageFail();}}
+function isTight(k){return getTightAreas().indexOf(k)>=0;}
+function toggleTightArea(k){var a=getTightAreas(),i=a.indexOf(k);if(i>=0)a.splice(i,1);else a.push(k);saveTightAreas(a);return a;}
+/* ── STRETCH-TAB SUGGESTION ENGINE ──────────────────────────────────────────
+   Rules run instantly & offline for the current mode: longer holds on drills that already hit a
+   tight area, plus a targeted add when an area is thinly covered (<2 drills). The order of the
+   routine is never touched. The "Tailor with AI" button augments these with reasoned coach picks.
+   Every suggestion is approved per-item; dismissals last for the session. */
+var stSugg=[],stSuggAI=[],stSuggState={},stSuggRendered=[],stSuggBusy=false,stSuggErr='';
+function stSuggKey(s){return s.kind+'|'+s.mode+'|'+s.id;}
+function stTargetHold(mode){return mode==='mobility'?60:90;}
+function stSuggCompute(){
+  var tight=getTightAreas();if(!tight.length)return [];
+  var mode=stSet,map=getCatalogMap(),active=loadActiveList(mode),out=[],i,j;
+  var cov={};for(i=0;i<active.length;i++){var s=map[active[i]];if(!s)continue;var ar=s.areas||[];for(j=0;j<ar.length;j++)cov[ar[j]]=(cov[ar[j]]||0)+1;}
+  var target=stTargetHold(mode),pfx=mode==='mobility'?'m':'b',base=mode==='mobility'?MOB_BASE:ALL_BASE;
+  for(var t=0;t<tight.length;t++){var area=tight[t],best=null;
+    for(i=0;i<active.length;i++){var s2=map[active[i]];if(!s2||(s2.areas||[]).indexOf(area)<0)continue;var cur=getStretchTime(s2.id,s2.sec);if(cur<target&&(!best||cur<best.cur))best={id:s2.id,name:s2.name,cur:cur};}
+    if(best)out.push({kind:'dur',mode:mode,id:best.id,name:best.name,area:area,cur:best.cur,val:target,src:'rule',why:'Longer hold for tight '+areaLbl(area).toLowerCase()});
+    if((cov[area]||0)<2){var cand=null;for(i=0;i<base.length;i++){var id=pfx+i;if(active.indexOf(id)>=0)continue;var s3=map[id];if(!s3||(s3.areas||[]).indexOf(area)<0)continue;cand=s3;break;}
+      if(cand)out.push({kind:'add',mode:mode,id:cand.id,name:cand.name,area:area,cur:0,val:getStretchTime(cand.id,cand.sec),src:'rule',why:'Adds '+areaLbl(area).toLowerCase()+' coverage'});}
+  }
+  var seen={},dd=[];for(i=0;i<out.length;i++){var k=out[i].kind+'|'+out[i].id;if(seen[k])continue;seen[k]=1;dd.push(out[i]);}
+  return dd;
+}
+function stSuggList(){var base=stSuggCompute();
+  for(var i=0;i<stSuggAI.length;i++){var a=stSuggAI[i];if(a.mode!==stSet)continue;var dup=false;
+    for(var j=0;j<base.length;j++)if(base[j].kind===a.kind&&base[j].id===a.id){base[j].val=a.val;base[j].why=a.why;base[j].src='ai';dup=true;break;}
+    if(!dup)base.push(a);}
+  var out=[];for(var k=0;k<base.length;k++)if(stSuggState[stSuggKey(base[k])]!=='dismissed')out.push(base[k]);
+  return out;}
+function stSuggInsertPos(active,s){var map=getCatalogMap(),pos=active.length,addAreas=(map[s.id]&&map[s.id].areas)||[s.area];
+  for(var i=0;i<active.length;i++){var d=map[active[i]];if(!d)continue;var ar=d.areas||[];for(var j=0;j<ar.length;j++)if(addAreas.indexOf(ar[j])>=0)pos=i+1;}
+  return pos;}
+function stSuggApprove(i){var s=stSuggRendered[i];if(!s)return;
+  if(s.kind==='dur'){setStretchTime(s.id,s.val);}
+  else if(s.kind==='add'){var active=loadActiveList(s.mode);if(active.indexOf(s.id)<0){active.splice(stSuggInsertPos(active,s),0,s.id);saveActiveList(s.mode,active);}if(s.val)setStretchTime(s.id,s.val);}
+  stSuggState[stSuggKey(s)]='approved';stTimes=[];renderStretch();}
+function stSuggDismiss(i){var s=stSuggRendered[i];if(!s)return;stSuggState[stSuggKey(s)]='dismissed';renderStretch();}
+function stSuggHTML(){
+  var tight=getTightAreas();
+  if(!tight.length&&!stSuggBusy&&!stSuggErr)return '';
+  var list=stSuggList();stSuggRendered=list;
+  var h='<div class="st-sugg"><div class="st-sugg-hd"><span class="st-sugg-ttl">Tuned for tight areas</span>'+(tight.length?'<span class="st-sugg-areas">'+tight.map(areaLbl).join(' &middot; ')+'</span>':'')+'</div>';
+  if(!tight.length)h+='<div class="st-sugg-empty">No tight areas flagged. Set them on the Day page to adapt this routine.</div>';
+  else if(!list.length&&!stSuggBusy)h+='<div class="st-sugg-empty">Your '+(stSet==='mobility'?'drills':'stretches')+' already cover these. Tap below for a reasoned pass.</div>';
+  for(var i=0;i<list.length;i++){var s=list[i];
+    var line=s.kind==='dur'?(esc(s.name)+' &middot; '+fmtTime(s.cur)+' &rarr; <b>'+fmtTime(s.val)+'</b>'):('Add <b>'+esc(s.name)+'</b> &middot; '+fmtTime(s.val));
+    h+='<div class="st-sugg-row"><div class="st-sugg-main"><div class="st-sugg-line">'+(s.src==='ai'?'<span class="st-sugg-ai">AI</span>':'')+line+'</div>'+(s.why?'<div class="st-sugg-why">'+esc(s.why)+'</div>':'')+'</div><div class="st-sugg-btns"><button class="st-sugg-ok" onclick="stSuggApprove('+i+')">'+(s.kind==='add'?'Add':'Apply')+'</button><button class="st-sugg-no" onclick="stSuggDismiss('+i+')" title="Dismiss">&#215;</button></div></div>';}
+  h+='<button class="st-sugg-tailor"'+(stSuggBusy?' disabled':'')+' onclick="stTailor()">'+(stSuggBusy?'Tailoring&hellip;':'&#10022; Tailor with AI coach')+'</button>';
+  if(stSuggErr)h+='<div class="st-sugg-err">'+esc(stSuggErr)+'</div>';
+  return h+'</div>';
+}
+/* AI tailoring: a focused, direct call (reuses the Coach key/model) that may only lengthen a drill
+   already in the routine or add one from the catalog — never reorder, remove, or invent. Results
+   merge into the same approve cards as the rules above. */
+function stTailorPayload(){var mode=stSet,map=getCatalogMap(),active=loadActiveList(mode),routine=[],avail=[],i;
+  for(i=0;i<active.length;i++){var s=map[active[i]];if(!s)continue;routine.push({name:s.name,seconds:getStretchTime(s.id,s.sec),areas:s.areas||[]});}
+  var pfx=mode==='mobility'?'m':'b',base=mode==='mobility'?MOB_BASE:ALL_BASE;
+  for(i=0;i<base.length;i++){var id=pfx+i;if(active.indexOf(id)>=0)continue;var c=map[id];if(c)avail.push({name:c.name,seconds:c.sec,areas:c.areas||[]});}
+  return {mode:mode,tightAreas:getTightAreas().map(areaLbl),routine:routine,availableToAdd:avail};}
+function stCatalogByName(mode,name){if(!name)return null;var map=getCatalogMap(),pfx=mode==='mobility'?'m':'b',base=mode==='mobility'?MOB_BASE:ALL_BASE;
+  var norm=function(x){return String(x).toLowerCase().replace(/[^a-z0-9]/g,'');},nn=norm(name),i;
+  for(i=0;i<base.length;i++){var id=pfx+i;if(map[id]&&norm(map[id].name)===nn)return map[id];}
+  var cs=mode==='mobility'?loadCustomMobility():loadCustomStretches();for(i=0;i<cs.length;i++)if(map[cs[i].id]&&norm(map[cs[i].id].name)===nn)return map[cs[i].id];
+  return null;}
+function stSuggAIPush(s){var k=stSuggKey(s);for(var i=0;i<stSuggAI.length;i++)if(stSuggKey(stSuggAI[i])===k){stSuggAI[i]=s;if(stSuggState[k]==='dismissed')delete stSuggState[k];return;}stSuggAI.push(s);if(stSuggState[k]==='dismissed')delete stSuggState[k];}
+function stTailorParse(txt,mode){txt=txt||'';var raw=null,re=/```json\s*([\s\S]*?)```/gi,m;while((m=re.exec(txt))){try{var o=JSON.parse(m[1]);if(o&&o.suggestions)raw=o.suggestions;}catch(e){}}
+  if(!raw){try{var o2=JSON.parse(txt);if(o2&&o2.suggestions)raw=o2.suggestions;}catch(e){}}
+  if(!raw||!raw.length)return 0;
+  var active=loadActiveList(mode),n=0;
+  for(var i=0;i<raw.length&&n<6;i++){var s=raw[i];if(!s||!s.drill)continue;var cat=stCatalogByName(mode,s.drill);if(!cat)continue;var secs=parseInt(s.seconds,10);
+    if(s.action==='setDuration'){if(active.indexOf(cat.id)<0)continue;var cur=getStretchTime(cat.id,cat.sec);if(!(secs>cur))continue;secs=Math.min(secs,Math.max(cur,30)+120);
+      stSuggAIPush({kind:'dur',mode:mode,id:cat.id,name:cat.name,area:(cat.areas&&cat.areas[0])||'',cur:cur,val:secs,src:'ai',why:String(s.why||'Coach: longer hold').slice(0,90)});n++;}
+    else if(s.action==='addDrill'){if(active.indexOf(cat.id)>=0)continue;if(!(secs>0))secs=cat.sec;secs=Math.min(secs,180);
+      stSuggAIPush({kind:'add',mode:mode,id:cat.id,name:cat.name,area:(cat.areas&&cat.areas[0])||'',cur:0,val:secs,src:'ai',why:String(s.why||'Coach: targets a tight area').slice(0,90)});n++;}}
+  return n;}
+function stTailor(){var key=coachKey();if(!key){stSuggErr='Add your Anthropic API key in the Coach tab to use AI tailoring.';renderStretch();return;}
+  if(!getTightAreas().length){stSuggErr='Flag a tight area on the Day page first.';renderStretch();return;}
+  if(stSuggBusy)return;stSuggBusy=true;stSuggErr='';renderStretch();
+  var p=stTailorPayload();
+  var sys='You are a mobility coach tailoring a '+(p.mode==='mobility'?'mobility':'stretching')+' routine to the user\'s chronically tight areas. You may ONLY (1) increase the hold/duration of a drill already in the routine, or (2) add a drill from availableToAdd. Never reorder, never remove, never invent a drill. Prefer 2-4 high-value changes that best serve the tight areas. Respond with ONLY a fenced ```json block of the form {"suggestions":[{"action":"setDuration"|"addDrill","drill":"<exact name>","seconds":<integer>,"why":"<short reason>"}]}.';
+  var user='Tight areas: '+p.tightAreas.join(', ')+'.\n\nCurrent routine (JSON):\n'+JSON.stringify(p.routine)+'\n\nDrills available to add (JSON):\n'+JSON.stringify(p.availableToAdd)+'\n\nReturn only the JSON block.';
+  var body={model:coachModel(),max_tokens:700,system:sys,messages:[{role:'user',content:user}]};
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)})
+    .then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j};},function(){return {ok:res.ok,status:res.status,j:null};});})
+    .then(function(r){stSuggBusy=false;if(!r.ok){var msg=(r.j&&r.j.error&&r.j.error.message)?r.j.error.message:('HTTP '+r.status);stSuggErr=coachFriendlyErr(r.status,msg);renderStretch();return;}
+      var txt='';if(r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;
+      var added=stTailorParse(txt,p.mode);stSuggErr=added?'':'The coach suggested no changes for these areas.';renderStretch();})
+    .catch(function(e){stSuggBusy=false;stSuggErr='Network error: '+(e&&e.message?e.message:e)+'. Confirm your connection and that your key allows direct browser access.';renderStretch();});}
 var stSet='floor',stTimes=[],stIdx=0,stSecs=0,stInterval=null;
 var stPaused=false,stPreStart=false,stTransition=false,stSwitchTrans=false,stSwitched=false,stTotalStretches=0,stShownImg=null;
 var ST_TRANS=12,ST_SWITCH=10;
@@ -1056,7 +1194,9 @@ function renderStretch(){
   var total=0;for(var i=0;i<list.length;i++)total+=stretchDur(i);
   var isMob=stSet==='mobility';
   var h='<div class="st-set-toggle"><div class="st-tog'+(stSet==='floor'?' active':'')+'" onclick="stSwitch(\'floor\')">Floor &ndash; 10 min</div><div class="st-tog'+(stSet==='full'?' active':'')+'" onclick="stSwitch(\'full\')">Full &ndash; 20 min</div><div class="st-tog'+(isMob?' active':'')+'" onclick="stSwitch(\'mobility\')">Mobility</div></div>';
-  h+='<div class="st-mode-desc">'+(isMob?'Active mobility &mdash; controlled movement and activation, not static holds.':'Static stretches &mdash; ease in, hold, and breathe.')+'</div><div class="st-list">';
+  h+='<div class="st-mode-desc">'+(isMob?'Active mobility &mdash; controlled movement and activation, not static holds.':'Static stretches &mdash; ease in, hold, and breathe.')+'</div>';
+  h+=stSuggHTML();
+  h+='<div class="st-list">';
   for(var i=0;i<list.length;i++){var s=list[i],bil=s.note==='Each side';var thumb=getStretchSVG(s.id)?'<div class="st-thumb">'+getStretchSVG(s.id)+'</div>':(s.mob?'<div class="st-thumb st-area">'+(s.area||'Mobility')+'</div>':'');var sub=bil?'<div class="st-note">per side</div>':'';var desc=(s.mob&&s.cue)?'<div class="st-desc">'+esc(s.cue)+'</div>':'';h+='<div class="st-row'+(s.builtin?'':' st-custom')+'">'+thumb+'<div class="st-name"><div class="st-lbl">'+esc(s.name)+'</div>'+sub+desc+'</div><div class="st-adj"><div class="st-btn" onclick="stAdjId(\''+s.id+'\',-30)">&#8722;</div><div class="st-time" id="stt_'+s.id+'">'+fmtTime(s.sec)+'</div><div class="st-btn" onclick="stAdjId(\''+s.id+'\',30)">+</div><div class="st-btn st-remove" onclick="removeFromActive(\''+s.id+'\')" title="Remove">&#215;</div></div></div>';}
   if(list.length===0)h+='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">No active '+(isMob?'drills':'stretches')+'. Tap + to add.</div>';
   h+='</div><div class="st-total" id="st_total">Total: '+fmtTime(total)+'</div><div class="st-actions"><button class="st-start" onclick="startTimer()">Start Session</button><div class="st-icon-btn" onclick="openCatalogSheet()" style="font-size:22px;font-weight:300">+</div><div class="st-icon-btn" onclick="resetActiveList()" style="font-size:18px">&#8635;</div><div class="st-icon-btn" onclick="setView(\'day\')">&#215;</div></div>';
@@ -1075,7 +1215,11 @@ function addCustomMobility(){var nameEl=document.getElementById('newSName');if(!
 function exRows(rows,pfx){var h='';for(var i=0;i<rows.length;i++){var k='r_'+pfx+'_'+i,cls=state[k]?' done':'';h+='<div class="rrow'+cls+'" id="rr_'+k+'" onclick="toggleRow(\''+k+'\')"><div class="rchk"><span class="rchk-mark">&#10003;</span></div><span class="rname">'+rows[i][0]+'</span><span class="rset">'+rows[i][1]+'</span></div>';}return h;}
 function mobRows(rows){var h='';for(var i=0;i<rows.length;i++)h+='<div class="drow"><span class="rname">'+rows[i][0]+'</span><span class="mtime">'+rows[i][1]+'</span></div>';return h;}
 function panelInner(type){if(type==='mon')return'<span class="plbl">Exercises</span>'+exRows(MON,'mon');if(type==='tue')return'<span class="plbl">Exercises</span>'+exRows(TUE,'tue');if(type==='wed')return'<span class="plbl">Exercises</span>'+exRows(WED,'wed');if(type==='thu')return'<span class="plbl">Exercises</span>'+exRows(THU,'thu');if(type==='fri')return'<span class="plbl">Exercises</span>'+exRows(FRI,'fri');if(type==='floor'){var fr=[];for(var i=0;i<FLOOR_STR.length;i++)fr.push([FLOOR_STR[i].name,FLOOR_STR[i].note||'']);return'<span class="plbl">Stretches &mdash; 10 min</span>'+mobRows(fr);}if(type==='full'){var al=FLOOR_STR.concat(EXTRA_STR),ar=[];for(var i=0;i<al.length;i++)ar.push([al[i].name,al[i].note||'']);return'<span class="plbl">All stretches &mdash; 20 min</span>'+mobRows(ar);}return'';}
-function mobRowHTML(item){var n=state[item.id]||0,eo=state['x_'+item.id]?' open':'';var cls=n===2?'c2':n===1?'c1':'';var metaTxt=n===0?item.meta:n===1?'Done once':'Done twice';return'<div class="mob-row"><div class="mob-cnt '+cls+'" id="mobcnt_'+item.id+'" onclick="cycleMob(\''+item.id+'\')">'+n+'</div><div class="mob-body" onclick="toggleExp(\''+item.id+'\')"><div class="mob-lbl">'+item.lbl+'</div><div class="mob-meta" id="mobmeta_'+item.id+'">'+metaTxt+'</div></div><span class="arrow'+eo+'" id="ar_'+item.id+'" onclick="toggleExp(\''+item.id+'\')" style="margin-left:8px">&#9654;</span></div><div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner" id="pi_'+item.id+'">'+panelInner(n>=2?'full':'floor')+'</div></div>';}
+function tightChipLabel(){var n=getTightAreas().length;return n?('<span class="mob-tight-dot"></span>'+n+' tight area'+(n>1?'s':'')):'+ Tight areas';}
+function refreshTightChip(){var el=document.getElementById('mob_tightchip');if(el){var n=getTightAreas().length;el.className='mob-tight'+(n?' on':'');el.innerHTML=tightChipLabel();}}
+function mobRowHTML(item){var n=state[item.id]||0,eo=state['x_'+item.id]?' open':'';var cls=n===2?'c2':n===1?'c1':'';var metaTxt=n===0?item.meta:n===1?'Done once':'Done twice';var tn=getTightAreas().length;return'<div class="mob-row"><div class="mob-cnt '+cls+'" id="mobcnt_'+item.id+'" onclick="cycleMob(\''+item.id+'\')">'+n+'</div><div class="mob-body" onclick="toggleExp(\''+item.id+'\')"><div class="mob-lbl">'+item.lbl+'</div><div class="mob-meta" id="mobmeta_'+item.id+'">'+metaTxt+'</div></div><span class="mob-tight'+(tn?' on':'')+'" id="mob_tightchip" onclick="event.stopPropagation();openTightSheet()">'+tightChipLabel()+'</span><span class="arrow'+eo+'" id="ar_'+item.id+'" onclick="toggleExp(\''+item.id+'\')" style="margin-left:8px">&#9654;</span></div><div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner" id="pi_'+item.id+'">'+panelInner(n>=2?'full':'floor')+'</div></div>';}
+function openTightSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Tight areas';document.getElementById('shtSub').textContent='Tap the spots that feel chronically tight';var sel=getTightAreas(),h='<div style="padding:4px 0">';for(var i=0;i<TIGHT_AREAS.length;i++){var a=TIGHT_AREAS[i],on=sel.indexOf(a.key)>=0;h+='<div class="co-row'+(on?' sel':'')+'" id="tgr_'+a.key+'" onclick="toggleTightRow(\''+a.key+'\')"><div class="co-chk'+(on?' sel':'')+'" id="tg_'+a.key+'"><span class="co-chk-mark">&#10003;</span></div><div class="co-body"><div class="co-lbl">'+a.lbl+'</div></div></div>';}h+='<div style="padding:14px 20px;font-size:12px;color:var(--muted);line-height:1.5">These stay flagged until you clear them. Your Stretch tab gives tight areas longer holds and suggests targeted drills.</div></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+function toggleTightRow(k){toggleTightArea(k);var on=isTight(k);var c=document.getElementById('tg_'+k);if(c)c.className='co-chk'+(on?' sel':'');var r=document.getElementById('tgr_'+k);if(r)r.className='co-row'+(on?' sel':'');refreshTightChip();stSuggAI=[];stSuggState={};}
 function itemHTML(item){if(item.id==='mob')return mobRowHTML(item);var done=state[item.id]?' done':'',hasE=!!item.expand,eo=state['x_'+item.id]?' open':'';var bc=item.t==='lift'?'b-lift':'b-mob';var badge=item.badge?'<span class="ibadge '+bc+'">'+item.badge+'</span>':'';var arrow=hasE?'<span class="arrow'+eo+'" id="ar_'+item.id+'">&#9654;</span>':'';var panel=hasE?'<div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner">'+panelInner(item.expand)+'</div></div>':'';var rc=hasE?'toggleExp(\''+item.id+'\')':'toggleItem(\''+item.id+'\')';var ca=hasE?' onclick="event.stopPropagation();toggleItem(\''+item.id+'\')"':'';var vit=(item.id==='cron')?'<div class="ivit'+(state['vit']?' on':'')+'" onclick="event.stopPropagation();toggleVit()"><span class="ivit-box"><span class="chk-mark">&#10003;</span></span>Vitamins</div>':'';return'<div class="item'+done+'" data-t="'+item.t+'" id="it_'+item.id+'" onclick="'+rc+'"><div class="chk"'+ca+'><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div>'+vit+badge+arrow+'</div>'+panel;}
 function toggleVit(){state['vit']=!state['vit'];save();renderDay();}
 function doToggleWalk(el){toggleWalk(el.getAttribute('data-wid'));}
@@ -2023,7 +2167,7 @@ function coachFocus(){return coachGet('coach_focus','balanced');}
 var COACH_EDIT_INSTR=' WHENEVER your prose recommends a concrete change to my day-templates — a starting load, sets, rep target, rest, or ADDING / REMOVING an exercise — you MUST also encode it so I can approve it with one tap. Append ONE fenced ```json code block AFTER the markdown, of the form {"edits":[{"day":"mon","exercise":"<exact exercise name>","field":"seedW" | "sets" | "repTarget" | "workRest" | "addExercise" | "removeExercise","value":<whole pounds for seedW, an integer for sets, "6-12" for repTarget, seconds for workRest; for add/remove just repeat the exercise name>,"why":"short reason"}]}. Rules: for seedW/sets/repTarget/workRest, edit ONLY an existing exercise by its EXACT name on that day, and use "seedW" only for weighted (PowerBlock) exercises. For "addExercise", the exercise MUST be one that already appears somewhere in weeklyTemplates (any day) — give its exact name and never invent a new movement; it is added to that day with its proven setup. For "removeExercise", name an exercise currently on that day (never the last one left). Up to 6 edits. Every actionable recommendation in your prose that fits these should also appear here. Omit the block only if you recommend no template changes at all.';
 function coachSystem(){
   var len=coachLen(),lenTxt=len==='lean'?'Keep it very tight: under ~200 words, almost all short bullets, no preamble.':len==='detailed'?'You may go in depth: up to ~800 words, briefly explaining the "why" where it helps.':'Keep the whole reply under ~450 words.';
-  var foc=coachFocus(),focMap={balanced:'',progression:' Emphasize progression: concrete next steps to add load, reps, sets, or exercises, with specific numbers.',imbalances:' Emphasize muscle and movement-pattern imbalances and injury risk (push/pull, squat/hinge, vertical/horizontal, unilateral, core).',mobility:' Emphasize mobility and flexibility: judge whether my mobility/stretch routine matches what my training demands, and what to add or drop.'};
+  var foc=coachFocus(),focMap={balanced:'',progression:' Emphasize progression: concrete next steps to add load, reps, sets, or exercises, with specific numbers.',imbalances:' Emphasize muscle and movement-pattern imbalances and injury risk (push/pull, squat/hinge, vertical/horizontal, unilateral, core).',mobility:' Emphasize mobility and flexibility: judge whether my mobility/stretch routine matches what my training demands, and what to add or drop. If tightAreas is present, address those chronically tight areas specifically and whether they are well covered.'};
   return COACH_SYSTEM_BASE+' '+lenTxt+' Lead with bullet lists and bold the key items.'+(focMap[foc]||'')+COACH_EDIT_INSTR;}
 function coachLoadReports(){try{var a=JSON.parse(localStorage.getItem('coach_reports'));return (a&&a.length)?a:[];}catch(e){return [];}}
 function coachSaveReports(a){try{localStorage.setItem('coach_reports',JSON.stringify(a.slice(0,25)));}catch(e){}}
@@ -2048,8 +2192,9 @@ function coachSessSummary(o){var d=new Date(o.dateMs),ex=[];for(var e=0;e<o.exer
 function coachTrends(sessions){var seen={},names=[];for(var i=0;i<sessions.length;i++)for(var e=0;e<sessions[i].exercises.length;e++){var n=sessions[i].exercises[e].name;if(!seen[n]){seen[n]=1;names.push(n);}}var tr=[];for(var j=0;j<names.length;j++){var h=woHistory(names[j],null);if(h.length<2)continue;var pts=[];for(var p=Math.max(0,h.length-6);p<h.length;p++){var dd=new Date(h[p].ms);pts.push((dd.getMonth()+1)+'/'+dd.getDate()+': '+woFmtMetric(h[p].kind,h[p].best));}tr.push({name:names[j],trend:pts});}return tr;}
 function coachTemplates(){var tags=['mon','tue','wed','thu','fri'],out=[];for(var i=0;i<tags.length;i++){var t=woNormTmpl(woEffTemplate(tags[i])),ex=[];for(var e=0;e<t.ex.length;e++){var x=t.ex[e];ex.push({name:x.name,load:x.load,measure:x.input,workSets:x.sets,repTarget:x.target?(x.target[0]+'-'+x.target[1]):null});}out.push({day:tags[i],focus:t.tag,exercises:ex});}return out;}
 function coachRoutine(mode){try{var ids=loadActiveList(mode),map=getCatalogMap(),names=[];for(var i=0;i<ids.length;i++)if(map[ids[i]])names.push(map[ids[i]].name);return names;}catch(e){return [];}}
+function coachTightSummary(){try{var tight=getTightAreas();if(!tight.length)return null;var map=getCatalogMap(),ids=[].concat(loadActiveList('mobility'),loadActiveList('floor'),loadActiveList('full')),cov={},i,j;for(i=0;i<ids.length;i++){var s=map[ids[i]];if(!s)continue;var ar=s.areas||[];for(j=0;j<ar.length;j++)cov[ar[j]]=(cov[ar[j]]||0)+1;}var out=[];for(var t=0;t<tight.length;t++)out.push({area:areaLbl(tight[t]),drillsCovering:cov[tight[t]]||0});return out;}catch(e){return null;}}
 function coachNudges(){var seen={},out=[],tags=['mon','tue','wed','thu','fri'];for(var i=0;i<tags.length;i++){var t=woNormTmpl(woEffTemplate(tags[i]));for(var e=0;e<t.ex.length;e++){var nm=t.ex[e].name;if(seen[nm])continue;seen[nm]=1;var n=woNudge(nm);if(n)out.push({exercise:nm,type:n.type,note:n.detail});}}return out;}
-function coachPayload(){_woInRender=true;_woScan=null;try{var r=coachRangeMs(coachRange),sessions=coachSessions(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),progressTrends:coachTrends(sessions),progressionNudges:coachNudges(),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch')};}finally{_woInRender=false;_woScan=null;}}
+function coachPayload(){_woInRender=true;_woScan=null;try{var r=coachRangeMs(coachRange),sessions=coachSessions(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),progressTrends:coachTrends(sessions),progressionNudges:coachNudges(),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch'),tightAreas:coachTightSummary()};}finally{_woInRender=false;_woScan=null;}}
 function coachPrompt(p,prev){var s='Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover three things:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING?\n3. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch work? Be specific, with target sets and reps.';
   if(prev)s+='\n\nFor reference, here is your previous analysis ('+prev.when+', covering '+prev.rangeLabel+'). Briefly note what has changed since and whether I acted on it — do NOT just repeat it:\n"""\n'+prev.text+'\n"""';
   s+='\n\nMy data as JSON:\n```json\n'+JSON.stringify(p,null,1)+'\n```';return s;}

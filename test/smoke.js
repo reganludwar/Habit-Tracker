@@ -329,6 +329,60 @@ sandbox.deleteFromCatalog('m2');
 ok(sandbox.MOB_BASE.length>=15,'deleteFromCatalog ignores built-in m* ids');
 sandbox.stSwitch('floor');
 
+// ===== Feature A: chronic tight-area check-in -> adaptive stretch/mobility =====
+// catalog drills are area-tagged
+var _cmap=sandbox.getCatalogMap();
+ok(_cmap['b0'].areas.indexOf('hips')>=0&&_cmap['b0'].areas.indexOf('quads')>=0,'Couch Stretch (b0) tagged hips+quads');
+ok(_cmap['b3'].areas.join(',')==='tspine','Thoracic Rotation (b3) tagged tspine');
+ok(_cmap['m13'].areas.indexOf('hips')>=0,'Hip CARs (m13) tagged hips from its area label');
+ok(Array.isArray(_cmap['m9'].areas)&&_cmap['m9'].areas.length===0,'Dead Bug (m9, Core) maps to no tight area');
+// chronic storage round-trips and is sanitized
+sandbox.localStorage.removeItem('tight_areas');
+ok(sandbox.getTightAreas().length===0,'tight areas start empty');
+sandbox.toggleTightArea('hips');sandbox.toggleTightArea('shoulders');sandbox.toggleTightArea('hips');
+ok(sandbox.getTightAreas().join(',')==='shoulders','toggle adds then removes (hips off, shoulders on)');
+sandbox.saveTightAreas(['hips','bogus','hips']);
+ok(sandbox.getTightAreas().join(',')==='hips','getTightAreas drops unknown + duplicate keys');
+// rules engine: tight hips on a thin floor list yields a duration boost + a targeted add
+sandbox.saveActiveList('floor',['b3']);sandbox.localStorage.removeItem('stretch_times');
+sandbox.saveTightAreas(['hips']);sandbox.stSet='floor';sandbox.stSuggAI=[];sandbox.stSuggState={};
+var _sg=sandbox.stSuggCompute();
+ok(_sg.some(function(s){return s.kind==='add'&&(sandbox.getCatalogMap()[s.id].areas.indexOf('hips')>=0);}),'rules suggest adding a hip drill when none active');
+sandbox.saveActiveList('floor',['b0','b3']);sandbox.setStretchTime('b0',60);
+var _sg2=sandbox.stSuggCompute();
+ok(_sg2.some(function(s){return s.kind==='dur'&&s.id==='b0'&&s.cur===60&&s.val===90;}),'rules suggest a longer hold on a short active hip drill (b0 60s->90s)');
+// approving a duration suggestion writes the override; approving an add inserts the drill
+sandbox.stSuggRendered=_sg2;
+var _durIdx=-1;for(var _i=0;_i<_sg2.length;_i++)if(_sg2[_i].kind==='dur'&&_sg2[_i].id==='b0')_durIdx=_i;
+sandbox.stSuggApprove(_durIdx);
+ok(sandbox.getStretchTime('b0',60)===90,'approving the boost sets b0 hold to the 90s target');
+sandbox.saveActiveList('floor',['b3']);sandbox.localStorage.removeItem('stretch_times');sandbox.stSuggState={};
+var _sg3=sandbox.stSuggCompute();sandbox.stSuggRendered=_sg3;
+var _addIdx=-1,_addId='';for(var _j=0;_j<_sg3.length;_j++)if(_sg3[_j].kind==='add'){_addIdx=_j;_addId=_sg3[_j].id;}
+sandbox.stSuggApprove(_addIdx);
+ok(sandbox.loadActiveList('floor').indexOf(_addId)>=0,'approving an add inserts the drill into the routine (saved to template)');
+ok(sandbox.loadActiveList('floor').indexOf('b3')>=0,'existing routine drills are untouched (no reorder/removal)');
+// AI parse: only valid setDuration/addDrill on real catalog drills are accepted
+sandbox.saveActiveList('floor',['b0','b3']);sandbox.localStorage.removeItem('stretch_times');sandbox.stSuggAI=[];sandbox.stSuggState={};
+var _aiTxt='```json\n{"suggestions":[{"action":"setDuration","drill":"Couch Stretch","seconds":120,"why":"open tight hips"},{"action":"addDrill","drill":"Pigeon Pose","seconds":90,"why":"glute/hip"},{"action":"addDrill","drill":"Totally Fake Drill","seconds":60,"why":"nope"}]}\n```';
+var _added=sandbox.stTailorParse(_aiTxt,'floor');
+ok(_added===2,'stTailorParse accepts the 2 real drills and rejects the invented one');
+ok(sandbox.stSuggAI.some(function(s){return s.src==='ai'&&s.kind==='dur'&&s.id==='b0'&&s.val===120;}),'AI duration suggestion captured at requested seconds');
+ok(sandbox.stSuggAI.some(function(s){return s.src==='ai'&&s.kind==='add'&&s.id==='b1';}),'AI add suggestion resolves Pigeon Pose -> b1');
+// coach payload now reports tight areas + how well covered they are
+sandbox.saveTightAreas(['hips']);
+var _cp2=sandbox.coachPayload();
+ok(_cp2.tightAreas&&_cp2.tightAreas[0].area.toLowerCase().indexOf('hip')>=0&&typeof _cp2.tightAreas[0].drillsCovering==='number','coachPayload includes tightAreas with coverage counts');
+sandbox.saveTightAreas([]);
+ok(sandbox.coachPayload().tightAreas===null,'coachPayload omits tightAreas (null) when none flagged');
+// day-page tight chip + sheet render without throwing, escaping intact
+sandbox.saveTightAreas(['hips','shoulders']);
+ok(/2 tight areas/.test(sandbox.tightChipLabel()),'tight chip label reflects flagged count');
+sandbox.openTightSheet();
+ok(/Tight areas/.test(sandbox.document.getElementById('shtTitle').textContent),'openTightSheet populates the sheet');
+sandbox.localStorage.removeItem('tight_areas');sandbox.localStorage.removeItem('active_floor');sandbox.localStorage.removeItem('stretch_times');
+sandbox.stSuggAI=[];sandbox.stSuggState={};sandbox.stSet='floor';
+
 // ===== v6: reps grid, rest-after-final-set, rest-tick audio, badge removed =====
 sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.loadState();sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
 // reps grid picker
