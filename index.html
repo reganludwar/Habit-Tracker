@@ -650,6 +650,8 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
 #themeBtn{position:fixed;top:calc(var(--safe-top) + 6px);right:14px;z-index:130;width:38px;height:38px;border-radius:50%;
   background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glassbd);
   box-shadow:var(--glow);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;-webkit-user-select:none;user-select:none}
+/* full-screen sessions (stretch timer, rest timer, test, done) cover the floating nav + theme toggle */
+.ts-session,.st-timer,.st-done{z-index:140}
 /* rounded glass surfaces */
 .sec-card,.wcard,.wo-ex,.wo-ed-ex,.st-list,.wo-notes,.wo-pr-card,.cmodal-card,.sec-card.cscore-card{
   border-radius:20px;border:1px solid var(--glassbd);background:var(--glass);
