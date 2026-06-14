@@ -1,7 +1,7 @@
 /* Training PWA service worker.
    Document is network-first (so deploys land immediately, offline falls back to the
    cached shell); static assets are cache-first. Bump CACHE to invalidate old caches. */
-var CACHE = 'ht-v23';
+var CACHE = 'ht-v24';
 var ASSETS = [
   './', './index.html', './manifest.json',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png',
