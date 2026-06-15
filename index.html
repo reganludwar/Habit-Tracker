@@ -890,7 +890,9 @@ var EXTRA_STR=[
   {name:'Folded Butterfly',note:'',cue:'Soles together, knees out. Hinge from the hips, let gravity pull you forward. No forcing.',sec:90},
   {name:'Seated Straddle',note:'',cue:'Legs wide, feet flexed. Reach forward, not down. Back as flat as possible.',sec:90},
   {name:'Overhead Lat Stretch',note:'Each side',cue:'Grab the door frame overhead, walk hips away. Lean slightly away to feel armpit to hip.',sec:60},
-  {name:'Spinal Twist',note:'Each side',cue:'On back, knee across the body. Both shoulders grounded. Let gravity do the work.',sec:60}
+  {name:'Spinal Twist',note:'Each side',cue:'On back, knee across the body. Both shoulders grounded. Let gravity do the work.',sec:60},
+  {name:'Frog Stretch',note:'',cue:'Knees wide, ankles in line with the knees, shins down. Sit hips back toward the heels with a flat back. Breathe into the inner thighs — ease in slowly.',sec:90},
+  {name:'Behind-Back Clasp',note:'',cue:'Stand tall, clasp hands behind your back, straighten the arms and lift them up and away. Chest open, shoulders down. Feel it across the chest and front of the shoulders.',sec:60}
 ];
 var ALL_BASE=FLOOR_STR.concat(EXTRA_STR);
 /* Mobility drills — active, controlled movement + activation/stability, distinct from the static
@@ -937,7 +939,7 @@ var TIGHT_AREAS=[
 /* mobility 'area' label -> canonical tight-area keys (core/activation work maps to nothing tight) */
 var MOB_AREA_MAP={'Neck':['neck'],'Shoulders':['shoulders'],'Core / Shoulders':['shoulders'],'Spine':['tspine','lowerback'],'T-Spine':['tspine'],'Core':[],'Glutes':['glutes'],'Hips':['hips'],'Ankles':['ankles'],'Wrists':['wrists']};
 /* stretch catalog id (FLOOR_STR then EXTRA_STR => b0..b10) -> canonical tight-area keys */
-var STR_AREA_MAP={b0:['quads','hips'],b1:['hips','glutes'],b2:['hamstrings','lowerback'],b3:['tspine'],b4:['chest','shoulders'],b5:['hips'],b6:['hips','glutes'],b7:['hips'],b8:['hamstrings','hips'],b9:['shoulders'],b10:['tspine','glutes']};
+var STR_AREA_MAP={b0:['quads','hips'],b1:['hips','glutes'],b2:['hamstrings','lowerback'],b3:['tspine'],b4:['chest','shoulders'],b5:['hips'],b6:['hips','glutes'],b7:['hips'],b8:['hamstrings','hips'],b9:['shoulders'],b10:['tspine','glutes'],b11:['hips','glutes'],b12:['chest','shoulders']};
 function areaLbl(k){for(var i=0;i<TIGHT_AREAS.length;i++)if(TIGHT_AREAS[i].key===k)return TIGHT_AREAS[i].lbl;return k;}
 function catalogAreas(id,mobAreaStr){if(id&&STR_AREA_MAP[id])return STR_AREA_MAP[id].slice();if(mobAreaStr&&MOB_AREA_MAP[mobAreaStr])return MOB_AREA_MAP[mobAreaStr].slice();return [];}
 var WOM=[[],['chest','shoulders','triceps'],['quads','glutes','hamstrings'],['back','biceps'],['quads','glutes','hamstrings'],['chest','back','biceps','shoulders','triceps'],[]];
@@ -1152,7 +1154,9 @@ var SSVG={
 'b7':'<img src="folded_butterfly.webp" alt="Folded Butterfly" loading="lazy" decoding="async" draggable="false" onerror="imgErr(this)">',
 'b8':'<img src="seated_straddle.webp" alt="Seated Straddle" loading="lazy" decoding="async" draggable="false" onerror="imgErr(this)">',
 'b9':'<svg viewBox="0 0 160 160" fill="none" stroke="#D4A843" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="148" x2="142" y2="148" stroke-opacity="0.25"/><line x1="138" y1="32" x2="138" y2="148" stroke-opacity="0.35"/><line x1="72" y1="86" x2="138" y2="58"/><line x1="138" y1="58" x2="138" y2="40"/><g><line x1="66" y1="148" x2="78" y2="148"/><line x1="68" y1="148" x2="70" y2="110"/><line x1="76" y1="148" x2="74" y2="110"/><line x1="72" y1="110" x2="72" y2="68"/><circle cx="72" cy="57" r="11"/><line x1="72" y1="84" x2="55" y2="100"/><animateTransform attributeName="transform" type="translate" values="0,0;-14,6;-14,6;0,0" keyTimes="0;0.4;0.65;1" dur="3.5s" repeatCount="indefinite"/></g></svg>',
-'b10':'<svg viewBox="0 0 160 160" fill="none" stroke="#D4A843" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="10" y1="90" x2="150" y2="90" stroke-opacity="0.2"/><circle cx="22" cy="78" r="11"/><line x1="33" y1="78" x2="118" y2="80"/><line x1="62" y1="80" x2="45" y2="58"/><line x1="118" y1="80" x2="144" y2="82"/><g><line x1="118" y1="80" x2="105" y2="62"/><line x1="105" y1="62" x2="84" y2="55"/><animateTransform attributeName="transform" type="rotate" values="0 118 80;18 118 80;18 118 80;0 118 80" keyTimes="0;0.4;0.65;1" dur="3.5s" repeatCount="indefinite"/></g></svg>'
+'b10':'<svg viewBox="0 0 160 160" fill="none" stroke="#D4A843" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="10" y1="90" x2="150" y2="90" stroke-opacity="0.2"/><circle cx="22" cy="78" r="11"/><line x1="33" y1="78" x2="118" y2="80"/><line x1="62" y1="80" x2="45" y2="58"/><line x1="118" y1="80" x2="144" y2="82"/><g><line x1="118" y1="80" x2="105" y2="62"/><line x1="105" y1="62" x2="84" y2="55"/><animateTransform attributeName="transform" type="rotate" values="0 118 80;18 118 80;18 118 80;0 118 80" keyTimes="0;0.4;0.65;1" dur="3.5s" repeatCount="indefinite"/></g></svg>',
+'b11':'<img src="frog.webp" alt="Frog Stretch" loading="lazy" decoding="async" draggable="false" onerror="imgErr(this)">',
+'b12':'<img src="behind_back_clasp.webp" alt="Behind-Back Clasp" loading="lazy" decoding="async" draggable="false" onerror="imgErr(this)">'
 };
 function getStretchSVG(id){return SSVG[id]||'';}
 function stGetList(){var map=getCatalogMap();var active=loadActiveList(stSet);var result=[];for(var i=0;i<active.length;i++){var s=map[active[i]];if(s){var sec=getStretchTime(s.id,s.sec);result.push({id:s.id,name:s.name,note:s.note,sec:sec,cue:s.cue,area:s.area,mob:s.mob,builtin:s.builtin});}}return result;}
