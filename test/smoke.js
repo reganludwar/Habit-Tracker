@@ -435,6 +435,15 @@ ok(/>Focus</.test(sandbox.document.getElementById('shtBody').innerHTML),'Focus c
 sandbox.coachKind='workout';sandbox.coachEditState={};
 sandbox.localStorage.removeItem('active_floor');sandbox.localStorage.removeItem('active_mobility');sandbox.localStorage.removeItem('stretch_times');sandbox.stSet='floor';
 
+// ===== New stretch poses: Frog (b11) + Behind-Back Clasp (b12) =====
+var _cm2=sandbox.getCatalogMap();
+ok(_cm2['b11']&&_cm2['b11'].name==='Frog Stretch','Frog Stretch is catalogued as b11 (existing ids unshifted)');
+ok(_cm2['b12']&&_cm2['b12'].name==='Behind-Back Clasp','Behind-Back Clasp is catalogued as b12');
+ok(_cm2['b9'].name==='Overhead Lat Stretch'&&_cm2['b10'].name==='Spinal Twist','appending the new poses did not renumber b9/b10');
+ok(_cm2['b11'].areas.indexOf('hips')>=0&&_cm2['b12'].areas.indexOf('chest')>=0&&_cm2['b12'].areas.indexOf('shoulders')>=0,'new poses carry area tags (frog→hips, clasp→chest/shoulders)');
+ok(/frog\.webp/.test(sandbox.getStretchSVG('b11'))&&/behind_back_clasp\.webp/.test(sandbox.getStretchSVG('b12')),'new poses are wired to their image files in SSVG');
+ok(sandbox.stCatalogByName('floor','Frog Stretch').id==='b11','Frog Stretch resolves by name for mobility-report edits');
+
 // ===== v6: reps grid, rest-after-final-set, rest-tick audio, badge removed =====
 sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.loadState();sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
 // reps grid picker

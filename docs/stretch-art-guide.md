@@ -41,7 +41,8 @@ Clean, calm, modern wellness-app aesthetic.
 | doorway chest opener — standing, forearm on a door frame, chest rotating away | `doorway_chest_opener` |
 | 90/90 hip stretch — seated on floor, both knees bent 90°, one front one back | `90_90` |
 | seated straddle — seated on floor, legs wide apart, folding forward | `seated_straddle` |
-| frog stretch — on hands and knees, knees spread wide *(optional, new)* | `frog` |
+| frog stretch — on hands and knees, knees spread wide, hips sitting back | `frog` |
+| behind-back clasp — standing, hands clasped behind the back, straight arms lifted up and away, chest open | `behind_back_clasp` |
 
 > The filename must be **exactly** the slug in the right column (lowercase, underscores) — the app matches by name.
 
