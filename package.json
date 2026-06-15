@@ -4,6 +4,7 @@
   "private": true,
   "description": "Offline-first PWA for habits, mobility, strength training, and fitness tests.",
   "scripts": {
-    "test": "node test/smoke.js"
+    "test": "node test/smoke.js",
+    "stretch-art": "node scripts/process-stretch.js"
   }
 }
