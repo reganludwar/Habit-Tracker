@@ -26,11 +26,18 @@ Paste this every time; swap only the **POSE** line.
 
 ```
 Single continuous line-art illustration of one person doing a [POSE].
-Minimalist, one consistent gold line (#D4A843) on a plain white background.
-Even ~3px stroke weight, no fill, no shading, no color gradients.
+Minimalist line drawing on a plain white background, no fill, no shading.
+The line is a smooth vertical gradient: cyan-blue (#4BB8D8) at the top,
+fading through blue (#598ED3) to violet (#6F6BCE) at the bottom.
+Even ~3px rounded stroke weight.
 Side profile, full body, centered in a square frame with margin.
 Clean, calm, modern wellness-app aesthetic.
 ```
+
+> **Match the existing set:** the four finished poses (pigeon, forward fold, double pigeon, folded
+> butterfly) all use this cyan→violet vertical gradient — there is **no gold**. Easiest way to lock it:
+> in Recraft, **import the color palette from `pigeon_pose.png`** and keep that image as your style
+> reference, so every new pose comes out the same.
 
 **Pose lines for the set we're (re)doing:**
 
@@ -52,7 +59,7 @@ Clean, calm, modern wellness-app aesthetic.
 
 For each pose:
 1. Swap the POSE line, generate 4 variations.
-2. **Pick by this checklist:** ☐ one gold line only ☐ white background ☐ pose looks anatomically right ☐ centered & roughly square ☐ no stray marks or text.
+2. **Pick by this checklist:** ☐ cyan→violet gradient line, no other colors ☐ white background ☐ pose looks anatomically right ☐ centered & roughly square ☐ no stray marks or text.
 3. Download the **PNG** at the highest resolution offered.
 4. Rename it to the exact slug from the table (e.g. `couch_stretch.png`).
 5. Drop it in the `stretch-art` folder. Done — no code, ever.
@@ -70,7 +77,7 @@ npm run stretch-art -- path/to/raw.png couch_stretch
 # or: node scripts/process-stretch.js path/to/raw.png couch_stretch
 ```
 
-This keys the white background to transparent (feathered, so the gold lines keep clean edges), trims the border, and centers the figure on a transparent **320×320** square. It writes `couch_stretch.webp` to the repo root, where the app already looks for it.
+This keys the white background to transparent (feathered, so the colored lines keep clean edges), trims the border, and centers the figure on a transparent **320×320** square. It writes `couch_stretch.webp` to the repo root, where the app already looks for it.
 
 - **Already wired:** the `SSVG` map in `index.html` references `couch_stretch.webp`, `forward_fold.webp`, etc. by name, so replacing/adding the file is all that's needed. A missing or broken file just hides itself (`imgErr`), so you can swap images in one at a time without breaking the page.
 - **Adding a brand-new pose** (e.g. `frog`): add an `<img src="frog.webp" …>` entry to `SSVG` for that drill's id.
@@ -85,6 +92,10 @@ This keys the white background to transparent (feathered, so the gold lines keep
 ## Style reference (what "Aurora" means here)
 
 - Single continuous **line art**, no fills or shading.
-- **One stroke color: gold `#D4A843`**, even ~3px weight (matches the hand-drawn SVG poses `b9`/`b10` in `index.html`).
+- **Cyan→violet vertical gradient stroke** — `#4BB8D8` (top) → `#598ED3` (mid) → `#6F6BCE` (bottom), even ~3px rounded weight. Matches the four finished poses (pigeon, forward fold, double pigeon, folded butterfly).
 - Square framing, figure centered with margin, side profile, minimal props (a floor line at most).
 - Transparent background in the final asset (the script handles that from a white input).
+
+> Note: two unfinished placeholder poses (`b9` Overhead Lat Stretch, `b10` Spinal Twist) are still
+> drawn as gold SVGs in `index.html` — those are the *old* style and should eventually be redrawn in
+> this gradient too. Don't use them as a color reference.
