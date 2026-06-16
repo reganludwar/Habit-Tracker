@@ -1147,6 +1147,21 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.weekOffset=0;sandbox.renderWeek();
   var wh=sandbox.document.getElementById('root').innerHTML;
   ok(/Logged totals/.test(wh)&&/55 min/.test(wh)&&/585 kcal/.test(wh),'Week view renders the cardio Logged totals row');
+  // carry-forward: selecting a cardio type seeds details from the most recent prior session (minus HR)
+  store.clear();
+  var _prior=sandbox.getDateForDow(2);
+  store.set(sandbox.storeKeyForDate(_prior),JSON.stringify({c_incl:true,'cdt_c_incl':{min:25,incl:15,spd:2.5,cal:305,hr:110}}));
+  sandbox.viewDow=4;sandbox.weekOffset=0;sandbox.loadState();
+  ok(!sandbox.state['cdt_c_incl'],'fresh day starts with no cardio details');
+  sandbox.toggleCardioOpt('c_incl');
+  ok(sandbox.state['c_incl']===true&&sandbox.state['cdt_c_incl'],'selecting a cardio type seeds details from the prior session');
+  ok(sandbox.state['cdt_c_incl'].incl===15&&sandbox.state['cdt_c_incl'].spd===2.5&&sandbox.state['cdt_c_incl'].cal===305,'carried-forward details reuse incline / speed / calories');
+  ok(sandbox.state['cdt_c_incl'].hr===undefined,'heart rate is NOT carried forward (left blank for a fresh reading)');
+  sandbox.toggleCardioOpt('c_bike');
+  ok(!sandbox.state['cdt_c_bike'],'a cardio type with no prior session seeds nothing');
+  // an existing same-day entry is never overwritten by carry-forward
+  sandbox.state={};sandbox.state['c_incl']=true;sandbox.state['cdt_c_incl']={min:40,incl:5};sandbox.toggleCardioOpt('c_incl');sandbox.toggleCardioOpt('c_incl');
+  ok(sandbox.state['cdt_c_incl'].min===40&&sandbox.state['cdt_c_incl'].incl===5,'re-selecting keeps the current day edits (no clobber from history)');
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
