@@ -1097,5 +1097,58 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Treadmill / cardio metrics + ACSM calorie estimate =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  // ACSM estimator: incline walking matches a treadmill console (~305 kcal for a ~186lb user)
+  var k=sandbox.estCardioKcal({min:25.5,spd:2.5,incl:15,weightLb:186});
+  ok(k>=295&&k<=315,'estCardioKcal: 25.5min @2.5mph/15% incline ~ treadmill 305 kcal (got '+k+')');
+  ok(sandbox.estCardioKcal({min:25.5,spd:2.5,incl:15,weightLb:186})>sandbox.estCardioKcal({min:25.5,spd:2.5,incl:0,weightLb:186}),'estCardioKcal: incline raises the burn');
+  ok(sandbox.estCardioKcal({min:25.5,dist:1.06,incl:15,weightLb:186})>0,'estCardioKcal: derives speed from distance+time when speed is missing');
+  ok(sandbox.estCardioKcal({min:0,spd:2.5,incl:15,weightLb:186})===null&&sandbox.estCardioKcal({min:25,spd:2.5,incl:15,weightLb:0})===null,'estCardioKcal: needs time + weight (null otherwise)');
+  // body-weight lookup: Body Weight test as fallback, recent Apple Health weight preferred
+  sandbox.localStorage.setItem('test_log',JSON.stringify({t_bw:[{date:sandbox.todayISO(),value:190}]}));
+  ok(sandbox.latestBodyWeightLb()===190,'latestBodyWeightLb falls back to the Body Weight test result');
+  sandbox.localStorage.setItem(sandbox.healthKeyForDate(new Date()),JSON.stringify({weightLb:181}));
+  ok(sandbox.latestBodyWeightLb()===181,'latestBodyWeightLb prefers a recent Apple Health weight');
+  // detail entry persists per-day under state, and summarizes
+  sandbox.viewDow=2;sandbox.weekOffset=0;sandbox.loadState();
+  sandbox.state={};sandbox.state['c_mill']=true;sandbox.cardioDetOpen='c_mill';sandbox.renderCardioSheet();
+  sandbox.document.getElementById('cdt_c_mill_min').value='25';sandbox.cardioDetField('c_mill','min');
+  sandbox.document.getElementById('cdt_c_mill_incl').value='15';sandbox.cardioDetField('c_mill','incl');
+  sandbox.document.getElementById('cdt_c_mill_spd').value='2.5';sandbox.cardioDetField('c_mill','spd');
+  sandbox.document.getElementById('cdt_c_mill_hr').value='107';sandbox.cardioDetField('c_mill','hr');
+  ok(sandbox.state['cdt_c_mill']&&sandbox.state['cdt_c_mill'].min===25&&sandbox.state['cdt_c_mill'].incl===15,'cardioDetField stores numeric treadmill stats in the day state');
+  ok(/25 min/.test(sandbox.cardioDetSummary('c_mill'))&&/15% incl/.test(sandbox.cardioDetSummary('c_mill'))&&/107 bpm/.test(sandbox.cardioDetSummary('c_mill')),'cardioDetSummary renders the logged stats');
+  // estimate button fills calories from incline + speed + stored weight
+  sandbox.cardioEstimate('c_mill');
+  ok(sandbox.state['cdt_c_mill'].cal>0,'cardioEstimate writes an estimated calorie value');
+  ok(sandbox.document.getElementById('cdt_c_mill_cal').value===String(sandbox.state['cdt_c_mill'].cal),'cardioEstimate fills the calories input');
+  // clearing a field removes it
+  sandbox.document.getElementById('cdt_c_mill_hr').value='';sandbox.cardioDetField('c_mill','hr');
+  ok(sandbox.state['cdt_c_mill'].hr===undefined,'clearing a field deletes it from the detail object');
+  // the day card surfaces the detail line
+  var crow=sandbox.cardioRowHTML();
+  ok(/cardio-det/.test(crow)&&/25 min/.test(crow),'cardioRowHTML shows the treadmill detail line on the day card');
+  // details persist through a save/load round-trip on the per-day key (rides along in tr_ backups)
+  sandbox.save();sandbox.state={};sandbox.loadState();
+  ok(sandbox.state['cdt_c_mill']&&sandbox.state['cdt_c_mill'].min===25,'treadmill details persist on the per-day tr_ key');
+  // deselecting the cardio type closes any open detail panel
+  sandbox.cardioDetOpen='c_mill';sandbox.toggleCardioOpt('c_mill');
+  ok(sandbox.state['c_mill']===false&&sandbox.cardioDetOpen==='','deselecting a cardio type collapses its detail panel');
+  // weekly rollup sums cardio detail minutes / distance / calories across the week
+  store.clear();
+  var _wd0=sandbox.getDateForDow(1),_wd1=sandbox.getDateForDow(3);
+  store.set(sandbox.storeKeyForDate(_wd0),JSON.stringify({c_mill:true,'cdt_c_mill':{min:25,dist:1.06,cal:305,hr:107}}));
+  store.set(sandbox.storeKeyForDate(_wd1),JSON.stringify({c_incl:true,'cdt_c_incl':{min:30,dist:1.5,cal:280}}));
+  var wst=sandbox.weekStats();
+  ok(wst.cMin===55&&wst.cCal===585,'weekStats sums cardio minutes (55) + calories (585) across the week');
+  ok(Math.abs(wst.cDist-2.56)<1e-9,'weekStats sums cardio distance (2.56 mi)');
+  sandbox.weekOffset=0;sandbox.renderWeek();
+  var wh=sandbox.document.getElementById('root').innerHTML;
+  ok(/Logged totals/.test(wh)&&/55 min/.test(wh)&&/585 kcal/.test(wh),'Week view renders the cardio Logged totals row');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 console.log(fails?('\n'+fails+' FAILURES'):'\nALL CHECKS PASSED');
 process.exit(fails?1:0);
