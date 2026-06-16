@@ -1136,6 +1136,17 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // deselecting the cardio type closes any open detail panel
   sandbox.cardioDetOpen='c_mill';sandbox.toggleCardioOpt('c_mill');
   ok(sandbox.state['c_mill']===false&&sandbox.cardioDetOpen==='','deselecting a cardio type collapses its detail panel');
+  // weekly rollup sums cardio detail minutes / distance / calories across the week
+  store.clear();
+  var _wd0=sandbox.getDateForDow(1),_wd1=sandbox.getDateForDow(3);
+  store.set(sandbox.storeKeyForDate(_wd0),JSON.stringify({c_mill:true,'cdt_c_mill':{min:25,dist:1.06,cal:305,hr:107}}));
+  store.set(sandbox.storeKeyForDate(_wd1),JSON.stringify({c_incl:true,'cdt_c_incl':{min:30,dist:1.5,cal:280}}));
+  var wst=sandbox.weekStats();
+  ok(wst.cMin===55&&wst.cCal===585,'weekStats sums cardio minutes (55) + calories (585) across the week');
+  ok(Math.abs(wst.cDist-2.56)<1e-9,'weekStats sums cardio distance (2.56 mi)');
+  sandbox.weekOffset=0;sandbox.renderWeek();
+  var wh=sandbox.document.getElementById('root').innerHTML;
+  ok(/Logged totals/.test(wh)&&/55 min/.test(wh)&&/585 kcal/.test(wh),'Week view renders the cardio Logged totals row');
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
