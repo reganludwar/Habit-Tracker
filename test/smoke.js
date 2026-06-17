@@ -1165,5 +1165,22 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== AI Coach: cardio sessions feed the workout report =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _td=new Date();
+  store.set(sandbox.storeKeyForDate(_td),JSON.stringify({c_incl:true,'cdt_c_incl':{min:25,dist:1.06,spd:2.5,incl:15,cal:305,hr:107}}));
+  sandbox.coachRange='this';sandbox.coachKind='workout';
+  var cp=sandbox.coachPayload();
+  ok(cp.cardioLogged===1,'coachPayload counts logged cardio sessions in range');
+  ok(cp.cardioSessions&&cp.cardioSessions[0].type.indexOf('Incline Walk')>=0,'coachPayload labels the cardio type');
+  ok(cp.cardioSessions[0].inclinePct===15&&cp.cardioSessions[0].speedMph===2.5&&cp.cardioSessions[0].kcal===305&&cp.cardioSessions[0].avgHr===107,'coachPayload carries the cardio detail metrics');
+  ok(cp.sessionsLogged===0&&cp.cardioLogged===1,'a cardio-only range still surfaces cardio (no strength sessions needed)');
+  var pr=sandbox.coachPrompt(cp,null);
+  ok(/CONDITIONING/.test(pr)&&/cardioSessions/.test(pr),'coachPrompt asks the model to review conditioning + sees the cardio JSON');
+  ok(/cardioSessions/.test(sandbox.coachSystem()),'coach system prompt tells the model how to read cardioSessions');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 console.log(fails?('\n'+fails+' FAILURES'):'\nALL CHECKS PASSED');
 process.exit(fails?1:0);
