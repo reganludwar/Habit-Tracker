@@ -1246,5 +1246,39 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Durability: complete backups, storage protection, status line =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  // backup completeness: primary user data is captured; regenerable/secret data is not
+  ok(sandbox.isBackupKey('tight_areas'),'tight_areas (chronic check-in) is now included in backups');
+  ok(!sandbox.isBackupKey('coach_reports'),'regenerable AI report history stays out of backups');
+  ok(!sandbox.isBackupKey('coach_key'),'the Anthropic API key is never backed up');
+  sandbox.localStorage.setItem('tight_areas',JSON.stringify(['hips']));
+  var bk=sandbox.collectBackup();
+  ok(bk.data['tight_areas']!==undefined,'collectBackup round-trips tight_areas');
+  // backupEntryCount counts only backup keys
+  store.clear();sandbox.localStorage.setItem('tr_2040_1_1',JSON.stringify({mob:1}));sandbox.localStorage.setItem('coach_key','secret');
+  ok(sandbox.backupEntryCount()===1,'backupEntryCount counts backup keys only (excludes the API key)');
+  // storage-protection helpers degrade gracefully when the API is absent
+  var pg='unset';sandbox.requestPersist(function(p){pg=p;});
+  ok(pg===null,'requestPersist resolves to null when navigator.storage is unavailable (no throw)');
+  var cg='unset';sandbox.checkPersisted(function(p){cg=p;});
+  ok(cg===null,'checkPersisted resolves to null when unavailable');
+  // status line renders entry count + backup recency + a storage note
+  sandbox.localStorage.removeItem('last_backup');
+  sandbox.renderDataStatus();
+  var dsv=sandbox.document.getElementById('dataStatus').innerHTML;
+  ok(/Never backed up/.test(dsv)&&/entr/.test(dsv),'data status shows entry count + never-backed-up warning');
+  sandbox.localStorage.setItem('last_backup',''+Date.now());sandbox.renderDataStatus();
+  ok(/Last backup today/.test(sandbox.document.getElementById('dataStatus').innerHTML),'data status reflects a fresh backup');
+  // nag tightened to 7 days for a canonical store
+  sandbox.localStorage.setItem('last_backup',''+(Date.now()-8*86400000));sandbox.localStorage.removeItem('backup_snooze');
+  sandbox.updateBackupNag();
+  ok(sandbox.document.getElementById('backupNag').style.display===''&&/Export now/.test(sandbox.document.getElementById('backupNag').innerHTML),'backup nag fires at 8 days (>=7-day threshold)');
+  sandbox.localStorage.setItem('last_backup',''+(Date.now()-5*86400000));sandbox.updateBackupNag();
+  ok(sandbox.document.getElementById('backupNag').style.display==='none','no nag at 5 days (under threshold)');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 console.log(fails?('\n'+fails+' FAILURES'):'\nALL CHECKS PASSED');
 process.exit(fails?1:0);
