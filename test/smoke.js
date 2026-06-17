@@ -559,7 +559,7 @@ ok(sandbox.healthMetricsHTML(d0)==='','healthMetricsHTML empty when no data');
 // health sheet opens without throwing and shows setup copy
 sandbox.openHealthSheet();
 var hsheet=sandbox.document.getElementById('shtBody').innerHTML;
-ok(/Export to Apple Health/.test(hsheet)&&/Import via URL automation/.test(hsheet)&&/Paste import/.test(hsheet),'Health sheet shows export + paste + URL import setup');
+ok(/Export to Apple Health/.test(hsheet)&&/Import via URL automation/.test(hsheet)&&/Daily import/.test(hsheet)&&/Import from clipboard/.test(hsheet)&&/Run Copy My Stats/.test(hsheet),'Health sheet shows export + daily import (clipboard + run-shortcut) + URL setup');
 // finished workout summary exposes an Add-to-Health deep link
 sandbox.localStorage.removeItem(sandbox.woKeyForDow(1));sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
 sandbox.woFinish();
@@ -1280,5 +1280,34 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
-console.log(fails?('\n'+fails+' FAILURES'):'\nALL CHECKS PASSED');
-process.exit(fails?1:0);
+// ===== Apple Health daily import: shared ingest + clipboard path =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  // healthIngestText parses strict JSON, loose "key: value" text, and reports outcome codes
+  ok(sandbox.healthIngestText('')===0,'healthIngestText: empty input -> 0');
+  ok(sandbox.healthIngestText('not health data {{{')===-1,'healthIngestText: unparseable -> -1');
+  var n1=sandbox.healthIngestText('{"steps":8421,"weightLb":164}');
+  ok(n1===1,'healthIngestText: strict JSON imports one day');
+  var n2=sandbox.healthIngestText('steps: 9000\nweightLb: 165\nsleepHr: 7.2');
+  ok(n2===1,'healthIngestText: loose "key: value" lines import too');
+  // it actually landed in today's hl_ store
+  var _td=new Date();var hk=sandbox.healthKeyForDate(_td);var saved=JSON.parse(store.get(hk));
+  ok(saved&&saved.steps===9000&&saved.weightLb===165&&saved.sleepHr===7.2,'loose import lands in today\'s hl_ record with parsed numbers');
+  // clipboard + run-shortcut paths degrade gracefully without the platform APIs (no throw)
+  var threw=false;try{sandbox.healthImportClipboard();}catch(e){threw=true;}
+  ok(!threw,'healthImportClipboard does not throw when navigator.clipboard is absent');
+  threw=false;try{sandbox.healthRunImportShortcut();}catch(e){threw=true;}
+  ok(!threw,'healthRunImportShortcut does not throw when location is unavailable');
+  // clipboard read, when available, ingests what it finds
+  var _origNav=sandbox.navigator.clipboard;
+  sandbox.navigator.clipboard={readText:function(){return Promise.resolve('{"steps":12000}');}};
+  sandbox.healthImportClipboard();
+  Promise.resolve().then(function(){
+    var s2=JSON.parse(store.get(hk));
+    ok(s2&&s2.steps===12000,'healthImportClipboard ingests stats read from the clipboard');
+    sandbox.navigator.clipboard=_origNav;
+    store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+    console.log(fails?('\n'+fails+' FAILURES'):'\nALL CHECKS PASSED');
+    process.exit(fails?1:0);
+  });
+})();
