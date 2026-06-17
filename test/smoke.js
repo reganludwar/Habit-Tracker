@@ -1293,6 +1293,12 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // it actually landed in today's hl_ store
   var _td=new Date();var hk=sandbox.healthKeyForDate(_td);var saved=JSON.parse(store.get(hk));
   ok(saved&&saved.steps===9000&&saved.weightLb===165&&saved.sleepHr===7.2,'loose import lands in today\'s hl_ record with parsed numbers');
+  // imported metrics surface on the MAIN day view (with an "Apple Health" label), not only the sheet
+  sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.viewDow=sandbox.todayDow;
+  sandbox.healthIngestText('{"steps":5500,"activeKcal":420}');
+  var rootHTML=sandbox.document.getElementById('root').innerHTML;
+  ok(/Apple Health/.test(rootHTML)&&/5,?500/.test(rootHTML),'day view shows a labeled Apple Health strip with imported metrics');
+  ok(/420/.test(rootHTML),'day-view strip includes every imported metric (active energy too)');
   // clipboard + run-shortcut paths degrade gracefully without the platform APIs (no throw)
   var threw=false;try{sandbox.healthImportClipboard();}catch(e){threw=true;}
   ok(!threw,'healthImportClipboard does not throw when navigator.clipboard is absent');
