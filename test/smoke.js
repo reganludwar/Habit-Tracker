@@ -1182,5 +1182,69 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Cardio: pace, HR zones, progression nudges, PRs + weekly trend =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  // pace
+  ok(sandbox.cardioPaceSec({min:25,dist:1.06})===1415,'cardioPaceSec computes seconds per mile');
+  ok(sandbox.fmtPace(1415)==='23:35/mi','fmtPace formats as min:sec /mi');
+  ok(sandbox.cardioPaceSec({min:25})===null,'cardioPaceSec needs both time and distance');
+  // HR zones (need age)
+  ok(sandbox.hrZone(150)===null,'hrZone returns nothing without an age set');
+  sandbox.localStorage.setItem('profile_age','40');
+  ok(sandbox.getProfileAge()===40&&sandbox.hrMax()===180,'profile age drives max HR (220-age)');
+  ok(sandbox.hrZone(107).z===1&&sandbox.hrZone(107).lbl==='Recovery','hrZone: 107bpm @180max = Zone 1 Recovery');
+  ok(sandbox.hrZone(150).z===4,'hrZone: 150bpm @180max = Zone 4');
+  ok(sandbox.isBackupKey('profile_age'),'profile_age is included in backups');
+  // summary now carries pace + zone
+  sandbox.state={'cdt_c_incl':{min:25,dist:1.06,spd:2.5,incl:15,cal:305,hr:107}};
+  var sum=sandbox.cardioDetSummary('c_incl');
+  ok(/23:35\/mi/.test(sum)&&/Z1 Recovery/.test(sum),'cardioDetSummary includes pace + HR zone');
+  // seed history for PRs / nudge: 3 identical recent incline walks + 1 older, faster/shorter
+  store.clear();sandbox.localStorage.setItem('profile_age','40');
+  sandbox.viewDow=3;sandbox.weekOffset=0;
+  var _anchor=sandbox.getDateForDow(3);_anchor.setHours(0,0,0,0);
+  function _seed(daysAgo,obj){var dt=new Date(_anchor);dt.setDate(_anchor.getDate()-daysAgo);store.set(sandbox.storeKeyForDate(dt),JSON.stringify(obj));}
+  _seed(0,{c_incl:true,'cdt_c_incl':{min:25,dist:1.06,spd:2.5,incl:15,cal:305,hr:107}});
+  _seed(1,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15,cal:305}});
+  _seed(2,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15,cal:300}});
+  _seed(7,{c_incl:true,'cdt_c_incl':{min:20,dist:1.0,spd:2.0,incl:10,cal:250,hr:120}});
+  var all=sandbox.cardioAllSessions();
+  ok(all.length===4,'cardioAllSessions collects logged cardio across history');
+  var pr=sandbox.cardioPRs(all);
+  ok(pr.dist.v===1.06&&pr.min.v===25&&pr.kcal.v===305,'cardioPRs finds best distance / time / calories');
+  ok(pr.pace.v===1200,'cardioPRs finds fastest pace (lowest sec/mi)');
+  var nu=sandbox.cardioProgressNudge('c_incl',all);
+  ok(nu&&nu.count===3&&/Plateau/.test(nu.msg),'cardioProgressNudge flags 3 identical sessions');
+  // a single (or differing) history does not nudge
+  store.clear();_seed(0,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15}});
+  ok(sandbox.cardioProgressNudge('c_incl')===null,'no nudge with fewer than 3 identical sessions');
+  // weekly trend buckets minutes by calendar week
+  store.clear();sandbox.localStorage.setItem('profile_age','40');
+  _seed(0,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15}});
+  _seed(1,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15}});
+  _seed(2,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15}});
+  _seed(7,{c_incl:true,'cdt_c_incl':{min:20,spd:2.0,incl:10}});
+  var tr=sandbox.cardioWeeklyTrend(5);
+  ok(tr.length===5&&tr[4].wkAgo===0,'cardioWeeklyTrend returns 5 weeks ending now');
+  ok(tr[4].min===75&&tr[3].min===20,'weekly trend sums cardio minutes per calendar week');
+  // day card surfaces pace, zone, and the plateau nudge
+  store.clear();sandbox.localStorage.setItem('profile_age','40');
+  _seed(0,{c_incl:true,'cdt_c_incl':{min:25,dist:1.06,spd:2.5,incl:15,cal:305,hr:107}});
+  _seed(1,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15,cal:305}});
+  _seed(2,{c_incl:true,'cdt_c_incl':{min:25,spd:2.5,incl:15,cal:300}});
+  _seed(7,{c_incl:true,'cdt_c_incl':{min:20,dist:1.0,spd:2.0,incl:10,cal:250}});
+  sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.loadState();
+  var crow=sandbox.cardioRowHTML();
+  ok(/cardio-nudge/.test(crow)&&/Plateau/.test(crow),'day card shows the cardio progression nudge');
+  ok(/23:35\/mi/.test(crow)&&/Z1 Recovery/.test(crow),'day card shows pace + HR zone');
+  // week view shows Cardio Records + trend
+  sandbox.renderWeek();
+  var wh=sandbox.document.getElementById('root').innerHTML;
+  ok(/Cardio Records/.test(wh)&&/Fastest pace/.test(wh)&&/20:00\/mi/.test(wh),'Week view shows cardio records incl fastest pace');
+  ok(/Weekly minutes/.test(wh),'Week view shows the weekly minutes trend');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 console.log(fails?('\n'+fails+' FAILURES'):'\nALL CHECKS PASSED');
 process.exit(fails?1:0);
