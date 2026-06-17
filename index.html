@@ -596,6 +596,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .backup-nag{margin:12px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;
   background:rgba(212,168,67,.08);border:1px solid #6B5420;border-radius:8px;padding:11px 14px;font-size:12.5px;color:var(--text)}
 .backup-nag b{color:var(--accent)}
+.data-status{margin:10px 16px 0;font-size:11.5px;color:var(--muted);line-height:1.6;text-align:center}
+.data-status .ds-persist{margin-top:2px}
+.data-status .ds-fix{color:var(--accent);cursor:pointer}
 .backup-nag>span:first-child{cursor:pointer}
 .backup-nag .bn-x{cursor:pointer;color:var(--muted);font-size:16px;padding:0 4px;flex-shrink:0}
 /* RPE-creep nudges */
@@ -787,6 +790,7 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
   <button class="reset-btn" onclick="importData()">Import Backup</button>
   <button class="reset-btn" onclick="openHealthSheet()">Apple Health</button>
 </div>
+<div class="data-status" id="dataStatus"></div>
 <div class="backup-nag" id="backupNag" style="display:none"></div>
 <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="handleImportFile(this)">
 <div class="st-timer" id="stTimer" style="display:none">
@@ -1305,18 +1309,23 @@ function refreshToday(){var dow=new Date().getDay();if(dow!==todayDow){todayDow=
 setInterval(refreshToday,60000);
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer)woRestTick();refreshToday();}});
 /* ── DATA BACKUP ──────────────────────────────────────── */
-function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k.indexOf('test_active_')===0);}
+function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k==='tight_areas'||k.indexOf('test_active_')===0);}
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
 function backupName(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return'training-backup-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';}
 function fallbackDownload(blob,fname){try{var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);}catch(e){alert('Export failed on this device.');}}
 function daysSince(ms){return ms?Math.floor((Date.now()-ms)/86400000):Infinity;}
 function lastBackupMs(){try{return +localStorage.getItem('last_backup')||0;}catch(e){return 0;}}
 function hasUserData(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&(k.indexOf('tr_')===0||k.indexOf('wo_')===0))return true;}}catch(e){}return false;}
-function updateBackupNag(){var el=document.getElementById('backupNag');if(!el)return;var lb=lastBackupMs(),sn=0;try{sn=+localStorage.getItem('backup_snooze')||0;}catch(e){}var due=hasUserData()&&daysSince(sn)>=3&&(lb?daysSince(lb)>=14:true);if(!due){el.style.display='none';el.innerHTML='';return;}var d=daysSince(lb);var txt=lb?('Last backup '+d+' day'+(d!==1?'s':'')+' ago'):'No backup yet — your data lives only on this device';el.style.display='';el.innerHTML='<span onclick="exportData()">&#9888;&#65039; '+txt+' &middot; <b>Export now</b></span><span class="bn-x" onclick="snoozeBackup()">&#215;</span>';}
+function updateBackupNag(){var el=document.getElementById('backupNag');if(!el)return;var lb=lastBackupMs(),sn=0;try{sn=+localStorage.getItem('backup_snooze')||0;}catch(e){}var due=hasUserData()&&daysSince(sn)>=3&&(lb?daysSince(lb)>=7:true);if(!due){el.style.display='none';el.innerHTML='';return;}var d=daysSince(lb);var txt=lb?('Last backup '+d+' day'+(d!==1?'s':'')+' ago'):'No backup yet — your data lives only on this device';el.style.display='';el.innerHTML='<span onclick="exportData()">&#9888;&#65039; '+txt+' &middot; <b>Export now</b></span><span class="bn-x" onclick="snoozeBackup()">&#215;</span>';}
 function snoozeBackup(){try{localStorage.setItem('backup_snooze',''+Date.now());}catch(e){}updateBackupNag();}
-function exportData(){try{localStorage.setItem('last_backup',''+Date.now());}catch(e){}updateBackupNag();var b=collectBackup();var n=0;for(var k in b.data)if(b.data.hasOwnProperty(k))n++;var payload=JSON.stringify(b,null,2);var fname=backupName();var blob=new Blob([payload],{type:'application/json'});try{var file=new File([blob],fname,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Training Backup'}).catch(function(){fallbackDownload(blob,fname);});return;}}catch(e){}fallbackDownload(blob,fname);}
+function backupEntryCount(){var n=0;try{for(var i=0;i<localStorage.length;i++){if(isBackupKey(localStorage.key(i)))n++;}}catch(e){}return n;}
+function checkPersisted(cb){try{if(typeof navigator!=='undefined'&&navigator.storage&&navigator.storage.persisted){navigator.storage.persisted().then(function(p){cb(!!p);}).catch(function(){cb(null);});return;}}catch(e){}cb(null);}
+function requestPersist(cb){try{if(typeof navigator!=='undefined'&&navigator.storage&&navigator.storage.persist){navigator.storage.persist().then(function(p){if(cb)cb(!!p);}).catch(function(){if(cb)cb(null);});return;}}catch(e){}if(cb)cb(null);}
+function requestPersistUI(){requestPersist(function(){renderDataStatus();});}
+function renderDataStatus(){var el=document.getElementById('dataStatus');if(!el)return;var lb=lastBackupMs(),cnt=backupEntryCount(),d=daysSince(lb);var bk=lb?('Last backup '+(d===0?'today':(d+' day'+(d!==1?'s':'')+' ago'))+(d>=7?' ⚠️':'')):'Never backed up ⚠️';el.innerHTML='<div>'+cnt+' entr'+(cnt===1?'y':'ies')+' · '+bk+'</div><div id="dataPersist" class="ds-persist">Checking on-device storage&hellip;</div>';checkPersisted(function(p){var pe=document.getElementById('dataPersist');if(!pe)return;if(p===true)pe.innerHTML='✓ On-device storage is protected from eviction';else if(p===false)pe.innerHTML='<span class="ds-fix" onclick="requestPersistUI()">⚠️ Storage not protected — tap to request protection</span>';else pe.innerHTML='';});}
+function exportData(){try{localStorage.setItem('last_backup',''+Date.now());}catch(e){}updateBackupNag();renderDataStatus();var b=collectBackup();var n=0;for(var k in b.data)if(b.data.hasOwnProperty(k))n++;var payload=JSON.stringify(b,null,2);var fname=backupName();var blob=new Blob([payload],{type:'application/json'});try{var file=new File([blob],fname,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Training Backup'}).catch(function(){fallbackDownload(blob,fname);});return;}}catch(e){}fallbackDownload(blob,fname);}
 function importData(){var inp=document.getElementById('importFile');if(inp){inp.value='';inp.click();}}
-function handleImportFile(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var obj=JSON.parse(r.result);var d=(obj&&obj.data)?obj.data:obj;if(!d||typeof d!=='object'){alert('Not a valid backup file.');return;}var keys=[];for(var k in d){if(d.hasOwnProperty(k)&&isBackupKey(k))keys.push(k);}if(keys.length===0){alert('No training data found in that file.');return;}if(!confirm('Restore '+keys.length+' entries? This overwrites any matching days currently on this device.'))return;var ok=0;for(var i=0;i<keys.length;i++){try{localStorage.setItem(keys[i],d[keys[i]]);ok++;}catch(e){}}loadState();render();alert('Restored '+ok+' of '+keys.length+' entries.');}catch(e){alert('Could not read that backup file.');}};r.readAsText(f);}
+function handleImportFile(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var obj=JSON.parse(r.result);var d=(obj&&obj.data)?obj.data:obj;if(!d||typeof d!=='object'){alert('Not a valid backup file.');return;}var keys=[];for(var k in d){if(d.hasOwnProperty(k)&&isBackupKey(k))keys.push(k);}if(keys.length===0){alert('No training data found in that file.');return;}if(!confirm('Restore '+keys.length+' entries? This overwrites any matching days currently on this device.'))return;var ok=0;for(var i=0;i<keys.length;i++){try{localStorage.setItem(keys[i],d[keys[i]]);ok++;}catch(e){}}loadState();render();updateBackupNag();renderDataStatus();alert('Restored '+ok+' of '+keys.length+' entries.');}catch(e){alert('Could not read that backup file.');}};r.readAsText(f);}
 /* ── APPLE HEALTH (Shortcuts bridge) ──────────────────────
    A browser PWA can't touch HealthKit directly, so we bridge via iOS Shortcuts:
    - WRITE: finish screens deep-link shortcuts://run-shortcut?name=...&input=text&text=<json>
@@ -2471,9 +2480,9 @@ function toggleTheme(){var cur='dark';try{cur=document.documentElement.getAttrib
 applyTheme();
 migrate();
 var _hlN=ingestHealthFromURL();
-loadState();render();updateBackupNag();
+loadState();render();updateBackupNag();renderDataStatus();
 if(_hlN)setTimeout(function(){try{alert('Imported Apple Health data for '+_hlN+' day'+(_hlN>1?'s':'')+'.');}catch(e){}},300);
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(function(){});}catch(e){}
+requestPersist(function(){renderDataStatus();});
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
 </script>
 </body>
