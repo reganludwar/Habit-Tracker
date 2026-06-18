@@ -1751,8 +1751,8 @@ function woTmplValid(ov,tag){var base=WO_TEMPLATES[tag];if(!base||!ov||!ov.ex||!
 function woExLibrary(){var lib={},tags=['mon','tue','wed','thu','fri'];for(var i=0;i<tags.length;i++){var ex=WO_TEMPLATES[tags[i]].ex;for(var e=0;e<ex.length;e++)if(!lib[ex[e].name])lib[ex[e].name]=ex[e];}return lib;}
 function woLibFind(name){if(!name)return null;var lib=woExLibrary();if(lib[name])return lib[name];var n=String(name).toLowerCase().replace(/[^a-z0-9]/g,'');for(var k in lib)if(lib.hasOwnProperty(k)&&k.toLowerCase().replace(/[^a-z0-9]/g,'')===n)return lib[k];return null;}
 function woEffTemplate(tag){var ov=woLoadTmplOverrides();return (ov[tag]&&woTmplValid(ov[tag],tag))?ov[tag]:WO_TEMPLATES[tag];}
-function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return;var ov=woLoadTmplOverrides();ov[tag]=t;try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
-function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
+function woSaveTmplOverride(tag,t){if(!woTmplValid(t,tag))return false;var ov=woLoadTmplOverrides();ov[tag]=t;var json=JSON.stringify(ov);try{localStorage.setItem('wo_tmpl',json);if(localStorage.getItem('wo_tmpl')!==json){storageFail();return false;}return true;}catch(e){storageFail();return false;}}
+function woResetTmpl(tag){var ov=woLoadTmplOverrides();delete ov[tag];var json=JSON.stringify(ov);try{localStorage.setItem('wo_tmpl',json);if(localStorage.getItem('wo_tmpl')!==json){storageFail();return false;}return true;}catch(e){storageFail();return false;}}
 function woCleanOverrides(){var ov=woLoadTmplOverrides(),changed=false;for(var tag in ov){if(ov.hasOwnProperty(tag)&&!woTmplValid(ov[tag],tag)){delete ov[tag];changed=true;}}if(changed)try{localStorage.setItem('wo_tmpl',JSON.stringify(ov));}catch(e){}}
 /* Single startup migration gate. localStorage is the source of truth with no schema, so format
    changes are healed here once at boot. Bump DATA_VERSION and add a branch when a format changes;
@@ -2197,7 +2197,7 @@ function woEdRenderAddSheet(){var list=woEdAvail(),h='';if(!list.length)h='<div 
 function woEdOpenAddSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Add exercise';document.getElementById('shtSub').textContent='From your program · keeps its proven setup';woEdRenderAddSheet();document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function woEdAddPick(idx){var def=woEdAvail()[idx];closeSheet();if(!def)return;woEditTmpl.ex.push(woClone(def));woEditTmpl=woNormTmpl(woEditTmpl);renderWoEditor();}
 function woEdReset(){var tag=woEditTag||woDayTag(viewDow);if(!confirm('Reset '+woEditTmpl.tag+' to the built-in default?'))return;woResetTmpl(tag);woEditTmpl=woNormTmpl(WO_TEMPLATES[tag]);renderWoEditor();}
-function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditTmpl,tag)){alert('Keep at least one of this day’s original '+woEditTmpl.tag+' exercises so the template stays linked to that day. Add one back before saving.');return;}woSaveTmplOverride(tag,woEditTmpl);woEditing=false;woMaybeReseed();}
+function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditTmpl,tag)){alert('Keep at least one of this day’s original '+woEditTmpl.tag+' exercises so the template stays linked to that day. Add one back before saving.');return;}if(!woSaveTmplOverride(tag,woEditTmpl))return;/* save failed (storageFail already warned) — keep the editor open so the edit isn't lost */woEditing=false;woMaybeReseed();}
 /* After saving a template edit, decide what to do with the day's existing session. If nothing was
    logged we silently refresh it; if sets were logged we ask — with a clear Keep vs Erase choice
    (a native confirm can't relabel its buttons, so this is a small custom dialog). */

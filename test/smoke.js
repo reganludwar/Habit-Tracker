@@ -1282,6 +1282,40 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Template save surfaces storage failures instead of swallowing them =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.woSession=null;sandbox._storageWarned=false;
+  // success path returns true and persists
+  sandbox.woOpenEditor();sandbox.woEditTmpl.ex[0].workRest=999;
+  ok(sandbox.woSaveTmplOverride('wed',sandbox.woEditTmpl)===true,'woSaveTmplOverride returns true on a successful write');
+  ok(JSON.parse(store.get('wo_tmpl')).wed.ex[0].workRest===999,'successful save actually persists the override');
+  // failure path: setItem throws (quota / private mode) -> must NOT be swallowed
+  var before=store.get('wo_tmpl');
+  var origSet=sandbox.localStorage.setItem;
+  sandbox._storageWarned=false;
+  sandbox.localStorage.setItem=function(){throw new Error('QuotaExceededError');};
+  sandbox.woEditTmpl.ex[0].workRest=111;
+  var ret=sandbox.woSaveTmplOverride('wed',sandbox.woEditTmpl);
+  ok(ret===false,'woSaveTmplOverride returns false when the write throws (no longer silent)');
+  ok(sandbox._storageWarned===true,'a failed template save trips the storage-full warning (storageFail)');
+  sandbox.localStorage.setItem=origSet;
+  ok(store.get('wo_tmpl')===before,'a failed write leaves the previously-stored override untouched');
+  // woEdDone keeps the editor open on a failed save so the in-progress edit is not lost
+  sandbox._storageWarned=false;sandbox.woEditing=true;sandbox.woEditTag='wed';sandbox.woEditDow=3;
+  sandbox.woEditTmpl.ex[0].workRest=222;
+  sandbox.localStorage.setItem=function(){throw new Error('QuotaExceededError');};
+  sandbox.woEdDone();
+  ok(sandbox.woEditing===true,'woEdDone keeps the editor open when the save fails (edit not silently dropped)');
+  sandbox.localStorage.setItem=origSet;
+  // read-back guard: a silent no-op write (no throw, value not stored) is also caught
+  sandbox._storageWarned=false;sandbox.woEditing=false;
+  sandbox.localStorage.setItem=function(){/* silently does nothing */};
+  ok(sandbox.woSaveTmplOverride('wed',sandbox.woEditTmpl)===false,'read-back guard catches a silent no-op write that does not throw');
+  sandbox.localStorage.setItem=origSet;
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health daily import: shared ingest + clipboard path =====
 (function(){
   var _snap=new Map(store);store.clear();
