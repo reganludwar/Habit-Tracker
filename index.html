@@ -1986,7 +1986,7 @@ function woOpenWheel(ei,si){
       +'<div class="wo-wheel" id="woWheel" onscroll="woWheelScroll()"><div class="wo-wheel-pad"></div>';
   for(var i=0;i<WO_LADDER.length;i++)h+='<div class="wo-wheel-item" id="wo-wi-'+i+'" onclick="woWheelTap('+i+')">'+WO_LADDER[i]+'</div>';
   h+='<div class="wo-wheel-pad"></div></div></div>'
-      +'<div class="wo-wheel-foot"><button class="wo-wheel-save" id="woWheelSave" onclick="woSaveWeightToTmpl()">Save weight to template</button><button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
+      +'<div class="wo-wheel-foot">'+(set.tag==='W'?'':'<button class="wo-wheel-save" id="woWheelSave" onclick="woSaveWeightToTmpl()">Save weight to template</button>')+'<button class="wo-wheel-done" onclick="woWheelDone()">Done</button></div>';
   document.getElementById('shtBody').innerHTML=h;
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sheet').classList.add('show');
@@ -2006,7 +2006,11 @@ function woWheelSet(idx){
 }
 function woSaveWeightToTmpl(){
   if(!woSession||!woWheel||woWheel.ei<0)return;
-  var ex=woSession.exercises[woWheel.ei],w=ex.sets[woWheel.si].weight;
+  var ex=woSession.exercises[woWheel.ei],set=ex.sets[woWheel.si];
+  // Only the working weight is stored (seedW); warm-up weights are always derived from it,
+  // so saving a warm-up here would overwrite the working weight and re-derive to a wrong value.
+  if(!set||set.tag==='W')return;
+  var w=set.weight;
   if(w==null||!woTmplSet(ex.name,'seedW',w))return;
   var b=document.getElementById('woWheelSave');if(b){b.className='wo-wheel-save done';b.textContent='Saved '+w+' lb to template ✓';}
 }
