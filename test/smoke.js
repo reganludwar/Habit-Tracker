@@ -1348,6 +1348,35 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Backup round-trips through collectBackup -> applyBackup (clipboard/paste restore) =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,woSession:sandbox.woSession};
+  // seed a representative spread of user data + a non-backup key
+  store.set('tr_2026_6_18',JSON.stringify({done:['h1']}));
+  store.set('wo_2026_6_18',JSON.stringify({exercises:[{name:'x',sets:[{tag:'work',done:true}]}]}));
+  store.set('wo_tmpl',JSON.stringify({mon:{tag:'PUSH',ex:[{name:'DB Bench Press'}]}}));
+  store.set('tight_areas',JSON.stringify(['hips']));
+  store.set('coach_key','secret-should-not-back-up');
+  store.set('theme','dark');
+  var bk=sandbox.collectBackup();
+  ok(bk.data['wo_tmpl']!==undefined,'collectBackup INCLUDES the template override (wo_tmpl)');
+  ok(bk.data['tr_2026_6_18']&&bk.data['wo_2026_6_18']&&bk.data['tight_areas'],'collectBackup includes habits, sessions, and settings');
+  ok(bk.data['coach_key']===undefined&&bk.data['theme']===undefined,'collectBackup excludes the API key and cosmetic keys');
+  // wipe the device, then restore from the backup object (the paste-restore path)
+  store.clear();
+  var res=sandbox.applyBackup(bk);
+  ok(res===true,'applyBackup returns true on a valid backup');
+  ok(store.get('wo_tmpl')===JSON.stringify({mon:{tag:'PUSH',ex:[{name:'DB Bench Press'}]}}),'restore brings the template override back verbatim');
+  ok(store.get('tr_2026_6_18')&&store.get('wo_2026_6_18'),'restore brings habits + sessions back');
+  ok(store.get('coach_key')==null,'restore does not resurrect non-backup keys');
+  // a bare data map (no {data:...} wrapper) and garbage are handled
+  ok(sandbox.applyBackup({'tr_x':'{}'})===true,'applyBackup accepts a bare key map');
+  ok(sandbox.applyBackup({nope:1})===false,'applyBackup rejects an object with no training keys');
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health daily import: shared ingest + clipboard path =====
 (function(){
   var _snap=new Map(store);store.clear();
