@@ -1316,6 +1316,38 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== "Save weight to template" writes the working weight, never a warm-up =====
+(function(){
+  var _snap=new Map(store);store.clear();sandbox.migrate();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,todayDow:sandbox.todayDow,woSession:sandbox.woSession,woEditing:sandbox.woEditing,woWheel:sandbox.woWheel,sheetMode:sandbox.sheetMode};
+  var dow=1;sandbox.viewDow=dow;sandbox.weekOffset=0;sandbox.woSession=null;
+  sandbox.woLoadOrSeed(dow,sandbox.woKeyForDow(dow));
+  // locate a weighted exercise that has both a warm-up and a work set
+  var ei=-1,wi=-1,ki=-1,name;
+  for(var e=0;e<sandbox.woSession.exercises.length&&ei<0;e++){var ex=sandbox.woSession.exercises[e];var w=-1,k=-1;
+    for(var s=0;s<ex.sets.length;s++){if(ex.sets[s].weight==null)continue;if(ex.sets[s].tag==='W'&&w<0)w=s;if(ex.sets[s].tag==='work'&&k<0)k=s;}
+    if(w>=0&&k>=0){ei=e;wi=w;ki=k;name=ex.name;}}
+  ok(ei>=0,'found a weighted exercise with warm-up + work sets for the save-to-template test');
+  function seedOf(){var t=sandbox.woNormTmpl(sandbox.woEffTemplate('mon'));var x=t.ex.filter(function(q){return q.name===name;})[0];return x?x.seedW:null;}
+  // change the WORK set weight and save to template -> seedW updates, reset uses it
+  sandbox.woWheel={ei:ei,si:ki,idx:sandbox.woSnapIdx(sandbox.woSession.exercises[ei].sets[ki].weight)};
+  sandbox.woWheelSet(Math.min(sandbox.woWheel.idx+3,sandbox.WO_LADDER.length-1));
+  var workW=sandbox.woSession.exercises[ei].sets[ki].weight;
+  sandbox.woSaveWeightToTmpl();
+  ok(seedOf()===workW,'saving a WORK weight to template updates seedW');
+  sandbox.woResetDay();
+  var rex=sandbox.woSession.exercises.filter(function(q){return q.name===name;})[0];
+  ok(rex.sets.filter(function(s){return s.tag==='work';})[0].weight===workW,'reset day re-seeds the work weight from the just-saved template');
+  // change a WARM-UP weight and save to template -> must NOT overwrite seedW
+  var seedBefore=seedOf();
+  sandbox.woWheel={ei:ei,si:wi,idx:sandbox.woSnapIdx(sandbox.woSession.exercises[ei].sets[wi].weight)};
+  sandbox.woWheelSet(Math.min(sandbox.woWheel.idx+4,sandbox.WO_LADDER.length-1));
+  sandbox.woSaveWeightToTmpl();
+  ok(seedOf()===seedBefore,'saving a WARM-UP weight to template does NOT corrupt the working seedW');
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health daily import: shared ingest + clipboard path =====
 (function(){
   var _snap=new Map(store);store.clear();
