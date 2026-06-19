@@ -1377,6 +1377,28 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== AI coach payload includes age, the current (edited) template, and logged sessions =====
+(function(){
+  var _snap=new Map(store);store.clear();sandbox.migrate();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,woSession:sandbox.woSession,coachRange:sandbox.coachRange};
+  sandbox.coachRange='month';
+  // set age + a template override (a structural edit) + a logged session in range
+  store.set('profile_age','51');
+  store.set('wo_tmpl',JSON.stringify({mon:{tag:'PUSH',ex:[{name:'DB Bench Press',load:'pb',input:'wr',sets:5,target:[8,12],seedW:60}]}}));
+  var n=new Date();var key='wo_'+n.getFullYear()+'_'+(n.getMonth()+1)+'_'+n.getDate();
+  store.set(key,JSON.stringify({dateMs:n.getTime(),dayTag:'mon',exercises:[{name:'DB Bench Press',sets:[{tag:'work',done:true,weight:60,reps:10,rpe:8}]}]}));
+  var p=sandbox.coachPayload();
+  ok(p.age===51,'coach payload includes age (51)');
+  var monTmpl=p.weeklyTemplates.filter(function(t){return t.day==='mon';})[0];
+  ok(monTmpl&&monTmpl.exercises[0].workSets===5,'coach payload reflects the CURRENT edited template (override sets=5)');
+  ok(p.sessionsLogged>=1&&p.sessions.some(function(s){return s.exercises.some(function(e){return e.name==='DB Bench Press'&&e.sets.some(function(x){return x.w===60&&x.reps===10;});});}),'coach payload includes the actual logged session (weight/reps I saved)');
+  // age omitted when not set
+  store.delete('profile_age');
+  ok(sandbox.coachPayload().age===null,'age is null in the payload when not set');
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health daily import: shared ingest + clipboard path =====
 (function(){
   var _snap=new Map(store);store.clear();
