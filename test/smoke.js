@@ -1399,6 +1399,44 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Boredom-binge urge interrupt: logging schema, stats, context, no-moralizing prompt =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,sheetMode:sandbox.sheetMode};
+  // data layer: each tap appends one urgeEvent and round-trips through localStorage
+  ok(sandbox.urgeLoad().length===0,'urgeLoad starts empty');
+  sandbox.urgeAdd({ts:Date.now(),outcome:'rode_out',redirect:'none',precedingActivity:'trading',hoursSinceLastMeal:null,note:''});
+  sandbox.urgeAdd({ts:Date.now(),outcome:'redirected',redirect:'squats',precedingActivity:'work',hoursSinceLastMeal:null,note:''});
+  sandbox.urgeAdd({ts:Date.now(),outcome:'ate',redirect:'none',precedingActivity:'tv',hoursSinceLastMeal:null,note:''});
+  var ev=sandbox.urgeLoad();
+  ok(ev.length===3&&ev[0].precedingActivity==='trading','urgeAdd appends events with the preceding-activity root-cause field');
+  ok(JSON.parse(store.get('urgeEvents')).length===3,'urge events persist to localStorage under urgeEvents');
+  // stats: rode_out + redirected count as wins; ate does not
+  var s=sandbox.urgeStats();
+  ok(s.n===3&&s.won===2&&s.rate===67,'urgeStats counts rode_out + redirected as wins ('+s.rate+'%)');
+  // context payload feeds the model evidence to ground its reply
+  var c=sandbox.urgeContext();
+  ok(c.proteinTargetG===170&&c.rideOutRatePct===67&&c.urgeHistory.length===3,'urgeContext carries protein target, ride-out rate, and recent urge history');
+  var pr=sandbox.urgePrompt();
+  ok(/not hungry/i.test(pr)&&/urgeHistory/.test(pr),'urgePrompt frames the not-hungry state and injects the urge history JSON');
+  // the system prompt encodes the non-negotiable no-moralizing / permission-first constraints
+  ok(/ZERO moralizing/i.test(sandbox.URGE_SYSTEM)&&/never forbidden|zero penalty/i.test(sandbox.URGE_SYSTEM),'URGE_SYSTEM forbids moralizing and is permission-first');
+  // substitutes are state-change redirects, capped at two, and prefer mobility when none logged today
+  store.set('tr_'+(new Date().getFullYear())+'_'+(new Date().getMonth()+1)+'_'+(new Date().getDate()),JSON.stringify({}));
+  var picks=sandbox.urgePicks();
+  ok(picks.length<=2&&picks.indexOf('mobility')>=0,'urgePicks offers <=2 redirects and leads with mobility when none logged today');
+  // logging a redirect closes the loop into the "done" stage and records the chosen redirect
+  sandbox.sheetMode='urge';sandbox.urgePre='scrolling';sandbox.urgeLog('redirected','squats');
+  var last=sandbox.urgeLoad();last=last[last.length-1];
+  ok(sandbox.urgeStage==='done'&&last.outcome==='redirected'&&last.redirect==='squats'&&last.precedingActivity==='scrolling','urgeLog records outcome+redirect+activity and advances to the done stage');
+  // the static fallback (no API key) still delivers a usable urge-loop so the button never dead-ends
+  ok(/15 minutes/.test(sandbox.urgeStaticText())&&/zero penalty/.test(sandbox.urgeStaticText()),'urgeStaticText gives a permission-first fallback when offline / no key');
+  // urge events are real logged data and belong in backups (unlike the regenerable AI reports)
+  ok(sandbox.isBackupKey('urgeEvents'),'urgeEvents is included in backups');
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health daily import: shared ingest + clipboard path =====
 (function(){
   var _snap=new Map(store);store.clear();

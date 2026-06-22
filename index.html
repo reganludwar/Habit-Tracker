@@ -667,6 +667,34 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-edit-done.off{color:var(--muted)}
 .cch-edit-done .cch-link{font-weight:600}
 .cch-banner{background:rgba(124,92,255,.12);border:1px solid var(--accent);color:var(--accent);font-size:12px;font-weight:600;padding:9px 12px;border-radius:8px;line-height:1.4;margin-top:10px}
+/* Boredom-binge urge interrupt — dashboard button + urge-loop sheet */
+.urge-btn{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;cursor:pointer;
+  background:rgba(212,168,67,.10);border:1px solid #6B5420;border-radius:20px;padding:14px 18px;-webkit-user-select:none;user-select:none}
+.urge-btn:active{background:rgba(212,168,67,.18)}
+.urge-btn-t{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:.01em}
+.urge-btn-s{font-size:12px;color:var(--muted);line-height:1.4}
+.urge-say{font-size:15px;line-height:1.55;color:var(--text);margin-bottom:14px}
+.urge-say p{margin:0}
+.urge-more{font-size:14px;color:var(--muted);line-height:1.5;margin-top:6px}
+.urge-soft{width:100%;background:var(--surf);border:1.5px solid var(--border);color:var(--text);font-size:13px;font-weight:600;padding:12px;cursor:pointer;border-radius:10px}
+.urge-timer{display:flex;align-items:center;justify-content:center;gap:16px;background:rgba(124,92,255,.10);border:1px solid var(--accent);border-radius:12px;padding:10px}
+.urge-clock{font-size:26px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.urge-timer-x{font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer}
+.urge-redir{display:block;width:100%;text-align:left;background:var(--surf);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-weight:600;padding:13px 14px;margin-bottom:8px;cursor:pointer;border-radius:10px}
+.urge-redir:active{border-color:var(--accent)}
+.urge-redir.ghost{font-weight:500;color:var(--muted)}
+.urge-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+.urge-chip{font-size:12.5px;font-weight:600;color:var(--text);background:var(--surf);border:1.5px solid var(--border);border-radius:999px;padding:7px 13px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.urge-chip.on{border-color:var(--accent);background:var(--accent);color:#000}
+.urge-log-row{display:flex;gap:8px;margin-top:16px}
+.urge-log{flex:1;background:var(--surf);border:1.5px solid var(--border);color:var(--text);font-size:13px;font-weight:700;padding:13px 8px;cursor:pointer;border-radius:10px}
+.urge-log:active{border-color:var(--accent)}
+.urge-log.ate{color:var(--muted)}
+.urge-foot{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.5;margin-top:12px}
+.urge-done-t{font-size:17px;font-weight:700;color:var(--accent);margin-bottom:8px}
+.urge-done-b{font-size:14px;color:var(--text);line-height:1.6}
+.urge-mirror{font-size:13px;color:var(--muted);background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-top:14px}
+.urge-mirror b{color:var(--accent)}
 /* ===================== AURORA THEME LAYER ===================== */
 body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var(--safe-bot) + 104px)}
 /* glassy sticky header */
@@ -1251,7 +1279,7 @@ function standHTML(){var wins=['6-9:30 AM','12:45 PM','2-4 PM'],lbls=['BLOCK 1',
 function snacksHTML(){var h='';for(var i=0;i<SNACKS.length;i++){var s=SNACKS[i],v=state[s.id]||0,cls=v===0?' zero':'';var rec=snackRec(s.id),badge='';if(rec==='great')badge='<span class="snack-rec great">GO</span>';else if(rec==='light')badge='<span class="snack-rec light">EASY</span>';h+='<div class="snack-row" onclick="openSnackSheet(\''+s.id+'\',\''+s.lbl+'\')"><span class="snack-name">'+s.lbl+'</span>'+badge+'<span class="snack-total'+cls+'" id="snt_'+s.id+'">'+(v>0?v:'--')+'</span><span class="snack-chev">&#9654;</span></div>';}return h;}
 function secHTML(sec){var inner='';if(sec.type==='items')inner=sec.items.map(itemHTML).join('');if(sec.type==='stand')inner=standHTML();if(sec.type==='walks')inner=walksHTML(sec.walks);if(sec.type==='cardio')inner=cardioRowHTML();return'<div class="sec"><div class="sec-lbl">'+sec.time+'</div><div class="sec-card">'+inner+'</div></div>';}
 function renderPills(){var h='';for(var i=0;i<7;i++){var c=i===viewDow?' active-pill':((weekOffset===0&&i===todayDow)?' today-pill':'');h+='<div class="pill'+c+'" onclick="jumpToDay('+i+')">'+DAYS_S[i]+'</div>';}document.getElementById('dayPills').innerHTML=h;}
-function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();var _hm=healthMetricsHTML(vd);var h=_hm?('<div class="sec"><div class="sec-lbl">Apple Health</div>'+_hm+'</div>'):'';if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';for(var i=0;i<sc.sections.length;i++)h+=secHTML(sc.sections[i]);h+='<div class="sec"><div class="sec-lbl">EXERCISE SNACKS</div><div class="sec-card">'+snacksHTML()+'</div></div>';document.getElementById('root').innerHTML=h;updateProgress();}
+function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();var _hm=healthMetricsHTML(vd);var h=_hm?('<div class="sec"><div class="sec-lbl">Apple Health</div>'+_hm+'</div>'):'';if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';for(var i=0;i<sc.sections.length;i++)h+=secHTML(sc.sections[i]);h+='<div class="sec"><div class="sec-lbl">EXERCISE SNACKS</div><div class="sec-card">'+snacksHTML()+'</div></div>';document.getElementById('root').innerHTML=(it?urgeCardHTML():'')+h;updateProgress();}
 function pct(v,t){return Math.min(100,Math.round(v/t*100));}
 function wcnt(v,t){return'<div class="wcount'+(v>=t?' ok':'')+'">'+v+'</div><div class="wtgt">target '+t+'</div>';}
 function wbar(v,t){var p=pct(v,t),ok=v>=t;return'<div class="wbar"><div class="wbar-fill'+(ok?' ok':'')+'\" style="width:'+p+'%"></div></div>';}
@@ -1304,14 +1332,14 @@ function cardioPRDate(ms){var d=new Date(ms);return MONTHS_S[d.getMonth()]+' '+d
 function openSnackSheet(id,lbl){sheetMode='snack';activeSnackId=id;document.getElementById('shtTitle').textContent=lbl;document.getElementById('shtSub').textContent=(state[id]||0)+' today';var h='<div class="num-grid">';for(var i=0;i<SNACK_NUMS.length;i++)h+='<div class="num-btn" onclick="snackAdd('+SNACK_NUMS[i]+')">'+SNACK_NUMS[i]+'</div>';h+='</div><div class="undo-row"><button class="undo-btn" onclick="snackUndo()">Undo last</button></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function snackAdd(n){if(!activeSnackId)return;state['_p_'+activeSnackId]=state[activeSnackId]||0;state[activeSnackId]=(state[activeSnackId]||0)+n;save();document.getElementById('shtSub').textContent=state[activeSnackId]+' today';var el=document.getElementById('snt_'+activeSnackId);if(el){var v=state[activeSnackId];el.textContent=v>0?v:'--';el.className='snack-total'+(v===0?' zero':'');}closeSheet();}
 function snackUndo(){if(!activeSnackId)return;var p=state['_p_'+activeSnackId];if(p!==undefined){state[activeSnackId]=p;save();}document.getElementById('shtSub').textContent=(state[activeSnackId]||0)+' today';}
-function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');if(sheetMode==='woWheel'){woSave();renderWorkout();}if(sheetMode==='cardio'){var secs=document.querySelectorAll('.sec');for(var i=0;i<secs.length;i++){var lbl=secs[i].querySelector('.sec-lbl');if(lbl&&lbl.textContent==='CARDIO'){secs[i].querySelector('.sec-card').innerHTML=cardioRowHTML();break;}}}sheetMode='';activeSnackId='';cardioDetOpen='';}
+function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');urgeTimerClear();if(sheetMode==='woWheel'){woSave();renderWorkout();}if(sheetMode==='cardio'){var secs=document.querySelectorAll('.sec');for(var i=0;i<secs.length;i++){var lbl=secs[i].querySelector('.sec-lbl');if(lbl&&lbl.textContent==='CARDIO'){secs[i].querySelector('.sec-card').innerHTML=cardioRowHTML();break;}}}sheetMode='';activeSnackId='';cardioDetOpen='';}
 var resetOk=false;
 function doReset(){var btn=document.getElementById('resetBtn');if(resetOk){state={};save();resetOk=false;render();btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}else{resetOk=true;btn.textContent='Tap again to confirm';btn.style.color='#E06060';btn.style.borderColor='#E06060';setTimeout(function(){if(resetOk){resetOk=false;btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}},3000);}}
 function refreshToday(){var dow=new Date().getDay();if(dow!==todayDow){todayDow=dow;render();}}
 setInterval(refreshToday,60000);
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer)woRestTick();refreshToday();}});
 /* ── DATA BACKUP ──────────────────────────────────────── */
-function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k==='tight_areas'||k.indexOf('test_active_')===0);}
+function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k==='tight_areas'||k==='urgeEvents'||k.indexOf('test_active_')===0);}
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
 function backupName(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return'training-backup-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';}
 function fallbackDownload(blob,fname){try{var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);}catch(e){alert('Export failed on this device.');}}
@@ -2489,6 +2517,109 @@ function coachRender(mode){var b=document.getElementById('shtBody');if(!b)return
     h+='<div class="cch-out">'+coachMd(pe.prose)+'</div>'+coachEditsHTML()+'<div class="cch-pad"><button class="cch-ghost" onclick="coachCopy()">Copy report</button></div>';}
   b.innerHTML=h;}
 function openCoach(){sheetMode='coach';coachBusy=false;coachResult='';coachErr='';document.getElementById('shtTitle').textContent='AI Coach';document.getElementById('shtSub').textContent='Training analysis & programming review';coachRender(coachKey()?'home':'setup');document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+
+/* ===== Boredom-Binge Interrupt — urge-loop coach (on-demand, no-moralizing) =====
+   A dashboard button for the moment of catching the drift toward food when not hungry. One
+   stateless AI call (reuses the Coach key/model) names the state, grants permission, and
+   redirects the restless energy into movement the user already owns. Every tap logs an
+   urgeEvent — outcome + the preceding activity (the root-cause field) — so the pattern becomes
+   visible. No outcome is a "fail"; the system prompt forbids moralizing. If there's no key or the
+   call fails, a static version of the urge-loop runs so the button never dead-ends. (See the
+   boredom-binge-interrupt spec for the why behind every rule here.) */
+var URGE_REDIRECTS={
+  walk:'Bring the dog walk forward',
+  squats:'20 air squats, right now',
+  mobility:'3 stretches from the floor routine',
+  water:'Cold water, or step outside',
+  task:'Tackle one avoided task',
+  protein:'Protein-first (if it might be real hunger)'};
+var URGE_ACTS=[['trading','Trading'],['work','Work'],['task_transition','Task switch'],['tv','TV'],['scrolling','Scrolling'],['other','Other']];
+var URGE_SYSTEM='You are the boredom-eating interrupt coach inside a habit tracker. The user tapped a button because they are NOT hungry but want to eat — boredom/understimulation seeking a fast dopamine hit, with food as the nearest lever. The urge is real, but the target (food) is a misread of the real need: a state change, not calories.\nHARD RULES (non-negotiable):\n1. ZERO moralizing. Food is never forbidden, "bad", a slip, or a failure. No guilt, no shame, no "next time", no disappointment framing. If they end up eating, that is neutral information, not a verdict.\n2. Permission-first: the frame is always "wait ~15 minutes and see if the urge passes — still want it after, eat it, zero penalty", never "don\'t".\n3. Redirect into movement they already own (floor mobility, a walk, air squats, cold water) — replacement stimulation, never food-restriction language.\n4. Evidence-grounded: reference THEIR own urge history, ride-out rate, and streaks, not generic encouragement.\n5. Brevity is mandatory: at most 2 short lines. No preamble, no markdown headings, no lists. End pointed at one concrete action, never at more conversation.\nLine 1: name the state plainly. Line 2: point at one specific action.';
+
+function urgeLoad(){try{var a=JSON.parse(localStorage.getItem('urgeEvents'));return (a&&a.length)?a:[];}catch(e){return [];}}
+function urgeSave(a){try{localStorage.setItem('urgeEvents',JSON.stringify(a.slice(-300)));}catch(e){}}
+function urgeAdd(ev){var a=urgeLoad();a.push(ev);urgeSave(a);}
+function urgeStats(){var a=urgeLoad(),n=a.length,won=0;for(var i=0;i<n;i++)if(a[i].outcome==='rode_out'||a[i].outcome==='redirected')won++;return {n:n,won:won,rate:n?Math.round(won/n*100):0};}
+
+var urgeTxt='',urgeBusy=false,urgeExpand=false,urgeShowAll=false,urgeStage='loop',urgePre='',urgeDone='',urgeTimerId=null,urgeTimerEnd=0;
+
+function urgeCardHTML(){return '<div class="sec"><button class="urge-btn" onclick="openUrge()"><span class="urge-btn-t">&#127754; Riding an urge</span><span class="urge-btn-s">Not hungry, but want to eat? Tap before you do.</span></button></div>';}
+
+function urgeContext(){var n=new Date(),st=loadStateForDate(n),today=[];
+  if(st['mob']>=1)today.push('floor mobility done');
+  if(st['lift'])today.push('lifted');
+  for(var i=0;i<CARDIO.length;i++){if(st[CARDIO[i].id]){today.push('cardio: '+CARDIO[i].lbl);break;}}
+  var recent=urgeLoad().slice(-10).map(function(e){var d=new Date(e.ts);return {at:(d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes(),outcome:e.outcome,after:e.precedingActivity||'',redirect:e.redirect||'none'};});
+  var s=urgeStats();
+  return {timeOfDay:n.getHours()+':'+(n.getMinutes()<10?'0':'')+n.getMinutes(),loggedToday:today,mobilityStreak:mobStreak(),proteinTargetG:170,urgeCount:s.n,rideOutRatePct:s.rate,urgeHistory:recent};}
+function urgePrompt(){return 'I just tapped "riding an urge" — I am not hungry but I want to eat. Help me ride it out in two short lines. My context as JSON:\n```json\n'+JSON.stringify(urgeContext(),null,1)+'\n```';}
+function urgeStaticText(){var s=urgeStats();
+  var l1=(s.n&&s.won)?('You’ve ridden out '+s.won+' of '+s.n+' urges before — this is the same wave, and it crests and fades in ~15 minutes.')
+    :'Not hunger — this reads as boredom looking for a fast hit. The urge crests and fades in about 15 minutes.';
+  return l1+'\nSet 15 minutes and change your state first. Still want it after? Eat it, zero penalty.';}
+
+function urgeFetch(){var key=coachKey();
+  if(!key){urgeTxt=urgeStaticText();urgeBusy=false;urgeRender();return;}
+  urgeBusy=true;urgeRender();
+  var body={model:coachModel(),max_tokens:200,system:URGE_SYSTEM,messages:[{role:'user',content:urgePrompt()}]};
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)})
+    .then(function(res){return res.json().then(function(j){return {ok:res.ok,j:j};},function(){return {ok:res.ok,j:null};});})
+    .then(function(r){urgeBusy=false;var txt='';if(r.ok&&r.j&&r.j.content)for(var i=0;i<r.j.content.length;i++)if(r.j.content[i].type==='text')txt+=r.j.content[i].text;urgeTxt=txt.trim()||urgeStaticText();urgeRender();})
+    .catch(function(){urgeBusy=false;urgeTxt=urgeStaticText();urgeRender();});}
+
+function urgeTimerClear(){if(urgeTimerId){clearInterval(urgeTimerId);urgeTimerId=null;}urgeTimerEnd=0;}
+function urgeTimerStart(){urgeTimerEnd=Date.now()+15*60*1000;if(urgeTimerId)clearInterval(urgeTimerId);urgeTimerId=setInterval(urgeTimerTick,1000);urgeRender();}
+function urgeTimerStop(){urgeTimerClear();urgeRender();}
+function urgeTimerTick(){var rem=Math.max(0,Math.round((urgeTimerEnd-Date.now())/1000));if(rem<=0){urgeTimerClear();try{playBeep(660,.5,.4);playBeep(880,.5,.4);}catch(e){}if(sheetMode==='urge')urgeRender();return;}var el=document.getElementById('urgeClock');if(el)el.textContent=urgeFmt(rem);}
+function urgeFmt(s){var m=Math.floor(s/60),x=s%60;return m+':'+(x<10?'0':'')+x;}
+
+function urgePicks(){var st=loadStateForDate(new Date()),h=new Date().getHours(),want=[];
+  if(!(st['mob']>=1))want.push('mobility');
+  want.push('squats');
+  want.push(h>=16?'walk':'water');
+  var out=[];for(var i=0;i<want.length&&out.length<2;i++)if(out.indexOf(want[i])<0)out.push(want[i]);return out;}
+
+function urgeToggle(){urgeExpand=!urgeExpand;urgeRender();}
+function urgeMoreRedir(){urgeShowAll=!urgeShowAll;urgeRender();}
+function urgeSetPre(k){urgePre=(urgePre===k?'':k);urgeRender();}
+function urgeLog(outcome,redirect){urgeAdd({ts:Date.now(),outcome:outcome,redirect:redirect||'none',precedingActivity:urgePre||'',hoursSinceLastMeal:null,note:''});urgeStage='done';urgeDone=outcome;urgeTimerClear();urgeRender();}
+function urgeDoneMsg(){var s=urgeStats();
+  if(urgeDone==='ate')return {t:'Logged — no verdict.',b:'That’s information about your day, not a verdict. The tap itself is the win: you caught the pattern instead of running on autopilot.'};
+  if(urgeDone==='redirected')return {t:'Logged. Go do it now.',b:'Change your state and the urge dissolves on its own.'+(s.n>1?(' You’ve now met '+s.won+' of '+s.n+' urges with something other than food.'):'')};
+  return {t:'Logged — you rode it out.',b:'The urge is a liar, and your own data proves it'+(s.n>1?(': '+s.won+' of '+s.n+' ridden out.'):'.')};}
+
+function urgeRender(){var b=document.getElementById('shtBody');if(!b)return;
+  if(urgeStage==='done'){var d=urgeDoneMsg(),s=urgeStats();
+    var hd='<div class="cch-pad"><div class="urge-done-t">'+esc(d.t)+'</div><div class="urge-done-b">'+esc(d.b)+'</div>';
+    if(s.n>=3)hd+='<div class="urge-mirror">Ride-out rate: <b>'+s.rate+'%</b> across '+s.n+' urges. When does it fire, and after what? The log is building the answer.</div>';
+    hd+='<button class="cch-go" style="margin-top:16px" onclick="closeSheet()">Done</button></div>';
+    b.innerHTML=hd;return;}
+  var h='<div class="cch-pad">';
+  if(urgeBusy){h+='<div class="cch-spin"><span class="cch-dot"></span>Catching the urge…</div>';}
+  else{var parts=String(urgeTxt||'').split(/\n+/),first=parts[0]||'',rest=parts.slice(1).join(' ').trim();
+    h+='<div class="urge-say">'+coachMd(first);
+    if(rest){if(urgeExpand)h+='<div class="urge-more">'+coachMd(rest)+'</div>';else h+='<div style="margin-top:4px"><span class="cch-link" onclick="urgeToggle()">more</span></div>';}
+    h+='</div>';}
+  if(urgeTimerEnd>Date.now())h+='<div class="urge-timer"><span class="urge-clock" id="urgeClock">'+urgeFmt(Math.max(0,Math.round((urgeTimerEnd-Date.now())/1000)))+'</span><span class="urge-timer-x" onclick="urgeTimerStop()">stop</span></div>';
+  else h+='<button class="urge-soft" onclick="urgeTimerStart()">&#9201;&#65039; Set a 15-min timer</button>';
+  h+='<div class="cch-lbl" style="margin-top:16px">Change your state instead</div>';
+  var picks=urgePicks(),i;
+  for(i=0;i<picks.length;i++)h+='<button class="urge-redir" onclick="urgeLog(\'redirected\',\''+picks[i]+'\')">'+esc(URGE_REDIRECTS[picks[i]])+'</button>';
+  h+='<div style="text-align:center;margin:2px 0 6px"><span class="cch-link" onclick="urgeMoreRedir()">'+(urgeShowAll?'fewer':'other options')+'</span></div>';
+  if(urgeShowAll)for(var k in URGE_REDIRECTS){if(!URGE_REDIRECTS.hasOwnProperty(k)||picks.indexOf(k)>=0)continue;h+='<button class="urge-redir ghost" onclick="urgeLog(\'redirected\',\''+k+'\')">'+esc(URGE_REDIRECTS[k])+'</button>';}
+  h+='<div class="cch-lbl" style="margin-top:14px">What were you doing? (optional)</div><div class="urge-chips">';
+  for(i=0;i<URGE_ACTS.length;i++)h+='<span class="urge-chip'+(urgePre===URGE_ACTS[i][0]?' on':'')+'" onclick="urgeSetPre(\''+URGE_ACTS[i][0]+'\')">'+esc(URGE_ACTS[i][1])+'</span>';
+  h+='</div>';
+  h+='<div class="urge-log-row"><button class="urge-log" onclick="urgeLog(\'rode_out\',\'none\')">I rode it out</button><button class="urge-log ate" onclick="urgeLog(\'ate\',\'none\')">I ate — log it</button></div>';
+  h+='<div class="urge-foot">Every tap is data, not a test. No outcome is a fail.</div></div>';
+  b.innerHTML=h;}
+
+function openUrge(){sheetMode='urge';urgeTxt='';urgeBusy=false;urgeExpand=false;urgeShowAll=false;urgeStage='loop';urgePre='';urgeDone='';urgeTimerClear();
+  document.getElementById('shtTitle').textContent='Riding an urge';
+  document.getElementById('shtSub').textContent='Not hungry, but want to eat';
+  urgeRender();
+  document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');
+  urgeFetch();}
 
 function applyTheme(){var t='system';try{t=localStorage.getItem('theme')||'system';}catch(e){}
   var dark=t==='dark'||(t==='system'&&(typeof matchMedia==='undefined'?true:matchMedia('(prefers-color-scheme: dark)').matches));
