@@ -1399,6 +1399,40 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Cardio Threshold Validation (spec v2): Zone 2 qualify, weekly accumulation, tiers =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,state:sandbox.state,coachRange:sandbox.coachRange,coachKind:sandbox.coachKind};
+  // per-session threshold: a session qualifies at >= 20 min in Wahoo Zone 2
+  ok(sandbox.cardioZ2Qualifies(20)===true&&sandbox.cardioZ2Qualifies(19.5)===false,'a session qualifies at >=20 Zone 2 min, not below');
+  // tiers: floor 90 / target 150 / ceiling 180
+  ok(sandbox.cardioZ2Tier(60).key==='under','under 90 min reads as Building');
+  ok(sandbox.cardioZ2Tier(90).key==='floor'&&sandbox.cardioZ2Tier(150).key==='target'&&sandbox.cardioZ2Tier(185).key==='ceiling','tiers map to floor / target / ceiling at 90 / 150 / 180');
+  // weekly accumulation: sum Zone 2 minutes + count qualifying sessions across the viewed week
+  sandbox.weekOffset=0;
+  var mon=sandbox.getDateForDow(1),wed=sandbox.getDateForDow(3),fri=sandbox.getDateForDow(5);
+  store.set(sandbox.storeKeyForDate(mon),JSON.stringify({c_mill:1,cdt_c_mill:{min:30,z2:25}}));
+  store.set(sandbox.storeKeyForDate(wed),JSON.stringify({c_run:1,cdt_c_run:{min:35,z2:32}}));
+  store.set(sandbox.storeKeyForDate(fri),JSON.stringify({c_sprt:1,cdt_c_sprt:{min:18,z2:8}})); // intervals: under 20, must not be a "fail"
+  var ws=sandbox.weekStats();
+  ok(ws.cZ2===65,'weekly Zone 2 minutes sum across the week (25+32+8)');
+  ok(ws.cZ2Sessions===2,'only the two 20+ min sessions count as qualifying (the interval session does not)');
+  // the day-view summary surfaces Zone 2 minutes with a qualify check
+  sandbox.viewDow=1;sandbox.loadState();
+  var sum=sandbox.cardioDetSummary('c_mill');
+  ok(/25 min Z2/.test(sum)&&/✓/.test(sum),'cardio summary shows Zone 2 minutes with a qualifying check');
+  // the under-threshold session reads as "not a fail", never a failure
+  sandbox.viewDow=5;sandbox.loadState();
+  var noteUnder=sandbox.cardioZ2NoteInner('c_sprt');
+  ok(/8 min in Zone 2/.test(noteUnder)&&/not a fail/.test(noteUnder),'an under-20 session is framed as still-real expenditure, not a fail');
+  // the AI coach payload carries Zone 2 minutes + the qualifies flag
+  sandbox.coachRange='month';sandbox.coachKind='workout';
+  var p=sandbox.coachPayload();
+  ok(p.cardioSessions.some(function(c){return c.zone2Min===25&&c.qualifiesZone2===true;}),'coach payload carries zone2Min and the qualifies flag');
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Boredom-binge urge interrupt: logging schema, stats, context, no-moralizing prompt =====
 (function(){
   var _snap=new Map(store);store.clear();
