@@ -1421,10 +1421,20 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.viewDow=1;sandbox.loadState();
   var sum=sandbox.cardioDetSummary('c_mill');
   ok(/25 min Z2/.test(sum)&&/✓/.test(sum),'cardio summary shows Zone 2 minutes with a qualifying check');
-  // the under-threshold session reads as "not a fail", never a failure
+  // §7 feedback — qualifying message shows the running weekly total (25+32+8 = 65 / 150)
+  var noteOk=sandbox.cardioZ2NoteInner('c_mill');
+  ok(/25 min Zone 2/.test(noteOk)&&/week 65\/150/.test(noteOk),'qualifying feedback shows the running weekly Zone 2 total');
+  // §7 feedback — under 20 min, no HR: neutral "short of counting", never a fail/penalty verdict
   sandbox.viewDow=5;sandbox.loadState();
   var noteUnder=sandbox.cardioZ2NoteInner('c_sprt');
-  ok(/8 min in Zone 2/.test(noteUnder)&&/not a fail/.test(noteUnder),'an under-20 session is framed as still-real expenditure, not a fail');
+  ok(/12 short of counting/.test(noteUnder)&&/not a penalty/.test(noteUnder),'under-20 feedback is neutral data, not a penalty');
+  // §7 feedback — avg HR above the band reads as high-intensity (Zone 3+), exempt from Zone 2 volume
+  sandbox.state={c_run:1,cdt_c_run:{z2:6,hr:150}};
+  var noteHigh=sandbox.cardioZ2NoteInner('c_run');
+  ok(/High-intensity/.test(noteHigh)&&/not counted/.test(noteHigh),'avg HR above 132 reads as high-intensity, exempt from Zone 2');
+  // §7 feedback — avg HR below the band reads as a walk, not Zone 2 cardio
+  sandbox.state={c_incl:1,cdt_c_incl:{z2:4,hr:95}};
+  ok(/logs as a walk/.test(sandbox.cardioZ2NoteInner('c_incl')),'avg HR below 107 reads as a walk, not Zone 2 cardio');
   // the AI coach payload carries Zone 2 minutes + the qualifies flag
   sandbox.coachRange='month';sandbox.coachKind='workout';
   var p=sandbox.coachPayload();
