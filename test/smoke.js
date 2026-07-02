@@ -453,8 +453,13 @@ var rg=sandbox.document.getElementById('shtBody').innerHTML;
 ok(/num-grid/.test(rg)&&/woPickReps/.test(rg),'reps picker opens a number grid');
 ok(/>4<\/div>/.test(rg)&&/>20<\/div>/.test(rg),'grid covers the 4..20 range');
 ok(/num-btn sel"[^>]*>10</.test(rg),'current reps value is highlighted');
-sandbox.woPickReps(14);
+sandbox.woSession.exercises[0].sets[1].done=false;
+sandbox.woOpenReps(0,1);sandbox.woPickReps(14);
 ok(sandbox.woSession.exercises[0].sets[1].reps===14,'tapping a grid value sets reps');
+ok(sandbox.woSession.exercises[0].sets[1].done===true,'picking reps auto-completes the set');
+// editing reps on an already-done set keeps it done (never un-checks)
+sandbox.woOpenReps(0,1);sandbox.woPickReps(12);
+ok(sandbox.woSession.exercises[0].sets[1].reps===12&&sandbox.woSession.exercises[0].sets[1].done===true,'re-picking reps on a completed set updates reps without un-checking');
 // rest-tick audio keep-alive wired
 var beeps=0,origTick=sandbox.beepTick;sandbox.beepTick=function(){beeps++;origTick&&origTick();};
 sandbox.__resumed=0;
