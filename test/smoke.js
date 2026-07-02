@@ -1168,6 +1168,23 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // an existing same-day entry is never overwritten by carry-forward
   sandbox.state={};sandbox.state['c_incl']=true;sandbox.state['cdt_c_incl']={min:40,incl:5};sandbox.toggleCardioOpt('c_incl');sandbox.toggleCardioOpt('c_incl');
   ok(sandbox.state['cdt_c_incl'].min===40&&sandbox.state['cdt_c_incl'].incl===5,'re-selecting keeps the current day edits (no clobber from history)');
+  // treadmill types default incline to 15 so calorie estimates aren't silently computed at 0%
+  store.clear();sandbox.state={};sandbox.viewDow=4;sandbox.weekOffset=0;
+  sandbox.toggleCardioOpt('c_mill');
+  ok(sandbox.state['cdt_c_mill']&&sandbox.state['cdt_c_mill'].incl===15,'selecting a treadmill type defaults incline to 15');
+  // non-treadmill types (outdoor run, bike) get no default incline
+  store.clear();sandbox.state={};sandbox.toggleCardioOpt('c_run');
+  ok(!sandbox.state['cdt_c_run']||sandbox.state['cdt_c_run'].incl==null,'an outdoor (non-treadmill) type gets no default incline');
+  // a carried-forward treadmill session that lacks incline still picks up the 15 default
+  store.clear();
+  store.set(sandbox.storeKeyForDate(sandbox.getDateForDow(2)),JSON.stringify({c_mill:true,'cdt_c_mill':{min:30,spd:2.7}}));
+  sandbox.viewDow=4;sandbox.weekOffset=0;sandbox.loadState();
+  sandbox.toggleCardioOpt('c_mill');
+  ok(sandbox.state['cdt_c_mill'].spd===2.7&&sandbox.state['cdt_c_mill'].incl===15,'carry-forward without incline still seeds the 15 default');
+  // an explicit incline (including 0 for flat) is never overwritten by the default
+  store.clear();sandbox.state={};sandbox.state['c_mill']=true;sandbox.state['cdt_c_mill']={min:20,incl:0};
+  sandbox.toggleCardioOpt('c_mill');sandbox.toggleCardioOpt('c_mill');
+  ok(sandbox.state['cdt_c_mill'].incl===0,'an explicit 0% incline is kept, not replaced by the default');
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
