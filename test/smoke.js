@@ -1101,10 +1101,10 @@ sandbox.closeSheet&&sandbox.closeSheet();
 (function(){
   var _snap=new Map(store);store.clear();
   // ACSM estimator: incline walking matches a treadmill console (~305 kcal for a ~186lb user)
-  // speed is now km/h: 4.02 km/h == 2.5 mph
-  var k=sandbox.estCardioKcal({min:25.5,spd:4.02,incl:15,weightLb:186});
-  ok(k>=295&&k<=315,'estCardioKcal: 25.5min @4.02km/h/15% incline ~ treadmill 305 kcal (got '+k+')');
-  ok(sandbox.estCardioKcal({min:25.5,spd:4.02,incl:15,weightLb:186})>sandbox.estCardioKcal({min:25.5,spd:4.02,incl:0,weightLb:186}),'estCardioKcal: incline raises the burn');
+  // speed is now mph: a 2.5 mph incline walk
+  var k=sandbox.estCardioKcal({min:25.5,spd:2.5,incl:15,weightLb:186});
+  ok(k>=295&&k<=315,'estCardioKcal: 25.5min @2.5mph/15% incline ~ treadmill 305 kcal (got '+k+')');
+  ok(sandbox.estCardioKcal({min:25.5,spd:2.5,incl:15,weightLb:186})>sandbox.estCardioKcal({min:25.5,spd:2.5,incl:0,weightLb:186}),'estCardioKcal: incline raises the burn');
   ok(sandbox.estCardioKcal({min:25.5,dist:1.06,incl:15,weightLb:186})>0,'estCardioKcal: derives speed from distance+time when speed is missing');
   ok(sandbox.estCardioKcal({min:0,spd:2.5,incl:15,weightLb:186})===null&&sandbox.estCardioKcal({min:25,spd:2.5,incl:15,weightLb:0})===null,'estCardioKcal: needs time + weight (null otherwise)');
   // body-weight lookup: Body Weight test as fallback, recent Apple Health weight preferred
@@ -1144,7 +1144,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.set(sandbox.storeKeyForDate(_wd1),JSON.stringify({c_incl:true,'cdt_c_incl':{min:30,dist:1.5,cal:280}}));
   var wst=sandbox.weekStats();
   ok(wst.cMin===55&&wst.cCal===585,'weekStats sums cardio minutes (55) + calories (585) across the week');
-  ok(Math.abs(wst.cDist-2.56)<1e-9,'weekStats sums cardio distance (2.56 km)');
+  ok(Math.abs(wst.cDist-2.56)<1e-9,'weekStats sums cardio distance (2.56 mi)');
   sandbox.weekOffset=0;sandbox.renderWeek();
   var wh=sandbox.document.getElementById('root').innerHTML;
   ok(/Logged totals/.test(wh)&&/55 min/.test(wh)&&/585 kcal/.test(wh),'Week view renders the cardio Logged totals row');
@@ -1175,7 +1175,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var cp=sandbox.coachPayload();
   ok(cp.cardioLogged===1,'coachPayload counts logged cardio sessions in range');
   ok(cp.cardioSessions&&cp.cardioSessions[0].type.indexOf('Incline Walk')>=0,'coachPayload labels the cardio type');
-  ok(cp.cardioSessions[0].inclinePct===15&&cp.cardioSessions[0].speedKmh===2.5&&cp.cardioSessions[0].kcal===305&&cp.cardioSessions[0].avgHr===107,'coachPayload carries the cardio detail metrics (km/h)');
+  ok(cp.cardioSessions[0].inclinePct===15&&cp.cardioSessions[0].speedMph===2.5&&cp.cardioSessions[0].kcal===305&&cp.cardioSessions[0].avgHr===107,'coachPayload carries the cardio detail metrics (mph)');
   ok(cp.sessionsLogged===0&&cp.cardioLogged===1,'a cardio-only range still surfaces cardio (no strength sessions needed)');
   var pr=sandbox.coachPrompt(cp,null);
   ok(/CONDITIONING/.test(pr)&&/cardioSessions/.test(pr),'coachPrompt asks the model to review conditioning + sees the cardio JSON');
@@ -1187,8 +1187,8 @@ sandbox.closeSheet&&sandbox.closeSheet();
 (function(){
   var _snap=new Map(store);store.clear();
   // pace
-  ok(sandbox.cardioPaceSec({min:25,dist:1.06})===1415,'cardioPaceSec computes seconds per km');
-  ok(sandbox.fmtPace(1415)==='23:35/km','fmtPace formats as min:sec /km');
+  ok(sandbox.cardioPaceSec({min:25,dist:1.06})===1415,'cardioPaceSec computes seconds per mi');
+  ok(sandbox.fmtPace(1415)==='23:35/mi','fmtPace formats as min:sec /mi');
   ok(sandbox.cardioPaceSec({min:25})===null,'cardioPaceSec needs both time and distance');
   // HR zones (need age)
   ok(sandbox.hrZone(150)===null,'hrZone returns nothing without an age set');
@@ -1200,8 +1200,8 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // summary now carries pace + zone
   sandbox.state={'cdt_c_incl':{min:25,dist:1.06,spd:2.5,incl:15,cal:305,hr:107}};
   var sum=sandbox.cardioDetSummary('c_incl');
-  ok(/23:35\/km/.test(sum)&&/Z1 Recovery/.test(sum),'cardioDetSummary includes pace + HR zone');
-  ok(/1\.06 km/.test(sum)&&/2\.5 km\/h/.test(sum),'cardioDetSummary renders metric units (km + km/h)');
+  ok(/23:35\/mi/.test(sum)&&/Z1 Recovery/.test(sum),'cardioDetSummary includes pace + HR zone');
+  ok(/1\.06 mi/.test(sum)&&/2\.5 mph/.test(sum),'cardioDetSummary renders imperial units (mi + mph)');
   // seed history for PRs / nudge: 3 identical recent incline walks + 1 older, faster/shorter
   store.clear();sandbox.localStorage.setItem('profile_age','40');
   sandbox.viewDow=3;sandbox.weekOffset=0;
@@ -1239,11 +1239,11 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.loadState();
   var crow=sandbox.cardioRowHTML();
   ok(/cardio-nudge/.test(crow)&&/Plateau/.test(crow),'day card shows the cardio progression nudge');
-  ok(/23:35\/km/.test(crow)&&/Z1 Recovery/.test(crow),'day card shows pace + HR zone');
+  ok(/23:35\/mi/.test(crow)&&/Z1 Recovery/.test(crow),'day card shows pace + HR zone');
   // week view shows Cardio Records + trend
   sandbox.renderWeek();
   var wh=sandbox.document.getElementById('root').innerHTML;
-  ok(/Cardio Records/.test(wh)&&/Fastest pace/.test(wh)&&/20:00\/km/.test(wh),'Week view shows cardio records incl fastest pace');
+  ok(/Cardio Records/.test(wh)&&/Fastest pace/.test(wh)&&/20:00\/mi/.test(wh),'Week view shows cardio records incl fastest pace');
   ok(/Weekly minutes/.test(wh),'Week view shows the weekly minutes trend');
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
