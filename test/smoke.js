@@ -1021,6 +1021,29 @@ sandbox.woUndoBump(0);
 ok(sandbox.woNormTmpl(sandbox.woEffTemplate('mon')).ex.find(function(x){return x.name==='DB Bench Press';}).seedW===55&&!sandbox.woSession.exercises[0].bump,'Undo restores the template and clears the bump');
 sandbox.localStorage.removeItem(_mk);sandbox.localStorage.removeItem('wo_carry');sandbox.woResetTmpl('mon');sandbox.woSession=null;sandbox.woWheel=null;
 
+// ===== Make-up: load another day's split onto a date =====
+sandbox.viewDow=4;sandbox.weekOffset=0;sandbox.woEditing=false;
+sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.woSession=null;
+ok(sandbox.woTagForDow(4)==='thu'&&sandbox.woDayTagOverride(4)===null,'a day starts on its native split with no override');
+sandbox.woLoadSplit('mon');
+ok(sandbox.woDayTagOverride(4)==='mon','loading a split records a per-date override');
+ok(sandbox.woSession&&sandbox.woSession.dayTag==='mon','the reseeded session adopts the loaded split');
+ok(sandbox.woSession.exercises[0].name===sandbox.woNormTmpl(sandbox.woEffTemplate('mon')).ex[0].name,"the day now shows the loaded split's exercises");
+ok(sandbox.isBackupKey('wo_daytag'),'the make-up override map is included in backups');
+sandbox.renderWorkout();
+var _mu=sandbox.document.getElementById('root').innerHTML;
+ok(/Made-up/.test(_mu)&&/UPPER PUSH/.test(_mu),'the day view flags the made-up split');
+sandbox.woLoadSplit('thu');
+ok(sandbox.woDayTagOverride(4)===null&&sandbox.woSession.dayTag==='thu','loading the native split clears the override');
+// a rest day (weekend) can host a make-up workout, then be cleared back to rest
+sandbox.viewDow=6;sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(6));sandbox.woSession=null;
+ok(sandbox.woTagForDow(6)===null,'a rest day has no native split');
+sandbox.woLoadSplit('wed');
+ok(sandbox.woDayTagOverride(6)==='wed'&&sandbox.woSession&&sandbox.woSession.dayTag==='wed','a rest day can load a split');
+sandbox.woLoadSplit(null);
+ok(sandbox.woDayTagOverride(6)===null,'clearing a rest-day make-up returns it to rest');
+sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.localStorage.removeItem(sandbox.woKeyForDow(6));sandbox.woSession=null;
+
 // ===== Apple Health setup guide =====
 sandbox.viewDow=0;sandbox.openHealthSheet();
 var _hb=sandbox.document.getElementById('shtBody').innerHTML;
