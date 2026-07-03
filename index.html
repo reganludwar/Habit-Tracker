@@ -294,6 +294,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 /* WORKOUT TAB */
 .wo-intro{margin:16px 16px 0;font-size:13px;color:#BDBDCC;line-height:1.55;text-align:center}
 .wo-empty{margin:40px 16px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+.wo-loadbtn{display:inline-block;margin-top:18px;background:var(--accent);color:#000;border:none;font-size:13px;font-weight:700;letter-spacing:.04em;padding:11px 18px;border-radius:8px;cursor:pointer}
+.wo-loadbtn:active{opacity:.85}
 .wo-ex{background:var(--card);border:1px solid var(--border);margin:16px 16px 0;overflow:hidden}
 .wo-ex-hd{padding:12px 14px;border-bottom:1px solid var(--border)}
 .wo-ex-name{font-size:16px;font-weight:600}
@@ -1817,6 +1819,14 @@ var WO_TEMPLATES={
  ]}
 };
 function woDayTag(dow){return ({1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'})[dow]||null;}
+/* Per-date split override ("make-up"): load another weekday's template onto a given date, so a
+   missed day can be trained on another day and still log the correct exercises. Stored as a
+   { dateKey: tag } map; an absent key means the day keeps its native split (or stays a rest day). */
+function woLoadDayTags(){try{return JSON.parse(localStorage.getItem('wo_daytag')||'{}')||{};}catch(e){return {};}}
+function woDayTagOverride(dow){var t=woLoadDayTags()[woKeyForDow(dow)];return (t&&WO_TEMPLATES[t])?t:null;}
+function woTagForDow(dow){return woDayTagOverride(dow)||woDayTag(dow);}
+function woTagDow(tag){return ({mon:1,tue:2,wed:3,thu:4,fri:5})[tag]||null;}
+function woSetDayTag(dow,tag){var m=woLoadDayTags(),k=woKeyForDow(dow);if(!tag||tag===woDayTag(dow))delete m[k];else m[k]=tag;var json=JSON.stringify(m);try{localStorage.setItem('wo_daytag',json);if(localStorage.getItem('wo_daytag')!==json){storageFail();return false;}return true;}catch(e){storageFail();return false;}}
 function woKeyForDate(dt){return 'wo_'+dt.getFullYear()+'_'+(dt.getMonth()+1)+'_'+dt.getDate();}
 function woKeyForDow(d){return woKeyForDate(getDateForDow(d));}
 function woClone(o){return JSON.parse(JSON.stringify(o));}
@@ -1879,7 +1889,7 @@ function woFanfare(){try{playBeep(660,0.12,0.9);setTimeout(function(){playBeep(8
 function testHigherBetter(t){if(t.id==='t_5k'||t.id==='t_wc'||t.id==='t_rhr')return false;if(t.id==='t_bw')return null;if(t.id&&t.id.indexOf('ct_')===0)return t.type==='number'?null:true;return true;}
 function testTrendHTML(t){var arr=historyOf(t.id,8);if(!arr||arr.length<2)return '';var chrono=arr.slice().reverse(),vals=[];for(var i=0;i<chrono.length;i++)vals.push(chrono[i].value);var last=vals[vals.length-1],prev=vals[vals.length-2],d=last-prev,hb=testHigherBetter(t);var good=hb==null?null:(hb?d>0:d<0);var col=(d===0||good==null)?'var(--muted)':(good?'var(--green)':'var(--red)');var arrow=d>0?'&#9650;':d<0?'&#9660;':'&middot;';var dtxt=d===0?'no change':(arrow+' '+(Math.round(Math.abs(d)*10)/10)+' '+t.unit);return '<div class="ts-trend">'+sparkline(vals,64,22,'var(--accent)')+'<span style="color:'+col+'">'+dtxt+'</span></div>';}
 function woSeed(dow,key){
-  var tag=woDayTag(dow),tmpl=tag?woNormTmpl(woEffTemplate(tag)):null;
+  var tag=woTagForDow(dow),tmpl=tag?woNormTmpl(woEffTemplate(tag)):null;
   var x=getDateForDow(dow);x.setHours(0,0,0,0);
   var sess={_key:key,date:x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(),dateMs:x.getTime(),dayTag:tag,started:Date.now(),finished:false,elapsed:0,showRPE:(tmpl?tmpl.showRPE!==false:true),exercises:[]};
   if(!tmpl)return sess;
@@ -1911,7 +1921,7 @@ function woSeed(dow,key){
   return sess;
 }
 function woBackfillMobility(sess,dow){
-  var tag=woDayTag(dow);if(!tag||!sess||!sess.exercises)return false;
+  var tag=(sess&&sess.dayTag)||woTagForDow(dow);if(!tag||!sess||!sess.exercises)return false;
   var tmpl=woNormTmpl(woEffTemplate(tag)),changed=false;
   for(var e=0;e<sess.exercises.length;e++){
     var ex=sess.exercises[e],te=null;
@@ -1948,6 +1958,34 @@ function woUndoReset(){var t=woLoadTrash();if(!t)return;try{localStorage.setItem
 function woDismissTrash(){woClearTrash();renderWorkout();}
 function woUndoBannerHTML(key){var t=woLoadTrash();if(!t||t.key!==key)return '';return '<div class="wo-undo"><span class="wo-undo-msg"><b>Logged sets were cleared.</b> Tap Undo to restore what you had on this day.</span><button class="wo-undo-btn" onclick="woUndoReset()">Undo</button><span class="wo-undo-x" onclick="woDismissTrash()">&#215;</span></div>';}
 function woResetDay(){if(!woSession)return;if(!confirm('Reset this day to the current template?\n\nThis ERASES the sets you have logged for this day. (You can Undo right after.)'))return;var key=woSession._key;woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}
+/* Make-up picker: choose any weekday's split to load onto the day in view. Loading reseeds the day
+   from that split's template and records the choice as a per-date override so the correct exercises
+   are logged and the session counts on the day it was actually done. */
+function woOpenSplitSheet(){
+  sheetMode='';
+  var dow=viewDow,cur=(woSession&&woSession.dayTag)||woTagForDow(dow),native=woDayTag(dow);
+  document.getElementById('shtTitle').textContent='Load a workout';
+  document.getElementById('shtSub').textContent='Do another day’s split on '+DAYS[dow];
+  var tags=['mon','tue','wed','thu','fri'],h='';
+  for(var i=0;i<tags.length;i++){var tg=tags[i],sel=(tg===cur);
+    h+='<div class="co-row'+(sel?' sel':'')+'" onclick="woLoadSplit(\''+tg+'\')"><div class="co-body"><div class="co-lbl">'+DAYS[woTagDow(tg)]+'</div><div class="co-sub">'+esc(woEffTemplate(tg).tag)+'</div></div>'+(sel?'<div class="co-det-tog">Loaded</div>':'')+'</div>';}
+  if(woDayTagOverride(dow)){var rl=native?('Revert to '+DAYS[dow]+'’s '+woEffTemplate(native).tag):'Clear — back to rest day';h+='<div class="undo-row"><button class="undo-btn" onclick="woRevertDay()">'+esc(rl)+'</button></div>';}
+  document.getElementById('shtBody').innerHTML=h;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+function woLoadSplit(tag){
+  var dow=viewDow,key=woKeyForDow(dow),cur=null,hasWork=false;
+  try{var raw=localStorage.getItem(key);if(raw){var o=JSON.parse(raw);cur=o&&o.dayTag;hasWork=woSessionHasWork(o);}}catch(e){}
+  if(tag===cur&&hasWork){closeSheet();return;}
+  var nm=tag?woEffTemplate(tag).tag:null;
+  if(hasWork&&!confirm((nm?('Load '+nm+' onto '+DAYS[dow]+'?'):('Clear '+DAYS[dow]+' back to a rest day?'))+'\n\nThe sets already logged here will be cleared — you can Undo right after.'))return;
+  if(hasWork)woStashSession(key);
+  try{localStorage.removeItem(key);}catch(e){}
+  woSetDayTag(dow,tag);
+  woSession=null;closeSheet();renderWorkout();
+}
+function woRevertDay(){woLoadSplit(woDayTag(viewDow));}
 function woSave(){if(!woSession)return;try{localStorage.setItem(woSession._key,JSON.stringify(woSession));}catch(e){storageFail();}}
 function woFmtTime(v){if(v==null)return '0:00';if(typeof v==='object')return 'L '+fmtMMSSVal(v.l||0)+' · R '+fmtMMSSVal(v.r||0);return fmtMMSSVal(v);}
 function woWorks(ex){var w=[];for(var i=0;i<ex.sets.length;i++)if(ex.sets[i].tag!=='W')w.push(ex.sets[i]);return w;}
@@ -2038,14 +2076,17 @@ function _renderWorkout(){
   document.getElementById('woEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');
   document.getElementById('woName').textContent=DAYS[viewDow];
   document.getElementById('woDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();
-  var tag=woDayTag(viewDow);
-  if(!tag){woSession=null;document.getElementById('root').innerHTML='<div class="wo-empty">No lift scheduled for '+DAYS[viewDow]+'.<br>Rest or active recovery — mobility lives in the Stretch tab.</div>';return;}
+  var tag=woTagForDow(viewDow);
+  if(!tag){woSession=null;document.getElementById('root').innerHTML='<div class="wo-empty">No lift scheduled for '+DAYS[viewDow]+'.<br>Rest or active recovery — mobility lives in the Stretch tab.<br><button class="wo-loadbtn" onclick="woOpenSplitSheet()">&#8646; Load a workout onto this day</button></div>';return;}
   if(woEditing){renderWoEditor(tag);return;}
   var key=woKeyForDow(viewDow);
   if(!woSession||woSession._key!==key)woLoadOrSeed(viewDow,key);
+  tag=woSession.dayTag||tag;
   var _sy=window.pageYOffset||(document.documentElement&&document.documentElement.scrollTop)||0;
-  var sess=woSession,h='<div class="wo-intro">'+woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it</div>';
-  h+='<div class="wo-edit-link"><span onclick="woOpenEditor()">&#9881; Edit day template</span><span onclick="woResetDay()">&#8635; Reset day</span></div>';
+  var _ov=woDayTagOverride(viewDow),_native=woDayTag(viewDow);
+  var _intro=_ov?('&#8646; Made-up · '+esc(woEffTemplate(tag).tag)+' loaded onto '+DAYS[viewDow]+(_native?' (normally '+esc(woEffTemplate(_native).tag)+')':'')):(woEffTemplate(tag).tag+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it');
+  var sess=woSession,h='<div class="wo-intro">'+_intro+'</div>';
+  h+='<div class="wo-edit-link"><span onclick="woOpenSplitSheet()">&#8646; Load another day</span><span onclick="woOpenEditor()">&#9881; Edit</span><span onclick="woResetDay()">&#8635; Reset</span></div>';
   h+=woUndoBannerHTML(key);
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
   h+='<div class="wo-notes-wrap"><textarea class="wo-notes" id="woNotes" placeholder="Session notes — how it felt, tweaks, aches…" oninput="woSaveNotes(this.value)">'+esc(sess.notes||'')+'</textarea></div>';
