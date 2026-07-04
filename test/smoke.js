@@ -1110,6 +1110,44 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   store.clear();_snap2.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Training-load readiness (RPE + volume, no wearable needed) =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  function seed(daysAgo,rpe,nsets){var dt=new Date();dt.setHours(0,0,0,0);dt.setDate(dt.getDate()-daysAgo);var sets=[];for(var i=0;i<nsets;i++)sets.push({tag:'work',done:true,weight:50,reps:10,rpe:rpe});store.set(sandbox.woKeyForDate(dt),JSON.stringify({dateMs:dt.getTime(),dayTag:'mon',exercises:[{name:'DB Bench Press',sets:sets}]}));}
+  // weekly load tallies sets / tonnage / avg RPE for the current week
+  seed(0,8,4);
+  var wl=sandbox.woWeeklyLoad(4),cur=wl[wl.length-1];
+  ok(wl.length===4&&cur.sets===4&&cur.tonnage===2000&&cur.avgRpe===8,'woWeeklyLoad tallies sets, tonnage and avg RPE for the week');
+  // three consecutive hard weeks → deload recommended
+  store.clear();seed(0,8.5,6);seed(7,8.5,6);seed(14,8.5,6);
+  var rd=sandbox.woReadiness();
+  ok(rd.deload===true&&/Deload/.test(rd.status),'three hard weeks in a row flags a deload');
+  // a single easy week reads as fresh, no deload
+  store.clear();seed(0,6.5,6);
+  var rd2=sandbox.woReadiness();
+  ok(rd2.deload===false&&/room to push/i.test(rd2.status),'a low-RPE week reads as fresh with room to push');
+  // bodyweight series from Apple Health imports, oldest→newest
+  store.clear();
+  var d1=new Date();d1.setHours(0,0,0,0);d1.setDate(d1.getDate()-10);
+  var d2=new Date();d2.setHours(0,0,0,0);
+  store.set(sandbox.healthKeyForDate(d1),JSON.stringify({weightLb:190}));
+  store.set(sandbox.healthKeyForDate(d2),JSON.stringify({weightLb:187}));
+  var ws=sandbox.woWeightSeries(90);
+  ok(ws.length===2&&ws[0].w===190&&ws[1].w===187,'woWeightSeries collects bodyweight readings chronologically');
+  // coach payload carries trainingLoad; prompt references it
+  store.clear();seed(0,8,6);
+  sandbox.coachRange='this';sandbox.coachKind='workout';
+  var cp=sandbox.coachPayload();
+  ok(cp.trainingLoad&&typeof cp.trainingLoad.deloadRecommended==='boolean'&&cp.trainingLoad.weeks.length===4,'coachPayload carries trainingLoad (4 weeks + deload flag)');
+  ok(/trainingLoad/.test(sandbox.coachPrompt(cp,null)),'coach prompt points the model at trainingLoad');
+  // Week view surfaces the Readiness card with a deload nudge
+  store.clear();seed(0,8.5,6);seed(7,8.5,6);seed(14,8.5,6);
+  sandbox.weekOffset=0;sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
+  var wk=sandbox.document.getElementById('root').innerHTML;
+  ok(/Readiness/.test(wk)&&/Deload/.test(wk),'Week view surfaces the Readiness card with a deload nudge');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health setup guide =====
 sandbox.viewDow=0;sandbox.openHealthSheet();
 var _hb=sandbox.document.getElementById('shtBody').innerHTML;
