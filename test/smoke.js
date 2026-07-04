@@ -1063,6 +1063,53 @@ sandbox.woLoadSplit(null);
 ok(sandbox.woDayTagOverride(6)===null,'clearing a rest-day make-up returns it to rest');
 sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.localStorage.removeItem(sandbox.woKeyForDow(6));sandbox.woSession=null;
 
+// ===== Movement-pattern coverage / imbalance readout =====
+(function(){
+  // every built-in exercise carries a movement/muscle tag
+  var lib=sandbox.woExLibrary(),untagged=[];
+  for(var nm in lib)if(lib.hasOwnProperty(nm)&&!sandbox.woExTags(nm))untagged.push(nm);
+  ok(untagged.length===0,'every built-in exercise has a movement/muscle tag'+(untagged.length?' (missing: '+untagged.join(', ')+')':''));
+  // stats count only completed WORKING sets (warmups + undone excluded), by group/pattern/muscle
+  var st=sandbox.woMovementStatsFromSessions([{exercises:[
+    {name:'DB Bench Press',sets:[{tag:'W',done:true},{tag:'work',done:true},{tag:'work',done:true}]},
+    {name:'Bent Over DB Row',sets:[{tag:'work',done:true},{tag:'work',done:false}]},
+    {name:'Goblet Squat',sets:[{tag:'work',done:true}]}
+  ]}]);
+  ok(st.grp.push===2&&st.grp.pull===1&&st.grp.legs===1,'stats tally completed working sets by group (warmups/undone excluded)');
+  ok(st.pat.h_push===2&&st.pat.squat===1,'stats tally by movement pattern');
+  ok(st.mus.chest===2&&st.mus.back===1&&st.mus.quads===1&&st.total===4,'stats tally by muscle + total');
+  // balance flags
+  var b=sandbox.woBalanceReport(sandbox.woMovementStatsFromSessions([{exercises:[
+    {name:'DB Bench Press',sets:[{tag:'work',done:true},{tag:'work',done:true},{tag:'work',done:true}]},
+    {name:'Bent Over DB Row',sets:[{tag:'work',done:true}]}]}]));
+  ok(b.flags.some(function(f){return /Push-heavy/.test(f);}),'flags a push-heavy week');
+  var b2=sandbox.woBalanceReport(sandbox.woMovementStatsFromSessions([{exercises:[
+    {name:'Goblet Squat',sets:[{tag:'work',done:true}]}]}]));
+  ok(b2.flags.some(function(f){return /no hinge/i.test(f);}),'flags squat without hinge');
+  ok(sandbox.woBalanceReport(sandbox.woMovementStatsFromSessions([])).st.total===0,'an empty week yields no volume');
+  ok(sandbox.woBalanceHTML()===''||/Movement Balance/.test(sandbox.woBalanceHTML()),'woBalanceHTML renders nothing when empty, the card when there is data');
+  // coach payload carries movementBalance for the range
+  var _snap=new Map(store);store.clear();
+  var _td=new Date();
+  store.set(sandbox.woKeyForDate(_td),JSON.stringify({dateMs:_td.getTime(),dayTag:'mon',exercises:[
+    {name:'DB Bench Press',sets:[{tag:'work',done:true},{tag:'work',done:true}]},
+    {name:'Pull-Up',sets:[{tag:'work',done:true}]}]}));
+  sandbox.coachRange='this';sandbox.coachKind='workout';
+  var cp=sandbox.coachPayload();
+  ok(cp.movementBalance&&cp.movementBalance.setsByGroup.push===2&&cp.movementBalance.setsByGroup.pull===1,'coachPayload includes movementBalance set counts');
+  ok(/movementBalance/.test(sandbox.coachPrompt(cp,null)),'coach prompt points the model at movementBalance');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+  // Week view surfaces the card when the week has logged working sets
+  var _snap2=new Map(store);store.clear();
+  sandbox.weekOffset=0;sandbox.viewDow=new Date().getDay();
+  var _wd=sandbox.getWeekDates()[1];
+  store.set(sandbox.woKeyForDate(_wd),JSON.stringify({dateMs:_wd.getTime(),dayTag:'mon',exercises:[{name:'DB Bench Press',sets:[{tag:'work',done:true}]},{name:'Pull-Up',sets:[{tag:'work',done:true}]}]}));
+  sandbox.renderWeek();
+  var wkHTML=sandbox.document.getElementById('root').innerHTML;
+  ok(/Movement Balance/.test(wkHTML)&&/Push vs Pull/.test(wkHTML),'Week view surfaces the Movement Balance card');
+  store.clear();_snap2.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health setup guide =====
 sandbox.viewDow=0;sandbox.openHealthSheet();
 var _hb=sandbox.document.getElementById('shtBody').innerHTML;
