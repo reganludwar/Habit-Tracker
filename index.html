@@ -1057,7 +1057,12 @@ var S=[
 ]}
 ];
 var todayDow=new Date().getDay(),viewDow=todayDow,viewMode='day',weekOffset=0;
-function getDateForDow(d){var x=new Date();x.setDate(x.getDate()+(d-x.getDay())+weekOffset*7);return x;}
+/* `_today` is a captured midnight anchor for all day math, updated only in refreshToday. Deriving
+   dates from a live new Date() made getDateForDow(viewDow) silently jump to a different absolute
+   date across a midnight rollover (the Sunday week-start shift moved the view a whole week), so a
+   day left open could start saving to the wrong date's key. */
+var _today=(function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
+function getDateForDow(d){var x=new Date(_today);x.setDate(_today.getDate()+(d-_today.getDay())+weekOffset*7);return x;}
 function storeKeyForDow(d){return storeKeyForDate(getDateForDow(d));}
 function getWeekDates(){var t=new Date(),a=[];for(var i=0;i<7;i++){var d=new Date(t);d.setDate(t.getDate()-t.getDay()+i+weekOffset*7);a.push(d);}return a;}
 function navDay(dir){var nd=viewDow+dir;if(nd>6){nd=0;weekOffset++;}else if(nd<0){nd=6;weekOffset--;}viewDow=nd;loadState();render();window.scrollTo(0,0);}
@@ -1383,9 +1388,13 @@ function snackUndo(){if(!activeSnackId)return;var p=state['_p_'+activeSnackId];i
 function closeSheet(){document.getElementById('overlay').classList.remove('show');document.getElementById('sheet').classList.remove('show');urgeTimerClear();if(sheetMode==='woWheel'){woSave();renderWorkout();}if(sheetMode==='cardio'){var secs=document.querySelectorAll('.sec');for(var i=0;i<secs.length;i++){var lbl=secs[i].querySelector('.sec-lbl');if(lbl&&lbl.textContent==='CARDIO'){secs[i].querySelector('.sec-card').innerHTML=cardioRowHTML();break;}}}sheetMode='';activeSnackId='';cardioDetOpen='';}
 var resetOk=false;
 function doReset(){var btn=document.getElementById('resetBtn');if(resetOk){state={};save();resetOk=false;render();btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}else{resetOk=true;btn.textContent='Tap again to confirm';btn.style.color='#E06060';btn.style.borderColor='#E06060';setTimeout(function(){if(resetOk){resetOk=false;btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}},3000);}}
-function refreshToday(){var dow=new Date().getDay();if(dow!==todayDow){todayDow=dow;render();}}
-setInterval(refreshToday,60000);
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer)woRestTick();refreshToday();}});
+function refreshToday(){var now=new Date();now.setHours(0,0,0,0);if(now.getTime()===_today.getTime())return;
+  var viewed=getDateForDow(viewDow);/* absolute date on screen, under the OLD anchor */
+  _today=now;todayDow=now.getDay();
+  weekOffset=0;var base=getDateForDow(viewDow);weekOffset=Math.round((viewed.getTime()-base.getTime())/6048e5);/* keep the same absolute date in view across the rollover */
+  render();}
+setInterval(function(){refreshToday();if(window._swMaybeReload)window._swMaybeReload();},60000);
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer)woRestTick();refreshToday();if(window._swMaybeReload)window._swMaybeReload();}});
 /* ── DATA BACKUP ──────────────────────────────────────── */
 function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k==='tight_areas'||k==='urgeEvents'||k.indexOf('test_active_')===0);}
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
@@ -1954,10 +1963,22 @@ function woSessionHasWork(s){if(!s||!s.exercises)return false;if(s.notes)return 
 function woStashSession(key){try{var raw=localStorage.getItem(key);if(!raw)return false;if(!woSessionHasWork(JSON.parse(raw)))return false;localStorage.setItem('wo_trash',JSON.stringify({key:key,data:raw,ts:Date.now()}));return true;}catch(e){return false;}}
 function woLoadTrash(){try{var t=JSON.parse(localStorage.getItem('wo_trash'));return (t&&t.key&&t.data&&(Date.now()-(t.ts||0)<864e5))?t:null;}catch(e){return null;}}
 function woClearTrash(){try{localStorage.removeItem('wo_trash');}catch(e){}}
-function woUndoReset(){var t=woLoadTrash();if(!t)return;try{localStorage.setItem(t.key,t.data);}catch(e){}woClearTrash();woSession=null;woEditing=false;renderWorkout();}
+/* The daily `lift` flag (state.lift) is what the week stats and consistency calendar count as a
+   trained day; woFinish sets it. Erasing or swapping a day's session must clear it too, or the day
+   stays permanently marked as a workout. Operates on the tr_ record for the session's own date,
+   and keeps the in-memory `state` in sync when that date is the one on screen. */
+function woSetLiftForKey(woKey,on){
+  if(!woKey)return;var trKey=woKey.replace(/^wo_/,'tr_');
+  try{var raw=localStorage.getItem(trKey),s=raw?JSON.parse(raw):{};if(!s||typeof s!=='object')s={};
+    if(on){if(s.lift===true)return;s.lift=true;}else{if(!s.lift)return;delete s.lift;}
+    localStorage.setItem(trKey,JSON.stringify(s));
+    if(trKey===storeKeyForDow(viewDow)){if(on)state.lift=true;else delete state.lift;}
+  }catch(e){}
+}
+function woUndoReset(){var t=woLoadTrash();if(!t)return;try{localStorage.setItem(t.key,t.data);var o=JSON.parse(t.data);if(o&&o.finished)woSetLiftForKey(t.key,true);}catch(e){}woClearTrash();woSession=null;woEditing=false;renderWorkout();}
 function woDismissTrash(){woClearTrash();renderWorkout();}
 function woUndoBannerHTML(key){var t=woLoadTrash();if(!t||t.key!==key)return '';return '<div class="wo-undo"><span class="wo-undo-msg"><b>Logged sets were cleared.</b> Tap Undo to restore what you had on this day.</span><button class="wo-undo-btn" onclick="woUndoReset()">Undo</button><span class="wo-undo-x" onclick="woDismissTrash()">&#215;</span></div>';}
-function woResetDay(){if(!woSession)return;if(!confirm('Reset this day to the current template?\n\nThis ERASES the sets you have logged for this day. (You can Undo right after.)'))return;var key=woSession._key;woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}
+function woResetDay(){if(!woSession)return;if(!confirm('Reset this day to the current template?\n\nThis ERASES the sets you have logged for this day. (You can Undo right after.)'))return;var key=woSession._key;woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSetLiftForKey(key,false);woSession=null;renderWorkout();}
 /* Make-up picker: choose any weekday's split to load onto the day in view. Loading reseeds the day
    from that split's template and records the choice as a per-date override so the correct exercises
    are logged and the session counts on the day it was actually done. */
@@ -1982,6 +2003,7 @@ function woLoadSplit(tag){
   if(hasWork&&!confirm((nm?('Load '+nm+' onto '+DAYS[dow]+'?'):('Clear '+DAYS[dow]+' back to a rest day?'))+'\n\nThe sets already logged here will be cleared — you can Undo right after.'))return;
   if(hasWork)woStashSession(key);
   try{localStorage.removeItem(key);}catch(e){}
+  woSetLiftForKey(key,false);
   woSetDayTag(dow,tag);
   woSession=null;closeSheet();renderWorkout();
 }
@@ -2333,18 +2355,18 @@ function woEdDone(){var tag=woEditTag||woDayTag(viewDow);if(!woTmplValid(woEditT
 var woReseedKey='';
 function woMaybeReseed(){var dow=(woEditDow!=null?woEditDow:viewDow),key=woKeyForDow(dow),raw=null;try{raw=localStorage.getItem(key);}catch(e){}
   if(!raw){woSession=null;renderWorkout();return;}
-  if(!woSessionHasWork(JSON.parse(raw))){try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();return;}
+  if(!woSessionHasWork(JSON.parse(raw))){try{localStorage.removeItem(key);}catch(e){}woSetLiftForKey(key,false);woSession=null;renderWorkout();return;}
   woSession=null;renderWorkout();/* show the day (with its logged sets) behind the dialog */
   woReseedKey=key;
   var c=document.getElementById('woModalCard');
-  if(!c){if(confirm('Erase the sets logged for this day and re-seed from the new template? Cancel keeps them.')){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;renderWorkout();}woReseedKey='';return;}
+  if(!c){if(confirm('Erase the sets logged for this day and re-seed from the new template? Cancel keeps them.')){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSetLiftForKey(key,false);woSession=null;renderWorkout();}woReseedKey='';return;}
   c.innerHTML='<div class="cmodal-t">Template saved</div>'+
     '<div class="cmodal-b">Your change is saved and applies going forward. You’ve already logged sets for this day &mdash; <b>keep</b> them, or erase them and re-seed this day from the new template?</div>'+
     '<div class="cmodal-btns"><button class="cmodal-btn primary" onclick="woReseedKeep()">Keep my logged sets</button><button class="cmodal-btn danger" onclick="woReseedErase()">Erase &amp; re-seed this day</button></div>';
   document.getElementById('woModal').classList.add('show');}
 function woHideReseed(){var m=document.getElementById('woModal');if(m)m.classList.remove('show');}
 function woReseedKeep(){woReseedKey='';woHideReseed();renderWorkout();}
-function woReseedErase(){var key=woReseedKey;woReseedKey='';woHideReseed();if(key){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSession=null;}renderWorkout();}
+function woReseedErase(){var key=woReseedKey;woReseedKey='';woHideReseed();if(key){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSetLiftForKey(key,false);woSession=null;}renderWorkout();}
 /* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
 var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
 var COACH_RANGES=[['this','This week'],['last','Last week'],['2w','Last 2 weeks'],['month','Last 30 days']];
@@ -2723,11 +2745,18 @@ requestPersist(function(){renderDataStatus();});
 /* Register the service worker, and when a NEW one takes control (a fresh deploy activated via
    skipWaiting/clients.claim) reload once so the update actually applies — otherwise a resumed
    PWA keeps running the old code until it's manually force-quit. _hadController skips the reload
-   on the very first install (no prior controller), so a first visit doesn't double-load. */
+   on the very first install (no prior controller), so a first visit doesn't double-load. The
+   reload is DEFERRED while a rest or stretch timer is running so a deploy can't interrupt a live
+   workout; _swMaybeReload is re-checked on the 60s tick and on return-to-foreground. */
 if('serviceWorker' in navigator){
-  var _hadController=!!navigator.serviceWorker.controller,_swRefreshing=false;
+  var _hadController=!!navigator.serviceWorker.controller,_swRefreshing=false,_swPending=false;
+  window._swMaybeReload=function(){
+    if(_swRefreshing||!_swPending)return;
+    if((typeof woRestTimer!=='undefined'&&woRestTimer)||(typeof stInterval!=='undefined'&&stInterval))return;
+    _swRefreshing=true;window.location.reload();
+  };
   navigator.serviceWorker.addEventListener('controllerchange',function(){
-    if(_swRefreshing||!_hadController)return;_swRefreshing=true;window.location.reload();
+    if(!_hadController)return;_swPending=true;window._swMaybeReload();
   });
   window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
 }

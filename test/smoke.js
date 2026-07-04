@@ -524,11 +524,18 @@ sandbox.saveActiveList('mobility',['cm_x']);sandbox.stSet='mobility';sandbox.stT
 var sh=sandbox.document.getElementById('root').innerHTML;
 ok(/&lt;b&gt;x&lt;\/b&gt;/.test(sh)&&!/<b>x<\/b>/.test(sh),'custom mobility name is escaped in the list');
 sandbox.localStorage.removeItem('custom_mobility');sandbox.localStorage.removeItem('active_mobility');sandbox.stSet='floor';
-// midnight rollover: refreshToday recomputes todayDow and re-renders
+// midnight rollover: refreshToday re-anchors to the new day AND preserves the viewed absolute date
 ok(typeof sandbox.refreshToday==='function','refreshToday exists for midnight rollover');
-sandbox.todayDow=(new Date().getDay()+1)%7; // pretend we loaded yesterday
-sandbox.refreshToday();
-ok(sandbox.todayDow===new Date().getDay(),'refreshToday corrects a stale todayDow');
+(function(){
+  var _realT=new Date();_realT.setHours(0,0,0,0);
+  var _y=new Date(_realT);_y.setDate(_y.getDate()-1); // pretend the app was loaded yesterday
+  sandbox._today=_y;sandbox.todayDow=_y.getDay();sandbox.viewDow=_y.getDay();sandbox.weekOffset=0;
+  var _viewedBefore=sandbox.getDateForDow(sandbox.viewDow).getTime();
+  sandbox.refreshToday();
+  ok(sandbox.todayDow===_realT.getDay(),'refreshToday re-anchors todayDow to the new day');
+  ok(sandbox.getDateForDow(sandbox.viewDow).getTime()===_viewedBefore,'the viewed absolute date survives the rollover (no week jump)');
+  sandbox._today=_realT;sandbox.weekOffset=0;sandbox.viewDow=sandbox.todayDow; // restore for later tests
+})();
 // deadline timer: woRestAdd shifts the wall-clock deadline, not a raw counter
 sandbox.woStartRest(60,'Ex','Next',null,0,0);
 var endBefore=sandbox.woRestEndAt;sandbox.woRestAdd(30);
@@ -738,6 +745,18 @@ sandbox.localStorage.setItem(wedKey,JSON.stringify({_key:wedKey,dayTag:'wed',dat
 sandbox.woSession=null;sandbox.renderWorkout();sandbox.woResetDay();
 ok(sandbox.localStorage.getItem(wedKey)===null,'woResetDay clears the stored session for the day');
 sandbox.localStorage.removeItem(wedKey);
+// reset/undo also manage the daily `lift` flag so a reset day isn't a phantom workout on the week
+sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.localStorage.removeItem('wo_daytag');
+var _wk3=sandbox.woKeyForDow(3),_tk3=sandbox.storeKeyForDow(3);
+sandbox.localStorage.setItem(_tk3,JSON.stringify({lift:true,mob:1}));
+sandbox.localStorage.setItem(_wk3,JSON.stringify({_key:_wk3,dayTag:'wed',finished:true,dateMs:Date.now(),exercises:[{name:'Pull-Up',sets:[{tag:'work',reps:5,done:true}]}]}));
+sandbox.loadState();sandbox.woSession=null;sandbox.renderWorkout();
+sandbox.woResetDay();
+ok(!JSON.parse(sandbox.localStorage.getItem(_tk3)).lift&&JSON.parse(sandbox.localStorage.getItem(_tk3)).mob===1,'woResetDay clears the day lift flag but leaves other habits intact');
+ok(!sandbox.state.lift,'in-memory state.lift is cleared on reset too');
+sandbox.woUndoReset();
+ok(sandbox.localStorage.getItem(_wk3)!==null&&JSON.parse(sandbox.localStorage.getItem(_tk3)).lift===true,'undo restores the finished session and re-marks the lift flag');
+sandbox.localStorage.removeItem(_wk3);sandbox.localStorage.removeItem(_tk3);sandbox.localStorage.removeItem('wo_trash');sandbox.woSession=null;
 
 // ===== v13: corrupt template override heals + editor pinned to its day =====
 // simulate the bug's result: a 'wed' override holding THURSDAY's exercises
