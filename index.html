@@ -2720,7 +2720,17 @@ var _hlN=ingestHealthFromURL();
 loadState();render();updateBackupNag();renderDataStatus();
 if(_hlN)setTimeout(function(){try{alert('Imported Apple Health data for '+_hlN+' day'+(_hlN>1?'s':'')+'.');}catch(e){}},300);
 requestPersist(function(){renderDataStatus();});
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+/* Register the service worker, and when a NEW one takes control (a fresh deploy activated via
+   skipWaiting/clients.claim) reload once so the update actually applies — otherwise a resumed
+   PWA keeps running the old code until it's manually force-quit. _hadController skips the reload
+   on the very first install (no prior controller), so a first visit doesn't double-load. */
+if('serviceWorker' in navigator){
+  var _hadController=!!navigator.serviceWorker.controller,_swRefreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(_swRefreshing||!_hadController)return;_swRefreshing=true;window.location.reload();
+  });
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+}
 </script>
 </body>
 </html>
