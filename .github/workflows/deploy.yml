@@ -1,0 +1,56 @@
+name: Deploy to GitHub Pages
+
+# Replaces the implicit "deploy from branch" Pages build with a workflow we control, so the
+# deploy step can auto-retry. GitHub's Pages deploy occasionally returns a transient
+# "Deployment failed, try again later." — this retries it up to 3 times before failing the run.
+#
+# ONE-TIME SETUP: in repo Settings → Pages → "Build and deployment" → Source, choose
+# "GitHub Actions" (instead of "Deploy from a branch"). Until that is switched, this workflow's
+# deploy step cannot publish.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; let an in-flight one finish rather than cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.final.outputs.page_url || steps.attempt2.outputs.page_url || steps.attempt1.outputs.page_url }}
+    steps:
+      - id: attempt1
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.attempt1.outcome == 'failure'
+        run: echo "Deploy attempt 1 failed — waiting before retry" && sleep 20
+      - id: attempt2
+        if: steps.attempt1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.attempt1.outcome == 'failure' && steps.attempt2.outcome == 'failure'
+        run: echo "Deploy attempt 2 failed — waiting before final retry" && sleep 30
+      - id: final
+        if: steps.attempt1.outcome == 'failure' && steps.attempt2.outcome == 'failure'
+        uses: actions/deploy-pages@v4
