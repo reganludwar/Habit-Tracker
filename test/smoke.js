@@ -1140,11 +1140,45 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   var cp=sandbox.coachPayload();
   ok(cp.trainingLoad&&typeof cp.trainingLoad.deloadRecommended==='boolean'&&cp.trainingLoad.weeks.length===4,'coachPayload carries trainingLoad (4 weeks + deload flag)');
   ok(/trainingLoad/.test(sandbox.coachPrompt(cp,null)),'coach prompt points the model at trainingLoad');
+  // Apple Health metrics feed the coach payload (recovery signals), summarized appropriately
+  sandbox.coachRange='month';
+  var _hd0=new Date();_hd0.setHours(0,0,0,0);var _hd1=new Date(_hd0);_hd1.setDate(_hd0.getDate()-2);
+  store.set(sandbox.healthKeyForDate(_hd1),JSON.stringify({weightLb:189,restHr:52,steps:8000}));
+  store.set(sandbox.healthKeyForDate(_hd0),JSON.stringify({weightLb:187,restHr:56,steps:10000}));
+  var cph=sandbox.coachPayload();
+  ok(cph.health&&cph.health.weightLb&&cph.health.weightLb.latest===187&&cph.health.weightLb.changeOverRange===-2,'coachPayload.health summarizes bodyweight (latest + change over range)');
+  ok(cph.health.restHr&&cph.health.restHr.avg===54&&cph.health.steps&&cph.health.steps.avgPerDay===9000,'coachPayload.health averages resting HR and reports steps per day');
+  ok(/\bhealth\b/.test(sandbox.coachPrompt(cph,null)),'coach prompt references the health block');
   // Week view surfaces the Readiness card with a deload nudge
   store.clear();seed(0,8.5,6);seed(7,8.5,6);seed(14,8.5,6);
   sandbox.weekOffset=0;sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
   var wk=sandbox.document.getElementById('root').innerHTML;
   ok(/Readiness/.test(wk)&&/Deload/.test(wk),'Week view surfaces the Readiness card with a deload nudge');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
+// ===== Weekly digest — proactive "last week in review" =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var start=sandbox.digestBounds().start;
+  function dayIn(off){var dt=new Date(start);dt.setDate(start.getDate()+off);dt.setHours(0,0,0,0);return dt;}
+  store.set(sandbox.storeKeyForDate(dayIn(1)),JSON.stringify({lift:true,c_incl:true,'cdt_c_incl':{z2:30}}));
+  store.set(sandbox.storeKeyForDate(dayIn(3)),JSON.stringify({lift:true}));
+  store.set(sandbox.woKeyForDate(dayIn(1)),JSON.stringify({dateMs:dayIn(1).getTime(),dayTag:'mon',exercises:[{name:'DB Bench Press',sets:[{tag:'work',done:true,weight:60,reps:10,rpe:8},{tag:'work',done:true,weight:60,reps:10,rpe:8}]}]}));
+  var d=sandbox.digestData();
+  ok(d.lifts===2&&d.floorMet===true,'digestData counts last-week workouts and floor-met');
+  ok(d.sets===2&&d.tonnage===1200,'digestData sums working sets and tonnage');
+  ok(d.z2===30&&d.z2tier&&typeof d.z2tier.lbl==='string','digestData sums Zone 2 minutes with a tier');
+  ok(d.prs.length>=1&&d.prs[0].name==='DB Bench Press','digestData surfaces a new PR from last week');
+  var bh=sandbox.digestBannerHTML(d);
+  ok(/Last week/.test(bh)&&/2\/5/.test(bh)&&/PR/.test(bh),'digestBannerHTML renders the recap with workouts + PR');
+  ok(sandbox.digestSeen()===false,'digest starts undismissed');
+  sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.viewDow=1;sandbox.todayDow=1;
+  sandbox.digestDismiss();
+  ok(sandbox.digestSeen()===true&&sandbox.digestHTML()==='','dismissing hides the digest for that week');
+  store.clear();
+  ok(sandbox.digestData().hasActivity===false&&sandbox.digestHTML()==='','no digest when last week had no activity');
+  sandbox.todayDow=new Date().getDay();sandbox.viewDow=sandbox.todayDow;sandbox.viewMode='day';sandbox.weekOffset=0; // restore real day for later tests
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
