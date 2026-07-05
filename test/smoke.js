@@ -12,7 +12,9 @@ function tick(id,n){for(let i=0;i<n;i++)if(intervals.has(id))intervals.get(id)()
 class El{constructor(){this.style={};this._cls='';this.textContent='';this.innerHTML='';this.classList={add(){},remove(){},toggle(){}};}
   set className(v){this._cls=v;}get className(){return this._cls;}}
 const els=new Map();
-const document={addEventListener:noop,visibilityState:'visible',getElementById:id=>{if(!els.has(id))els.set(id,new El());return els.get(id);},querySelector:_=>new El()};
+const _docAttrs={};
+const documentElement={setAttribute:(k,v)=>{_docAttrs[k]=String(v);},removeAttribute:k=>{delete _docAttrs[k];},getAttribute:k=>(k in _docAttrs?_docAttrs[k]:null)};
+const document={addEventListener:noop,visibilityState:'visible',documentElement,getElementById:id=>{if(!els.has(id))els.set(id,new El());return els.get(id);},querySelector:_=>new El()};
 function noop(){}
 const navigator={};
 class AudioContextStub{constructor(){this.state='running';this.sampleRate=44100;this.currentTime=0;this.destination={};}createBuffer(){return{getChannelData:()=>new Float32Array(10)};}createBufferSource(){return{connect:noop,start:noop,stop:noop,disconnect:noop,buffer:null,loop:false};}createGain(){return{gain:{},connect:noop};}resume(){return Promise.resolve();}}
@@ -1182,6 +1184,25 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Accessibility: text-size control =====
+(function(){
+  var _snap=new Map(store);store.clear();sandbox.localStorage.removeItem('textSize');
+  // default: no data-text attribute, button reads "A"
+  sandbox.applyTextSize();
+  ok(sandbox.textSize()==='default'&&sandbox.document.documentElement.getAttribute('data-text')===null,'default text size sets no scaling attribute');
+  ok(sandbox.document.getElementById('textBtn').textContent==='A','text button shows A at default');
+  // cycle → large → xlarge → back to default, persisted + applied as a root attribute
+  sandbox.cycleTextSize();
+  ok(sandbox.localStorage.getItem('textSize')==='large'&&sandbox.document.documentElement.getAttribute('data-text')==='large','cycling once selects Large and scales the root');
+  ok(sandbox.document.getElementById('textBtn').textContent==='A+','button reflects the Large level');
+  sandbox.cycleTextSize();
+  ok(sandbox.textSize()==='xlarge'&&sandbox.document.documentElement.getAttribute('data-text')==='xlarge','cycling again selects Larger');
+  sandbox.cycleTextSize();
+  ok(sandbox.textSize()==='default'&&sandbox.document.documentElement.getAttribute('data-text')===null,'cycling wraps back to Default and clears the attribute');
+  sandbox.localStorage.removeItem('textSize');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health setup guide =====
 sandbox.viewDow=0;sandbox.openHealthSheet();
 var _hb=sandbox.document.getElementById('shtBody').innerHTML;
@@ -1619,6 +1640,10 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.state={c_incl:1,cdt_c_incl:{z2:4,hr:95}};
   ok(/logs as a walk/.test(sandbox.cardioZ2NoteInner('c_incl')),'avg HR below 107 reads as a walk, not Zone 2 cardio');
   // the AI coach payload carries Zone 2 minutes + the qualifies flag
+  // (seed a definitely-past session so the month-range assertion is day-of-week independent —
+  //  this-week weekdays can fall in the future on Sunday and drop out of the range)
+  var _pz2=new Date();_pz2.setDate(_pz2.getDate()-5);
+  store.set(sandbox.storeKeyForDate(_pz2),JSON.stringify({c_mill:1,cdt_c_mill:{min:30,z2:25}}));
   sandbox.coachRange='month';sandbox.coachKind='workout';
   var p=sandbox.coachPayload();
   ok(p.cardioSessions.some(function(c){return c.zone2Min===25&&c.qualifiesZone2===true;}),'coach payload carries zone2Min and the qualifies flag');
