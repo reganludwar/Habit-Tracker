@@ -1203,6 +1203,32 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Make-up on the Week page =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  sandbox.weekOffset=0;sandbox.todayDow=5; // pretend today is Friday so Mon–Thu are "passed"
+  var wd=sandbox.getWeekDates();
+  // an empty week: every passed weekday (Mon–Thu) is offered as a make-up; today/future are not
+  var mk=sandbox.woMakeUpHTML();
+  ok(/Missed/.test(mk)&&/MON · Push/.test(mk)&&/WED · Pull/.test(mk),'make-up lists passed, un-trained weekdays');
+  ok(!/FRI · Mix/.test(mk)&&/woMakeUpToday\('mon'\)/.test(mk),'today/future are excluded and buttons wire to woMakeUpToday');
+  // logging a split anywhere this week drops it from the list
+  store.set(sandbox.woKeyForDate(wd[3]),JSON.stringify({dateMs:wd[3].getTime(),dayTag:'wed',exercises:[{name:'Pull-Up',sets:[{tag:'work',done:true}]}]}));
+  store.set(sandbox.storeKeyForDate(wd[3]),JSON.stringify({lift:true}));
+  ok(sandbox.woSplitDoneThisWeek('wed')===true,'a logged split counts as done this week');
+  ok(!/Wed · Pull/.test(sandbox.woMakeUpHTML()),'a completed split drops off the missed list');
+  // make-up is current-week only
+  sandbox.weekOffset=-1;ok(sandbox.woMakeUpHTML()==='','make-up is not shown for past weeks');
+  sandbox.weekOffset=0;
+  // tapping a make-up loads the split onto today and jumps to the workout view
+  store.clear();sandbox.todayDow=5;sandbox.viewMode='week';sandbox.woSession=null;
+  sandbox.woMakeUpToday('wed');
+  ok(sandbox.viewDow===5&&sandbox.viewMode==='workout','make-up jumps to today\'s workout view');
+  ok(sandbox.woDayTagOverride(5)==='wed'&&sandbox.woSession&&sandbox.woSession.dayTag==='wed','make-up loads the missed split onto today');
+  sandbox.todayDow=new Date().getDay();sandbox.viewDow=sandbox.todayDow;sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.woSession=null;
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health setup guide =====
 sandbox.viewDow=0;sandbox.openHealthSheet();
 var _hb=sandbox.document.getElementById('shtBody').innerHTML;
