@@ -1533,14 +1533,17 @@ function snkOpenBurst(ex,meal){var e=snackExById(ex);if(!e)return;sheetMode='snk
   document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function snkFmtChipsInner(){var f=snkDraft.fmt||'';return '<div class="snk-chip'+(f==='sprints'?' on':'')+'" onclick="snkBurstFmt(\'sprints\')">Sprints</div><div class="snk-chip'+(f==='tempo'?' on':'')+'" onclick="snkBurstFmt(\'tempo\')">Tempo</div>';}
 function snkBurstFmt(f){snkDraft.fmt=(snkDraft.fmt===f)?'':f;var r=document.getElementById('snkFmtRow');if(r)r.innerHTML=snkFmtChipsInner();}
+var SNK_RPE=[6,7,8,9,10];
+function snkRpeChipsInner(){var r=snkDraft.rpe,h='';for(var i=0;i<SNK_RPE.length;i++){var n=SNK_RPE[i];h+='<div class="snk-chip'+(r===n?' on':'')+'" onclick="snkBurstRpe('+n+')">'+n+'</div>';}return h;}
+function snkBurstRpe(n){if(snkDraft.rpe===n)delete snkDraft.rpe;else snkDraft.rpe=n;var r=document.getElementById('snkRpeRow');if(r)r.innerHTML=snkRpeChipsInner();}
 function snkBurstFormHTML(){var e=snackExById(snkDraftEx),inS='width:100%;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:1rem;padding:10px;-webkit-appearance:none;border-radius:0;outline:none;box-sizing:border-box';
   function fld(k,lbl,ph){var v=(snkDraft[k]!=null)?esc(String(snkDraft[k])):'';return '<div style="flex:1"><div class="cdt-lbl">'+lbl+'</div><input id="snkf_'+k+'" inputmode="decimal" value="'+v+'" placeholder="'+ph+'" oninput="snkDraftField(\''+k+'\')" style="'+inS+'"></div>';}
   var h='';if(e.how)h+='<div class="snk-proto">'+esc(e.how)+'</div>';
   h+='<div class="cdt-form">';
   h+='<div class="cdt-lbl" style="margin-bottom:4px">Format</div><div class="snk-chips" id="snkFmtRow">'+snkFmtChipsInner()+'</div>';
-  h+='<div class="cdt-row">'+fld('min','Time (min)','3')+fld('rpe','Effort (RPE 1-10)','8')+'</div>';
-  h+='<div class="cdt-row">'+fld('spd','Top speed (mph)','6.0')+fld('incl','Incline (%)','8')+'</div>';
-  h+='<div class="cdt-row">'+fld('hr','Peak HR (Wahoo)','150')+'<div style="flex:1"></div></div>';
+  h+='<div class="cdt-lbl" style="margin:8px 0 4px">Effort — tap RPE (6 comfortably hard · 10 all-out)</div><div class="snk-chips" id="snkRpeRow">'+snkRpeChipsInner()+'</div>';
+  h+='<div class="cdt-row">'+fld('min','Time (min)','3')+fld('spd','Top speed (mph)','6.0')+'</div>';
+  h+='<div class="cdt-row">'+fld('incl','Incline (%)','8')+fld('hr','Peak HR (Wahoo)','150')+'</div>';
   var nud=snkBurstNudge(snkDraftEx);if(nud)h+='<div class="cdt-nudge"><span>&#9650;</span><span>'+esc(nud)+'</span></div>';
   h+='<button class="snk-go" style="margin-top:12px" onclick="snkBurstLog()">Log this burst</button>';
   return h+'</div>';}

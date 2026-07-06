@@ -1745,6 +1745,11 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // cardio snacks route to the burst logger (duration + speed + incline + RPE + HR), not the reps grid
   sandbox.snkOpenAmt('sx_tread','breakfast');
   ok(sandbox.sheetMode==='snkBurst'&&sandbox.snkDraftEx==='sx_tread','a cardio snack (min unit) opens the burst detail form, not the reps grid');
+  // RPE is a tap-chip row: tapping sets it, tapping the same value clears it
+  sandbox.snkBurstRpe(8);
+  ok(sandbox.snkDraft.rpe===8&&/snk-chip on"[^>]*>8</.test(sandbox.snkRpeChipsInner()),'tapping an RPE chip selects it');
+  sandbox.snkBurstRpe(8);
+  ok(sandbox.snkDraft.rpe===undefined,'tapping the selected RPE chip again clears it');
   sandbox.snkDraft={min:3,spd:6.0,incl:8,rpe:8,hr:150};sandbox.snkBurstLog();
   var bt=sandbox.snkMealEntry('breakfast');
   ok(bt&&bt.det&&bt.det.spd===6.0&&bt.det.incl===8&&bt.det.rpe===8&&bt.amt===3,'the burst logs what was actually done (speed/incline/RPE) with amt = duration');
