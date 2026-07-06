@@ -8,6 +8,7 @@ No backend, no build step, no dependencies. The entire app is one file: [`index.
 
 - **Day** — daily checklist (habits, vitamins, mobility, lift), with expandable routine details.
 - **Week** — consistency calendar, adherence, and tonnage at a glance.
+- **Snacks** — "exercise snacks" module (brief post-meal bouts, per the research): a breakfast/lunch/dinner card each suggests a context-aware exercise (with a picker and an optional AI-coach pick), tracks **post-meal coverage** and a weekly **vigorous-burst (VO₂max)** tier, and logs cardio or strength snacks anytime.
 - **Stretch** — guided mobility/stretch sessions with a spoken timer and a customizable catalog.
 - **Test** — log fitness-test results (e.g. push-ups, plank) with trends.
 - **Workout** — five day-templates (push / lower+run / pull / lower-variation+run / mix) with per-set logging, rest timers with in-rest mobility, progression nudges, and PR tracking. Templates are editable (add/remove exercises, sets, rest, mobility).

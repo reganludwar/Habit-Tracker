@@ -1715,6 +1715,66 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Exercise Snacks module: catalog, meal logging, recommender, weekly rollup, coach payload =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,sheetMode:sandbox.sheetMode,state:sandbox.state,coachRange:sandbox.coachRange,snkCoachTxt:sandbox.snkCoachTxt,snkCoachMeal:sandbox.snkCoachMeal};
+  sandbox.weekOffset=0;
+
+  // -- catalog + goals defined --
+  ok(sandbox.SNACK_EX.length>=4&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength','SNACK_EX catalog defines a vigorous cardio burst + a strength option');
+  ok(sandbox.MEALS.length===3&&sandbox.MEALS[0].id==='breakfast'&&sandbox.SNACK_GOALS.vigWeek.target===6,'MEALS covers breakfast/lunch/dinner and goals carry a weekly vigorous target');
+
+  // -- deterministic recommender (clean week) --
+  store.clear();
+  sandbox.viewDow=1;sandbox.state={};   // Monday, nothing banked
+  ok(sandbox.snackSuggest('breakfast').ex==='sx_tread','breakfast with no vigorous work banked recommends a treadmill burst (VO₂max lever)');
+  sandbox.state={snkLog:[{ex:'sx_tread',amt:3,meal:'breakfast',ts:Date.now()}]};
+  ok(sandbox.snackSuggest('dinner').ex==='sx_squat','dinner after a hard burst earlier in the day recommends quick squats');
+  sandbox.viewDow=3;sandbox.state={};   // Wednesday: yesterday (Tue) was a leg day
+  ok(sandbox.snackExRec('sx_squat')==='rest','squats grade as rest the day after a leg day (muscle overlap with WOM)');
+  ok(sandbox.snackSuggest('dinner').ex!=='sx_squat','recommender redirects away from squats when yesterday hammered the same muscles');
+
+  // -- logging: one snack per meal, coverage + vigorous counts --
+  store.clear();
+  sandbox.viewDow=4;sandbox.loadState();   // Thursday, empty
+  sandbox.snkOpenAmt('sx_squat','dinner');sandbox.snkLogAmt(25);
+  ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].meal==='dinner'&&sandbox.state.snkLog[0].amt===25,'logging a meal snack appends one entry with amount + meal');
+  sandbox.snkOpenAmt('sx_squat','dinner');sandbox.snkLogAmt(30);
+  ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].amt===30,'re-logging the same meal replaces it (one snack per meal)');
+  sandbox.snkOpenAmt('sx_tread','breakfast');sandbox.snkLogAmt(3);
+  ok(sandbox.snkMealsCovered(sandbox.state)===2&&sandbox.snkVigToday()===1,'coverage counts distinct meals; the treadmill burst counts as one vigorous burst today');
+  sandbox.snkUndoMeal('dinner');
+  ok(sandbox.snkMealEntry('dinner')===null&&sandbox.snkMealEntry('breakfast')!==null,'undo removes only the targeted meal entry');
+
+  // -- manual pick override --
+  sandbox.snkSetPick&&(sandbox.snkActiveMeal='lunch');
+  sandbox.state.snkPick={lunch:'sx_block'};
+  ok(sandbox.snkPickFor('lunch')==='sx_block','a manual pick overrides the suggested exercise for that meal');
+
+  // -- weekly rollup reads snkLog across the week --
+  var agg=sandbox.snackWeekAgg();
+  ok(typeof agg.vig==='number'&&agg.vig>=1&&agg.total>=1,'snackWeekAgg tallies vigorous bursts and total snacks across the week');
+
+  // -- coach payload surfaces exercise snacks --
+  sandbox.coachRange='this';
+  var cp=sandbox.coachPayload();
+  ok(cp.exerciseSnacks&&typeof cp.exerciseSnacks.weekVigorousBursts==='number'&&cp.exerciseSnacks.vigorousWeeklyTarget===6,'coachPayload.exerciseSnacks reports weekly vigorous bursts vs the target');
+
+  // -- Ask-coach degrades to the deterministic pick with no API key (no throw, no network) --
+  sandbox.viewDow=1;sandbox.state={};
+  try{localStorage.removeItem('coach_key');}catch(e){}
+  sandbox.snkAskCoach('breakfast');
+  ok(/Treadmill Burst/.test(sandbox.snkCoachTxt),'snkAskCoach falls back to the deterministic pick when no API key is set');
+
+  // -- the router renders the Snacks page without throwing --
+  var threw=false;try{sandbox.setView('snacks');}catch(e){threw=true;}
+  ok(!threw,'setView(\'snacks\') renders the module without throwing');
+
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Apple Health daily import: shared ingest + clipboard path =====
 (function(){
   var _snap=new Map(store);store.clear();
