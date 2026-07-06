@@ -1750,11 +1750,16 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(sandbox.snkDraft.rpe===8&&/snk-chip on"[^>]*>8</.test(sandbox.snkRpeChipsInner()),'tapping an RPE chip selects it');
   sandbox.snkBurstRpe(8);
   ok(sandbox.snkDraft.rpe===undefined,'tapping the selected RPE chip again clears it');
-  sandbox.snkDraft={min:3,spd:6.0,incl:8,rpe:8,hr:150};sandbox.snkBurstLog();
+  sandbox.snkDraft={min:4,hard:2,spd:6.0,incl:8,rpe:8,avgHr:125,hr:150,dist:0.25};sandbox.snkBurstLog();
   var bt=sandbox.snkMealEntry('breakfast');
-  ok(bt&&bt.det&&bt.det.spd===6.0&&bt.det.incl===8&&bt.det.rpe===8&&bt.amt===3,'the burst logs what was actually done (speed/incline/RPE) with amt = duration');
+  ok(bt&&bt.det&&bt.det.spd===6.0&&bt.det.incl===8&&bt.det.rpe===8&&bt.amt===4,'the burst logs what was actually done (speed/incline/RPE) with amt = duration');
+  ok(bt.det.hard===2&&bt.det.avgHr===125&&bt.det.dist===0.25,'the burst also captures hard-minutes (Zone 3+), avg HR, and distance');
   ok(sandbox.snkMealsCovered(sandbox.state)===2&&sandbox.snkVigToday()===1,'coverage counts distinct meals; the treadmill burst counts as one vigorous burst today');
-  ok(/6 mph/.test(sandbox.snkEntryDetLine(bt))&&/RPE 8/.test(sandbox.snkEntryDetLine(bt)),'the entry detail line renders the logged speed + effort');
+  ok(/6 mph/.test(sandbox.snkEntryDetLine(bt))&&/RPE 8/.test(sandbox.snkEntryDetLine(bt))&&/2 hard/.test(sandbox.snkEntryDetLine(bt))&&/125\/150 bpm/.test(sandbox.snkEntryDetLine(bt)),'the entry detail line renders speed, effort, hard-minutes, and avg/max HR');
+  // insight flags a mostly-warmup snack (2 of 4 min hard = 50%)
+  ok(/warmup/.test(sandbox.snkBurstInsight(bt)),'snkBurstInsight flags when much of a short snack was warmup, not hard work');
+  // weekly hard-minutes accumulate
+  ok(sandbox.snackWeekAgg().hardMin>=2,'snackWeekAgg tallies weekly hard-minutes from burst detail');
   // progression: the next burst references the last one and prescribes a bump
   var nud=sandbox.snkBurstNudge('sx_tread');
   ok(/8% incl/.test(nud)&&/incline/.test(nud),'snkBurstNudge recalls the last burst and prescribes a concrete progression');
@@ -1774,7 +1779,8 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.coachRange='this';
   var cp=sandbox.coachPayload();
   ok(cp.exerciseSnacks&&typeof cp.exerciseSnacks.weekVigorousBursts==='number'&&cp.exerciseSnacks.vigorousWeeklyTarget===6,'coachPayload.exerciseSnacks reports weekly vigorous bursts vs the target');
-  ok(cp.exerciseSnacks.burstDetails&&cp.exerciseSnacks.burstDetails.some(function(b){return b.speedMph===6.0&&b.inclinePct===8&&b.rpe===8;}),'coachPayload.exerciseSnacks.burstDetails carries the logged treadmill burst so the coach can prescribe progression');
+  ok(cp.exerciseSnacks.burstDetails&&cp.exerciseSnacks.burstDetails.some(function(b){return b.speedMph===6.0&&b.inclinePct===8&&b.rpe===8&&b.hardMin===2&&b.avgHr===125&&b.distMi===0.25;}),'coachPayload.exerciseSnacks.burstDetails carries speed/incline/RPE + hard-min, avg HR, and distance for progression');
+  ok(typeof cp.exerciseSnacks.weekHardMinutes==='number'&&cp.exerciseSnacks.weekHardMinutes>=2,'coachPayload.exerciseSnacks reports weekly hard-minutes (Zone 3+)');
 
   // -- Ask-coach degrades to the deterministic pick with no API key (no throw, no network) --
   sandbox.viewDow=1;sandbox.state={};
