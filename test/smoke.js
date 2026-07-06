@@ -1742,8 +1742,22 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].meal==='dinner'&&sandbox.state.snkLog[0].amt===25,'logging a meal snack appends one entry with amount + meal');
   sandbox.snkOpenAmt('sx_squat','dinner');sandbox.snkLogAmt(30);
   ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].amt===30,'re-logging the same meal replaces it (one snack per meal)');
-  sandbox.snkOpenAmt('sx_tread','breakfast');sandbox.snkLogAmt(3);
+  // cardio snacks route to the burst logger (duration + speed + incline + RPE + HR), not the reps grid
+  sandbox.snkOpenAmt('sx_tread','breakfast');
+  ok(sandbox.sheetMode==='snkBurst'&&sandbox.snkDraftEx==='sx_tread','a cardio snack (min unit) opens the burst detail form, not the reps grid');
+  // RPE is a tap-chip row: tapping sets it, tapping the same value clears it
+  sandbox.snkBurstRpe(8);
+  ok(sandbox.snkDraft.rpe===8&&/snk-chip on"[^>]*>8</.test(sandbox.snkRpeChipsInner()),'tapping an RPE chip selects it');
+  sandbox.snkBurstRpe(8);
+  ok(sandbox.snkDraft.rpe===undefined,'tapping the selected RPE chip again clears it');
+  sandbox.snkDraft={min:3,spd:6.0,incl:8,rpe:8,hr:150};sandbox.snkBurstLog();
+  var bt=sandbox.snkMealEntry('breakfast');
+  ok(bt&&bt.det&&bt.det.spd===6.0&&bt.det.incl===8&&bt.det.rpe===8&&bt.amt===3,'the burst logs what was actually done (speed/incline/RPE) with amt = duration');
   ok(sandbox.snkMealsCovered(sandbox.state)===2&&sandbox.snkVigToday()===1,'coverage counts distinct meals; the treadmill burst counts as one vigorous burst today');
+  ok(/6 mph/.test(sandbox.snkEntryDetLine(bt))&&/RPE 8/.test(sandbox.snkEntryDetLine(bt)),'the entry detail line renders the logged speed + effort');
+  // progression: the next burst references the last one and prescribes a bump
+  var nud=sandbox.snkBurstNudge('sx_tread');
+  ok(/8% incl/.test(nud)&&/incline/.test(nud),'snkBurstNudge recalls the last burst and prescribes a concrete progression');
   sandbox.snkUndoMeal('dinner');
   ok(sandbox.snkMealEntry('dinner')===null&&sandbox.snkMealEntry('breakfast')!==null,'undo removes only the targeted meal entry');
 
@@ -1760,6 +1774,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.coachRange='this';
   var cp=sandbox.coachPayload();
   ok(cp.exerciseSnacks&&typeof cp.exerciseSnacks.weekVigorousBursts==='number'&&cp.exerciseSnacks.vigorousWeeklyTarget===6,'coachPayload.exerciseSnacks reports weekly vigorous bursts vs the target');
+  ok(cp.exerciseSnacks.burstDetails&&cp.exerciseSnacks.burstDetails.some(function(b){return b.speedMph===6.0&&b.inclinePct===8&&b.rpe===8;}),'coachPayload.exerciseSnacks.burstDetails carries the logged treadmill burst so the coach can prescribe progression');
 
   // -- Ask-coach degrades to the deterministic pick with no API key (no throw, no network) --
   sandbox.viewDow=1;sandbox.state={};

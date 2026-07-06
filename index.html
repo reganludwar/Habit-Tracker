@@ -226,6 +226,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .snk-day-vig{font-size:0.75rem;color:var(--green);font-weight:700}
 .snk-day-next{font-size:0.8125rem;color:var(--text);margin-top:6px}
 .snk-day-cta{font-size:0.75rem;color:var(--accent);font-weight:700;margin-top:8px}
+.snk-how{font-size:0.75rem;color:var(--muted);line-height:1.45;margin-top:6px;padding:8px 10px;border-left:2px solid var(--border);background:rgba(127,127,127,.05)}
+.snk-nudge{font-size:0.75rem;color:var(--accent);line-height:1.4;margin-top:8px;display:flex;gap:6px}
+.snk-nudge b{color:var(--text)}
+.snk-done-det{font-size:0.6875rem;color:var(--muted);margin-top:4px;width:100%;font-variant-numeric:tabular-nums}
+.snk-proto{font-size:0.8125rem;color:var(--text);line-height:1.5;padding:12px 16px;background:rgba(43,228,155,.06);border-left:2px solid var(--green);margin:0 0 4px}
+.snk-chips{display:flex;gap:8px;padding:2px 0 6px}
+.snk-chip{flex:1;text-align:center;font-size:0.8125rem;padding:9px;border:1px solid var(--border);border-radius:9px;color:var(--muted);cursor:pointer;-webkit-user-select:none;user-select:none}
+.snk-chip.on{border-color:var(--accent);color:var(--accent);background:rgba(156,140,255,.08);font-weight:700}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;opacity:0;pointer-events:none;transition:opacity .22s}
 .overlay.show{opacity:1;pointer-events:all}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:201;background:var(--card);
@@ -1120,9 +1128,9 @@ var CARDIO=[{id:'c_run',lbl:'Run',sub:'Outdoor'},{id:'c_mill',lbl:'Run',sub:'Tre
    `vig:true` = a hard, VO2max-driving burst. `muscles` feed the same overlap logic
    the legacy snack recommender uses (WOM/olap) so we never pile onto a just-trained group. */
 var SNACK_EX=[
-  {id:'sx_tread',lbl:'Treadmill Burst',     sub:'Hard run, 1-5 min',        kind:'cardio',  vig:true, unit:'min', muscles:[]},
-  {id:'sx_incl', lbl:'Fast Incline Walk',   sub:'Steep + brisk',            kind:'cardio',  vig:false,unit:'min', muscles:[]},
-  {id:'sx_block',lbl:'Around-the-Block Run',sub:'Outside, all-out',         kind:'cardio',  vig:true, unit:'min', muscles:[]},
+  {id:'sx_tread',lbl:'Treadmill Burst',     sub:'Hard run, 1-5 min',        kind:'cardio',  vig:true, unit:'min', muscles:[],how:'Short and genuinely hard — skip the long warmup. ~30-45s easy to ramp, then RPE 8-9 (breathing hard, can barely talk). Pick one: 3-4 × 30s hard / 30-60s walk, OR a 2-3 min tempo push. Raise incline first, then speed.',seed:{min:3,spd:6,incl:6}},
+  {id:'sx_incl', lbl:'Fast Incline Walk',   sub:'Steep + brisk',            kind:'cardio',  vig:false,unit:'min', muscles:[],how:'Set a steep incline (8-15%) and walk fast enough that talking gets hard. 3-10 min. Best when your legs are cooked but you still want cardio.',seed:{min:8,spd:3,incl:12}},
+  {id:'sx_block',lbl:'Around-the-Block Run',sub:'Outside, all-out',         kind:'cardio',  vig:true, unit:'min', muscles:[],how:'Out the door and run your block near-max: 20-40s hard efforts with easy walks between, ~3-5 min total. Should feel like 8-9 out of 10.',seed:{min:4}},
   {id:'sx_squat',lbl:'Bodyweight Squats',   sub:'Feed-the-dog reps',        kind:'strength',vig:false,unit:'reps',muscles:['quads','glutes','hamstrings']},
   {id:'sx_push', lbl:'Pushups',             sub:'',                         kind:'strength',vig:false,unit:'reps',muscles:['chest','shoulders','triceps']},
   {id:'sx_pull', lbl:'Pull-Ups',            sub:'',                         kind:'strength',vig:false,unit:'reps',muscles:['back','biceps']},
@@ -1493,18 +1501,58 @@ function snkNextMeal(){for(var i=0;i<MEALS.length;i++)if(!snkMealEntry(MEALS[i].
 function snkTag(e){return e.vig?'<span class="snk-tag vig">VO₂MAX</span>':(e.kind==='cardio'?'<span class="snk-tag">CARDIO</span>':'<span class="snk-tag str">STR</span>');}
 /* logging sheet */
 var snkActiveEx='',snkActiveMeal='';
-function snkOpenAmt(ex,meal){var e=snackExById(ex);if(!e)return;sheetMode='snkAmt';snkActiveEx=ex;snkActiveMeal=meal||'';
+function snkOpenAmt(ex,meal){var e=snackExById(ex);if(!e)return;if(e.unit==='min')return snkOpenBurst(ex,meal);sheetMode='snkAmt';snkActiveEx=ex;snkActiveMeal=meal||'';
   document.getElementById('shtTitle').textContent=e.lbl;
   document.getElementById('shtSub').textContent=(meal?('After '+mealById(meal).lbl):'Anytime snack')+' · tap the amount';
-  var nums=(e.unit==='min')?SNK_MINS:SNK_REPS,h='<div class="num-grid">';
+  var nums=SNK_REPS,h='<div class="num-grid">';
   for(var i=0;i<nums.length;i++)h+='<div class="num-btn" onclick="snkLogAmt('+nums[i]+')">'+nums[i]+'</div>';
-  h+='</div><div class="snk-unit-note">'+(e.unit==='min'?'minutes':'reps')+'</div>';
+  h+='</div><div class="snk-unit-note">reps</div>';
   document.getElementById('shtBody').innerHTML=h;
   document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function snkLogAmt(n){var e=snackExById(snkActiveEx);if(!e){closeSheet();return;}if(!state.snkLog)state.snkLog=[];
   if(snkActiveMeal){for(var i=state.snkLog.length-1;i>=0;i--)if(state.snkLog[i].meal===snkActiveMeal)state.snkLog.splice(i,1);}
   state.snkLog.push({ex:snkActiveEx,amt:n,meal:snkActiveMeal,ts:Date.now()});save();closeSheet();renderSnacks();}
 function snkUndoMeal(m){if(!state.snkLog)return;for(var i=state.snkLog.length-1;i>=0;i--)if(state.snkLog[i].meal===m){state.snkLog.splice(i,1);break;}save();renderSnacks();}
+/* ── Burst logger: cardio snacks capture what you actually did so the app can learn ──
+   Fields: min (duration), spd (mph), incl (%), rpe (1-10 effort), hr (peak, off the Wahoo),
+   fmt ('sprints'|'tempo'). Stored on the log entry's `det`. */
+var snkDraft={},snkDraftEx='',snkDraftMeal='';
+function snkLastBurst(ex){try{var anchor=getDateForDow(viewDow);anchor.setHours(0,0,0,0);for(var i=0;i<=365;i++){var dt=new Date(anchor);dt.setDate(anchor.getDate()-i);var l=(loadStateForDate(dt)||{}).snkLog||[];for(var j=l.length-1;j>=0;j--){var e=l[j];if(e.ex===ex&&e.det&&typeof e.det==='object')return {det:e.det,daysAgo:i};}}}catch(e){}return null;}
+function snkWhenLbl(d){return d===0?'earlier today':(d===1?'yesterday':(d+' days ago'));}
+function snkBurstNudge(ex){var lb=snkLastBurst(ex);if(!lb)return 'First one logged — just get it genuinely hard (RPE 8-9) and record what you did. Next time we compare against this.';var d=lb.det,when=snkWhenLbl(lb.daysAgo);
+  if(d.rpe!=null&&d.rpe<=6)return 'Last time ('+when+') felt easy (RPE '+d.rpe+') — that reads as a walk, not a burst. Add incline or speed until it is hard.';
+  var bits=[];if(d.min!=null)bits.push(d.min+' min');if(d.spd!=null)bits.push(d.spd+' mph');if(d.incl!=null)bits.push(d.incl+'% incl');if(d.rpe!=null)bits.push('RPE '+d.rpe);if(d.hr!=null)bits.push(d.hr+' bpm');
+  var tgt=(d.incl!=null)?('+1% incline (to '+(Math.round((d.incl+1)*10)/10)+'%)'):((d.spd!=null)?('+0.5 mph (to '+(Math.round((d.spd+0.5)*10)/10)+')'):((d.min!=null)?('+1 min (to '+(d.min+1)+')'):'push a touch harder'));
+  return 'Last '+when+': '+bits.join(' · ')+'. Try '+tgt+' at the same effort to keep progressing.';}
+function snkOpenBurst(ex,meal){var e=snackExById(ex);if(!e)return;sheetMode='snkBurst';snkDraftEx=ex;snkDraftMeal=meal||'';
+  var lb=snkLastBurst(ex);snkDraft={};var src=(lb&&lb.det)?lb.det:(e.seed||{});
+  if(src.spd!=null)snkDraft.spd=src.spd;if(src.incl!=null)snkDraft.incl=src.incl;if(src.min!=null)snkDraft.min=src.min;if(src.fmt)snkDraft.fmt=src.fmt;
+  document.getElementById('shtTitle').textContent=e.lbl;
+  document.getElementById('shtSub').textContent=(meal?('After '+mealById(meal).lbl):'Anytime')+' · log the burst';
+  document.getElementById('shtBody').innerHTML=snkBurstFormHTML();
+  document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
+function snkFmtChipsInner(){var f=snkDraft.fmt||'';return '<div class="snk-chip'+(f==='sprints'?' on':'')+'" onclick="snkBurstFmt(\'sprints\')">Sprints</div><div class="snk-chip'+(f==='tempo'?' on':'')+'" onclick="snkBurstFmt(\'tempo\')">Tempo</div>';}
+function snkBurstFmt(f){snkDraft.fmt=(snkDraft.fmt===f)?'':f;var r=document.getElementById('snkFmtRow');if(r)r.innerHTML=snkFmtChipsInner();}
+var SNK_RPE=[6,7,8,9,10];
+function snkRpeChipsInner(){var r=snkDraft.rpe,h='';for(var i=0;i<SNK_RPE.length;i++){var n=SNK_RPE[i];h+='<div class="snk-chip'+(r===n?' on':'')+'" onclick="snkBurstRpe('+n+')">'+n+'</div>';}return h;}
+function snkBurstRpe(n){if(snkDraft.rpe===n)delete snkDraft.rpe;else snkDraft.rpe=n;var r=document.getElementById('snkRpeRow');if(r)r.innerHTML=snkRpeChipsInner();}
+function snkBurstFormHTML(){var e=snackExById(snkDraftEx),inS='width:100%;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:1rem;padding:10px;-webkit-appearance:none;border-radius:0;outline:none;box-sizing:border-box';
+  function fld(k,lbl,ph){var v=(snkDraft[k]!=null)?esc(String(snkDraft[k])):'';return '<div style="flex:1"><div class="cdt-lbl">'+lbl+'</div><input id="snkf_'+k+'" inputmode="decimal" value="'+v+'" placeholder="'+ph+'" oninput="snkDraftField(\''+k+'\')" style="'+inS+'"></div>';}
+  var h='';if(e.how)h+='<div class="snk-proto">'+esc(e.how)+'</div>';
+  h+='<div class="cdt-form">';
+  h+='<div class="cdt-lbl" style="margin-bottom:4px">Format</div><div class="snk-chips" id="snkFmtRow">'+snkFmtChipsInner()+'</div>';
+  h+='<div class="cdt-lbl" style="margin:8px 0 4px">Effort — tap RPE (6 comfortably hard · 10 all-out)</div><div class="snk-chips" id="snkRpeRow">'+snkRpeChipsInner()+'</div>';
+  h+='<div class="cdt-row">'+fld('min','Time (min)','3')+fld('spd','Top speed (mph)','6.0')+'</div>';
+  h+='<div class="cdt-row">'+fld('incl','Incline (%)','8')+fld('hr','Peak HR (Wahoo)','150')+'</div>';
+  var nud=snkBurstNudge(snkDraftEx);if(nud)h+='<div class="cdt-nudge"><span>&#9650;</span><span>'+esc(nud)+'</span></div>';
+  h+='<button class="snk-go" style="margin-top:12px" onclick="snkBurstLog()">Log this burst</button>';
+  return h+'</div>';}
+function snkDraftField(k){var el=document.getElementById('snkf_'+k);if(!el)return;var raw=String(el.value||'').trim();if(raw===''){delete snkDraft[k];}else{var nn=parseFloat(raw.replace(/[^0-9.\-]/g,''));if(isNaN(nn))delete snkDraft[k];else snkDraft[k]=nn;}}
+function snkBurstLog(){if(!state.snkLog)state.snkLog=[];var meal=snkDraftMeal;if(meal){for(var i=state.snkLog.length-1;i>=0;i--)if(state.snkLog[i].meal===meal)state.snkLog.splice(i,1);}
+  var det={};for(var k in snkDraft)if(snkDraft.hasOwnProperty(k)&&snkDraft[k]!=='')det[k]=snkDraft[k];
+  var amt=(det.min!=null)?det.min:0;
+  state.snkLog.push({ex:snkDraftEx,amt:amt,meal:meal,ts:Date.now(),det:det});save();closeSheet();renderSnacks();}
+function snkEntryDetLine(entry){var d=entry&&entry.det;if(!d)return '';var p=[];if(d.fmt)p.push(d.fmt);if(d.spd!=null)p.push(d.spd+' mph');if(d.incl!=null)p.push(d.incl+'% incl');if(d.rpe!=null)p.push('RPE '+d.rpe);if(d.hr!=null)p.push(d.hr+' bpm');return p.join(' · ');}
 /* exercise picker sheet */
 function snkOpenPick(meal){sheetMode='snkPick';snkActiveMeal=meal;
   document.getElementById('shtTitle').textContent='Pick an exercise';
@@ -1520,7 +1568,7 @@ var snkCoachTxt='',snkCoachBusy=false,snkCoachMeal='';
 var SNK_COACH_SYSTEM='You are an exercise-snack coach inside a habit tracker, grounded in the "exercise snacks" research: brief bouts done after meals, mixing vigorous cardio bursts (for VO2max) with strength/metabolic movement, spread through the day. The user wants ONE pick for their upcoming post-meal snack. Rules: do NOT recommend a strength move that hammers muscles they already trained hard today or yesterday; if their weekly vigorous-burst count is short of target, favor a hard cardio burst; if they already did a vigorous burst today, a short strength/metabolic snack (bodyweight squats) is plenty. Respect their equipment and meal timing (mornings from home = treadmill time; after dinner = quick and simple). Reply in at most 2 short lines: line 1 names the pick, line 2 is a one-sentence why. No markdown, no lists, no preamble.';
 function snkCoachContext(m){var td=[],l=state.snkLog||[],sc=S[viewDow];
   for(var i=0;i<CARDIO.length;i++)if(state[CARDIO[i].id])td.push(CARDIO[i].lbl+(CARDIO[i].sub?' ('+CARDIO[i].sub+')':''));
-  var done=l.map(function(x){var e=snackExById(x.ex);return (e?e.lbl:x.ex)+' '+x.amt+(e&&e.unit==='min'?'min':'reps')+(x.meal?(' after '+x.meal):'');});
+  var done=l.map(function(x){var e=snackExById(x.ex),dl=snkEntryDetLine(x);return (e?e.lbl:x.ex)+' '+x.amt+(e&&e.unit==='min'?'min':'reps')+(dl?(' ('+dl+')'):'')+(x.meal?(' after '+x.meal):'');});
   return {meal:mealById(m).lbl,dayFocus:sc?sc.tag:'',liftedToday:!!state['lift'],musclesTrainedToday:WOM[viewDow]||[],musclesTrainedYesterday:WOM[(viewDow+6)%7]||[],cardioLoggedToday:td,snacksDoneToday:done,vigorousBurstsThisWeek:snkVigWeek(),vigorousWeeklyTarget:SNACK_GOALS.vigWeek.target,equipment:['home treadmill','outdoor block route','bodyweight'],options:SNACK_EX.map(function(e){return {name:e.lbl,kind:e.kind,vigorous:!!e.vig,unit:e.unit};})};}
 function snkCoachPrompt(m){return 'Pick my exercise snack after '+mealById(m).lbl+'. My context as JSON:\n```json\n'+JSON.stringify(snkCoachContext(m),null,1)+'\n```';}
 function snkCoachFallback(m){var s=snackSuggest(m),e=snackExById(s.ex);return (e?e.lbl:'')+'\n'+s.why;}
@@ -1536,11 +1584,12 @@ function snkAskCoach(m){var key=coachKey();snkCoachMeal=m;snkCoachTxt='';
 function snackWeekAgg(){var vig=0,mealsDays=0,total=0,byEx={},perDay=[];for(var d=0;d<7;d++){var l=loadStateForDow(d).snkLog||[],cov=snkMealsCoveredList(l),dv=0;for(var i=0;i<l.length;i++){total++;var e=snackExById(l[i].ex);if(e&&e.vig){vig++;dv++;}byEx[l[i].ex]=(byEx[l[i].ex]||0)+1;}if(cov>=3)mealsDays++;perDay.push({dow:d,cov:cov,vig:dv,n:l.length});}return {vig:vig,mealsDays:mealsDays,total:total,byEx:byEx,perDay:perDay};}
 function snkMealCardHTML(meal){var entry=snkMealEntry(meal.id),ex=snackExById(snkPickFor(meal.id)),sug=snackSuggest(meal.id);
   var h='<div class="snk-meal"><div class="snk-meal-top"><div class="snk-meal-lbl">'+meal.lbl+'</div><div class="snk-meal-sub">'+meal.sub+'</div></div>';
-  if(entry){var de=snackExById(entry.ex),tm=new Date(entry.ts),tf=tm.getHours()+':'+(tm.getMinutes()<10?'0':'')+tm.getMinutes();
-    h+='<div class="snk-meal-done"><span class="snk-check">&#10003;</span><span class="snk-done-ex">'+(de?de.lbl:entry.ex)+'</span><span class="snk-done-amt">'+entry.amt+' '+((de&&de.unit==='min')?'min':'reps')+'</span><span class="snk-done-tm">'+tf+'</span><span class="snk-undo" onclick="snkUndoMeal(\''+meal.id+'\')">undo</span></div>';}
+  if(entry){var de=snackExById(entry.ex),tm=new Date(entry.ts),tf=tm.getHours()+':'+(tm.getMinutes()<10?'0':'')+tm.getMinutes(),detL=snkEntryDetLine(entry);
+    h+='<div class="snk-meal-done"><span class="snk-check">&#10003;</span><span class="snk-done-ex">'+(de?de.lbl:entry.ex)+'</span><span class="snk-done-amt">'+entry.amt+' '+((de&&de.unit==='min')?'min':'reps')+'</span><span class="snk-done-tm">'+tf+'</span><span class="snk-undo" onclick="snkUndoMeal(\''+meal.id+'\')">undo</span>'+(detL?'<div class="snk-done-det">'+esc(detL)+'</div>':'')+'</div>';}
   else{var coach='';
     if(snkCoachMeal===meal.id){if(snkCoachBusy)coach='<div class="snk-coach busy">Coach is thinking…</div>';else if(snkCoachTxt){var p=String(snkCoachTxt).split(/\n+/);coach='<div class="snk-coach">'+coachMd(p[0])+(p.length>1?('<div class="snk-coach-why">'+coachMd(p.slice(1).join(' '))+'</div>'):'')+'</div>';}}
-    h+='<div class="snk-pick"><div class="snk-pick-ex">'+(ex?ex.lbl+snkTag(ex):'')+'</div><div class="snk-why">'+esc(sug.why)+'</div>'+coach+'</div>';
+    var extra=(ex&&ex.unit==='min')?((ex.how?'<div class="snk-how">'+esc(ex.how)+'</div>':'')+'<div class="snk-nudge"><span>&#9650;</span><span>'+esc(snkBurstNudge(ex.id))+'</span></div>'):'';
+    h+='<div class="snk-pick"><div class="snk-pick-ex">'+(ex?ex.lbl+snkTag(ex):'')+'</div><div class="snk-why">'+esc(sug.why)+'</div>'+extra+coach+'</div>';
     h+='<div class="snk-meal-actions"><button class="snk-go" onclick="snkOpenAmt(\''+(ex?ex.id:'')+'\',\''+meal.id+'\')">Done &rarr;</button><button class="snk-alt" onclick="snkOpenPick(\''+meal.id+'\')">Change</button><button class="snk-alt" onclick="snkAskCoach(\''+meal.id+'\')">Ask coach</button></div>';}
   return h+'</div>';}
 function renderSnacks(){var it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);
@@ -2798,12 +2847,14 @@ function coachHealth(r){try{var series={},start=new Date(r.start);start.setHours
    and the current week's vigorous-burst count (VO2max lever) vs target, meal-coverage days, and
    per-exercise mix. Independent of the viewed day/week — always reads the real current week. */
 function coachSnacks(){try{var n=new Date();n.setHours(0,0,0,0);var sun=new Date(n);sun.setDate(n.getDate()-n.getDay());
-  var vig=0,mealsDays=0,total=0,byEx={};
-  for(var d=0;d<7;d++){var dt=new Date(sun);dt.setDate(sun.getDate()+d);var l=(loadStateForDate(dt)||{}).snkLog||[],cov=snkMealsCoveredList(l);for(var i=0;i<l.length;i++){total++;var e=snackExById(l[i].ex);if(e&&e.vig)vig++;byEx[l[i].ex]=(byEx[l[i].ex]||0)+1;}if(cov>=3)mealsDays++;}
+  var vig=0,mealsDays=0,total=0,byEx={},bursts=[];
+  for(var d=0;d<7;d++){var dt=new Date(sun);dt.setDate(sun.getDate()+d);var l=(loadStateForDate(dt)||{}).snkLog||[],cov=snkMealsCoveredList(l);for(var i=0;i<l.length;i++){total++;var e=snackExById(l[i].ex);if(e&&e.vig)vig++;byEx[l[i].ex]=(byEx[l[i].ex]||0)+1;
+    if(e&&e.unit==='min'&&l[i].det&&typeof l[i].det==='object'){var dd=l[i].det,br={date:dt.getFullYear()+'-'+(dt.getMonth()+1)+'-'+dt.getDate(),exercise:e.lbl};if(dd.min!=null)br.min=dd.min;if(dd.spd!=null)br.speedMph=dd.spd;if(dd.incl!=null)br.inclinePct=dd.incl;if(dd.rpe!=null)br.rpe=dd.rpe;if(dd.hr!=null)br.peakHr=dd.hr;if(dd.fmt)br.format=dd.fmt;bursts.push(br);}}
+    if(cov>=3)mealsDays++;}
   var td=(loadStateForDate(new Date())||{}).snkLog||[],items=[];
-  for(var j=0;j<td.length;j++){var e2=snackExById(td[j].ex);items.push({exercise:e2?e2.lbl:td[j].ex,amount:td[j].amt,unit:e2?e2.unit:'',meal:td[j].meal||'anytime',vigorous:!!(e2&&e2.vig)});}
+  for(var j=0;j<td.length;j++){var e2=snackExById(td[j].ex),it={exercise:e2?e2.lbl:td[j].ex,amount:td[j].amt,unit:e2?e2.unit:'',meal:td[j].meal||'anytime',vigorous:!!(e2&&e2.vig)};if(td[j].det&&typeof td[j].det==='object')it.detail=td[j].det;items.push(it);}
   var byArr=[];for(var k in byEx){if(!byEx.hasOwnProperty(k))continue;var ee=snackExById(k);byArr.push({exercise:ee?ee.lbl:k,count:byEx[k]});}
-  return {todayCount:td.length,todayMealsCovered:snkMealsCoveredList(td),todaySnacks:items,weekVigorousBursts:vig,vigorousWeeklyTarget:SNACK_GOALS.vigWeek.target,weekFullMealDays:mealsDays,weekTotalSnacks:total,weekByExercise:byArr};}catch(e){return null;}}
+  return {todayCount:td.length,todayMealsCovered:snkMealsCoveredList(td),todaySnacks:items,weekVigorousBursts:vig,vigorousWeeklyTarget:SNACK_GOALS.vigWeek.target,weekFullMealDays:mealsDays,weekTotalSnacks:total,weekByExercise:byArr,burstDetails:bursts};}catch(e){return null;}}
 function coachPayload(){_woInRender=true;_woScan=null;try{var r=coachRangeMs(coachRange),sessions=coachSessions(r),cardio=coachCardio(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),age:getProfileAge(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),cardioLogged:cardio.length,cardioSessions:cardio,progressTrends:coachTrends(sessions),progressionNudges:coachNudges(),movementBalance:(function(){var b=woBalanceReport(woMovementStatsFromSessions(sessions));return {setsByGroup:{push:b.push,pull:b.pull,legs:b.legs,core:b.core},squatSets:b.squat,hingeSets:b.hinge,setsByPattern:b.st.pat,setsByMuscle:b.st.mus,flags:b.flags};})(),trainingLoad:(function(){var rd=woReadiness();return {status:rd.status,deloadRecommended:rd.deload,detail:rd.detail,weeks:rd.weeks.map(function(w){return {wkAgo:w.wkAgo,sets:w.sets,tonnage:w.tonnage,avgRpe:w.avgRpe,sessions:w.sessions};})};})(),health:coachHealth(r),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch'),tightAreas:coachTightSummary(),exerciseSnacks:coachSnacks()};}finally{_woInRender=false;_woScan=null;}}
 function coachPrompt(p,prev){var s='Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover these:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING? Ground this in movementBalance — actual completed-set counts per movement pattern, group, and muscle over this range, plus auto-detected flags.\n3. CONDITIONING — review my cardio sessions (cardioSessions): aerobic volume (how often / how long), intensity (incline, speed, pace, average heart rate), how it is trending, and whether it complements my lifting and recovery rather than interfering. Weave this into the sections above.\n4. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch / conditioning work? Be specific, with target sets and reps. Use trainingLoad (weekly working sets, tonnage, avg RPE, and the deloadRecommended flag) to judge accumulated fatigue — if a deload is due, prescribe it (which week, how much to cut) rather than adding volume. Also factor in health where present (bodyweight trend, resting HR, sleep, HRV, daily steps/energy): e.g. a climbing resting HR, falling HRV, short sleep, or a sharp bodyweight drop all signal under-recovery and argue against adding load. If my age is given (see "age"), factor it into recovery capacity, how aggressively to progress, and joint-friendly exercise selection.';
   s+='\n5. EXERCISE SNACKS — review exerciseSnacks: brief post-meal bouts and weekly vigorous bursts (the VO₂max lever). Note if the weekly vigorous-burst target is being missed or meals are going uncovered, and fold this into the conditioning and readiness picture rather than treating it separately.';
