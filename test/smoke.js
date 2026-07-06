@@ -1760,6 +1760,12 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(/warmup/.test(sandbox.snkBurstInsight(bt)),'snkBurstInsight flags when much of a short snack was warmup, not hard work');
   // weekly hard-minutes accumulate
   ok(sandbox.snackWeekAgg().hardMin>=2,'snackWeekAgg tallies weekly hard-minutes from burst detail');
+  // per-snack hard-minute goal: floor 2 counts, target 3 hits, under 2 is light
+  ok(sandbox.SNACK_GOALS.hardSnack.floor===2&&sandbox.SNACK_GOALS.hardSnack.target===3&&sandbox.SNACK_GOALS.hardWeek===18,'goals define per-snack hard floor/target (2/3) and a weekly hard-minute target (18)');
+  var g2=sandbox.snkHardGoal(bt);
+  ok(g2&&g2.met==='floor'&&/counts/.test(g2.txt),'2 hard min grades as floor "counts" (short of the 3-min target)');
+  ok(sandbox.snkHardGoal({det:{hard:3}}).met==='target'&&sandbox.snkHardGoal({det:{hard:1}}).met==='under','3 hard min hits target; 1 grades as light');
+  ok(sandbox.snkHardGoal({det:{spd:6}})===null,'a burst with no hard-minutes logged is not graded');
   // progression: the next burst references the last one and prescribes a bump
   var nud=sandbox.snkBurstNudge('sx_tread');
   ok(/8% incl/.test(nud)&&/incline/.test(nud),'snkBurstNudge recalls the last burst and prescribes a concrete progression');
