@@ -1723,25 +1723,31 @@ sandbox.closeSheet&&sandbox.closeSheet();
 
   // -- catalog + goals defined --
   ok(sandbox.SNACK_EX.length>=4&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength','SNACK_EX catalog defines a vigorous cardio burst + a strength option');
-  ok(sandbox.MEALS.length===3&&sandbox.MEALS[0].id==='breakfast'&&sandbox.SNACK_GOALS.vigWeek.target===6,'MEALS covers breakfast/lunch/dinner and goals carry a weekly vigorous target');
+  ok(sandbox.MEALS.length===5&&sandbox.MEALS[0].id==='breakfast'&&sandbox.MEALS[1].id==='midam'&&sandbox.MEALS[4].id==='evening'&&sandbox.SNACK_GOALS.mealsPerDay===5,'MEALS models the 5-meal day (breakfast, mid-morning, lunch, dinner, evening snack)');
 
   // -- deterministic recommender (clean week) --
   store.clear();
   sandbox.viewDow=1;sandbox.state={};   // Monday, nothing banked
   ok(sandbox.snackSuggest('breakfast').ex==='sx_tread','breakfast with no vigorous work banked recommends a treadmill burst (VO₂max lever)');
+  ok(sandbox.snackSuggest('lunch').ex==='sx_walk'&&sandbox.snackSuggest('dinner').ex==='sx_walk','lunch and dinner default to a walk (post-meal glucose)');
+  ok(sandbox.snackSuggest('midam').ex==='sx_squat'&&sandbox.snackSuggest('evening').ex==='sx_push','the two muscle slots alternate squats (mid-morning) and pushups (evening)');
+  // already banked a hard burst today -> breakfast backs off to an easy incline walk
   sandbox.state={snkLog:[{ex:'sx_tread',amt:3,meal:'breakfast',ts:Date.now()}]};
-  ok(sandbox.snackSuggest('dinner').ex==='sx_squat','dinner after a hard burst earlier in the day recommends quick squats');
+  ok(sandbox.snackSuggest('breakfast').ex==='sx_incl','after a hard burst already done today, the recommender backs off to an easy option');
   sandbox.viewDow=3;sandbox.state={};   // Wednesday: yesterday (Tue) was a leg day
   ok(sandbox.snackExRec('sx_squat')==='rest','squats grade as rest the day after a leg day (muscle overlap with WOM)');
-  ok(sandbox.snackSuggest('dinner').ex!=='sx_squat','recommender redirects away from squats when yesterday hammered the same muscles');
+  ok(sandbox.snackSuggest('midam').ex!=='sx_squat','a muscle slot redirects off squats when yesterday hammered the same muscles');
 
-  // -- logging: one snack per meal, coverage + vigorous counts --
+  // -- logging: MULTIPLE movements per meal (walk + squats after dinner) --
   store.clear();
   sandbox.viewDow=4;sandbox.loadState();   // Thursday, empty
   sandbox.snkOpenAmt('sx_squat','dinner');sandbox.snkLogAmt(25);
   ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].meal==='dinner'&&sandbox.state.snkLog[0].amt===25,'logging a meal snack appends one entry with amount + meal');
-  sandbox.snkOpenAmt('sx_squat','dinner');sandbox.snkLogAmt(30);
-  ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].amt===30,'re-logging the same meal replaces it (one snack per meal)');
+  sandbox.snkOpenAmt('sx_push','dinner');sandbox.snkLogAmt(30);
+  ok(sandbox.state.snkLog.length===2&&sandbox.snkMealEntries('dinner').length===2,'a meal can hold multiple movements — the second appends, it does not replace');
+  // a walk logs with one tap (no sheet) and still credits the meal
+  sandbox.snkOpenAmt('sx_walk','lunch');
+  ok(sandbox.snkMealEntries('lunch').length===1&&sandbox.snkMealEntries('lunch')[0].ex==='sx_walk','a walk one-taps into the meal (no amount sheet)');
   // cardio snacks route to the burst logger (duration + speed + incline + RPE + HR), not the reps grid
   sandbox.snkOpenAmt('sx_tread','breakfast');
   ok(sandbox.sheetMode==='snkBurst'&&sandbox.snkDraftEx==='sx_tread','a cardio snack (min unit) opens the burst detail form, not the reps grid');
@@ -1754,7 +1760,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var bt=sandbox.snkMealEntry('breakfast');
   ok(bt&&bt.det&&bt.det.spd===6.0&&bt.det.incl===8&&bt.det.rpe===8&&bt.amt===4,'the burst logs what was actually done (speed/incline/RPE) with amt = duration');
   ok(bt.det.hard===2&&bt.det.avgHr===125&&bt.det.dist===0.25,'the burst also captures hard-minutes (Zone 3+), avg HR, and distance');
-  ok(sandbox.snkMealsCovered(sandbox.state)===2&&sandbox.snkVigToday()===1,'coverage counts distinct meals; the treadmill burst counts as one vigorous burst today');
+  ok(sandbox.snkMealsCovered(sandbox.state)===3&&sandbox.snkVigToday()===1,'coverage counts distinct meals (breakfast+lunch+dinner=3); only the treadmill burst counts as vigorous');
   ok(/6 mph/.test(sandbox.snkEntryDetLine(bt))&&/RPE 8/.test(sandbox.snkEntryDetLine(bt))&&/2 hard/.test(sandbox.snkEntryDetLine(bt))&&/125\/150 bpm/.test(sandbox.snkEntryDetLine(bt)),'the entry detail line renders speed, effort, hard-minutes, and avg/max HR');
   // insight flags a mostly-warmup snack (2 of 4 min hard = 50%)
   ok(/warmup/.test(sandbox.snkBurstInsight(bt)),'snkBurstInsight flags when much of a short snack was warmup, not hard work');
@@ -1769,8 +1775,9 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // progression: the next burst references the last one and prescribes a bump
   var nud=sandbox.snkBurstNudge('sx_tread');
   ok(/8% incl/.test(nud)&&/incline/.test(nud),'snkBurstNudge recalls the last burst and prescribes a concrete progression');
-  sandbox.snkUndoMeal('dinner');
-  ok(sandbox.snkMealEntry('dinner')===null&&sandbox.snkMealEntry('breakfast')!==null,'undo removes only the targeted meal entry');
+  var dCount=sandbox.snkMealEntries('dinner').length;
+  sandbox.snkUndoEntry(sandbox.snkMealEntries('dinner')[0].ts);
+  ok(sandbox.snkMealEntries('dinner').length===dCount-1&&sandbox.snkMealEntry('breakfast')!==null,'undo removes one specific movement and leaves other meals untouched');
 
   // -- manual pick override --
   sandbox.snkSetPick&&(sandbox.snkActiveMeal='lunch');
