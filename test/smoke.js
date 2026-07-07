@@ -1748,6 +1748,12 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // a walk logs with one tap (no sheet) and still credits the meal
   sandbox.snkOpenAmt('sx_walk','lunch');
   ok(sandbox.snkMealEntries('lunch').length===1&&sandbox.snkMealEntries('lunch')[0].ex==='sx_walk','a walk one-taps into the meal (no amount sheet)');
+  // a workout is a selectable post-meal option: one-taps in, credits the meal, stamps the day's lift tag
+  sandbox.snkOpenAmt('sx_lift','midam');
+  var wEnt=sandbox.snkMealEntries('midam')[0];
+  ok(wEnt&&wEnt.ex==='sx_lift'&&wEnt.wtag===sandbox.S[sandbox.viewDow].tag,'a workout logs as a meal movement and records the day\'s lift tag');
+  ok(sandbox.snkTag(sandbox.snackExById('sx_lift')).indexOf('LIFT')>=0,'the workout option carries a LIFT tag');
+  sandbox.snkUndoEntry(wEnt.ts);   // remove so downstream coverage counts are unaffected
   // cardio snacks route to the burst logger (duration + speed + incline + RPE + HR), not the reps grid
   sandbox.snkOpenAmt('sx_tread','breakfast');
   ok(sandbox.sheetMode==='snkBurst'&&sandbox.snkDraftEx==='sx_tread','a cardio snack (min unit) opens the burst detail form, not the reps grid');

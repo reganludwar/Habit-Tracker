@@ -204,6 +204,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .snk-tag{font-size:0.5625rem;font-weight:800;letter-spacing:.06em;padding:2px 6px;border-radius:4px;border:1px solid var(--border);color:var(--muted);margin-left:7px;vertical-align:middle;white-space:nowrap}
 .snk-tag.vig{color:var(--green);border-color:var(--green)}
 .snk-tag.str{color:var(--accent);border-color:var(--accent)}
+.snk-tag.lift{color:var(--blue);border-color:var(--blue)}
 .snk-meal{padding:14px 16px;border-bottom:1px solid var(--border)}
 .snk-meal:last-child{border-bottom:none}
 .snk-meal-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
@@ -1153,6 +1154,7 @@ var SNACK_EX=[
   {id:'sx_incl', lbl:'Fast Incline Walk',   sub:'Steep + brisk',            kind:'cardio',  vig:false,unit:'min', muscles:[],how:'Set a steep incline (8-15%) and walk fast enough that talking gets hard. 3-10 min. Best when your legs are cooked but you still want cardio.',seed:{min:8,spd:3,incl:12}},
   {id:'sx_block',lbl:'Around-the-Block Run',sub:'Outside, all-out',         kind:'cardio',  vig:true, unit:'min', muscles:[],how:'Out the door and run your block near-max: 20-40s hard efforts with easy walks between, ~3-5 min total. Should feel like 8-9 out of 10.',seed:{min:4}},
   {id:'sx_walk', lbl:'Walk',                sub:'Dog walk / easy',          kind:'cardio',  vig:false,unit:'min', light:true, muscles:[]},
+  {id:'sx_lift', lbl:'Workout',             sub:'Your lift session',        kind:'workout', vig:false,unit:'',   workout:true, muscles:[]},
   {id:'sx_squat',lbl:'Bodyweight Squats',   sub:'Feed-the-dog reps',        kind:'strength',vig:false,unit:'reps',muscles:['quads','glutes','hamstrings']},
   {id:'sx_push', lbl:'Pushups',             sub:'',                         kind:'strength',vig:false,unit:'reps',muscles:['chest','shoulders','triceps']},
   {id:'sx_pull', lbl:'Pull-Ups',            sub:'',                         kind:'strength',vig:false,unit:'reps',muscles:['back','biceps']},
@@ -1548,12 +1550,12 @@ function snackSuggest(m){var meal=mealById(m);if(!meal)return {ex:'sx_squat',why
   return {ex:meal.def,why:meal.why};}
 function snkPickFor(m){return (state.snkPick&&state.snkPick[m])||snackSuggest(m).ex;}
 function snkNextMeal(){for(var i=0;i<MEALS.length;i++)if(snkMealEntries(MEALS[i].id).length===0)return MEALS[i].id;return null;}
-function snkTag(e){return e.vig?'<span class="snk-tag vig">VO₂MAX</span>':(e.light?'<span class="snk-tag">WALK</span>':(e.kind==='cardio'?'<span class="snk-tag">CARDIO</span>':'<span class="snk-tag str">STR</span>'));}
+function snkTag(e){return e.vig?'<span class="snk-tag vig">VO₂MAX</span>':(e.workout?'<span class="snk-tag lift">LIFT</span>':(e.light?'<span class="snk-tag">WALK</span>':(e.kind==='cardio'?'<span class="snk-tag">CARDIO</span>':'<span class="snk-tag str">STR</span>')));}
 /* one-tap log for a walk (no sheet — it's a habit you already do) */
-function snkQuickLog(ex,meal){if(!state.snkLog)state.snkLog=[];state.snkLog.push({ex:ex,amt:0,meal:meal||'',ts:Date.now()});save();renderSnacks();}
+function snkQuickLog(ex,meal){if(!state.snkLog)state.snkLog=[];var e={ex:ex,amt:0,meal:meal||'',ts:Date.now()};if(ex==='sx_lift'){try{e.wtag=S[viewDow].tag;}catch(_){}}state.snkLog.push(e);save();renderSnacks();}
 /* logging sheet */
 var snkActiveEx='',snkActiveMeal='';
-function snkOpenAmt(ex,meal){var e=snackExById(ex);if(!e)return;if(e.light)return snkQuickLog(ex,meal);if(e.unit==='min')return snkOpenBurst(ex,meal);sheetMode='snkAmt';snkActiveEx=ex;snkActiveMeal=meal||'';
+function snkOpenAmt(ex,meal){var e=snackExById(ex);if(!e)return;if(e.light||e.workout)return snkQuickLog(ex,meal);if(e.unit==='min')return snkOpenBurst(ex,meal);sheetMode='snkAmt';snkActiveEx=ex;snkActiveMeal=meal||'';
   document.getElementById('shtTitle').textContent=e.lbl;
   document.getElementById('shtSub').textContent=(meal?('After '+mealById(meal).lbl):'Anytime snack')+' · tap the amount';
   var nums=SNK_REPS,h='<div class="num-grid">';
@@ -1654,7 +1656,7 @@ function snkAskCoach(m){var key=coachKey();snkCoachMeal=m;snkCoachTxt='';
 /* weekly rollup (independent of the legacy per-id snack totals) */
 function snackWeekAgg(){var vig=0,mealsDays=0,total=0,hardMin=0,byEx={},perDay=[];for(var d=0;d<7;d++){var l=loadStateForDow(d).snkLog||[],cov=snkMealsCoveredList(l),dv=0;for(var i=0;i<l.length;i++){total++;var e=snackExById(l[i].ex);if(e&&e.vig){vig++;dv++;}var dt=l[i].det;if(dt&&typeof dt.hard==='number')hardMin+=dt.hard;byEx[l[i].ex]=(byEx[l[i].ex]||0)+1;}if(cov>=SNACK_GOALS.mealsPerDay)mealsDays++;perDay.push({dow:d,cov:cov,vig:dv,n:l.length});}return {vig:vig,mealsDays:mealsDays,total:total,hardMin:Math.round(hardMin*10)/10,byEx:byEx,perDay:perDay};}
 function snkDoneRow(entry){var de=snackExById(entry.ex),tm=new Date(entry.ts),tf=tm.getHours()+':'+(tm.getMinutes()<10?'0':'')+tm.getMinutes();
-  var detL=snkEntryDetLine(entry),insL=snkBurstInsight(entry),hg=snkHardGoal(entry);
+  var detL=snkEntryDetLine(entry)||((entry.ex==='sx_lift'&&entry.wtag)?entry.wtag:''),insL=snkBurstInsight(entry),hg=snkHardGoal(entry);
   var amt='';if(entry.amt>0)amt=entry.amt+' '+((de&&de.unit==='min')?'min':'reps');
   var h='<div class="snk-meal-done"><span class="snk-check">&#10003;</span><span class="snk-done-ex">'+(de?de.lbl:entry.ex)+'</span>'+(amt?'<span class="snk-done-amt">'+amt+'</span>':'')+'<span class="snk-done-tm">'+tf+'</span><span class="snk-undo" onclick="snkUndoEntry('+entry.ts+')">undo</span>'+(detL?'<div class="snk-done-det">'+esc(detL)+'</div>':'')+'</div>';
   return h+(hg?'<div class="snk-goal '+hg.met+'">'+esc(hg.txt)+'</div>':'')+(insL?'<div class="snk-insight">'+esc(insL)+'</div>':'');}
