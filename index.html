@@ -76,12 +76,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .sec{margin:20px 16px 0}
 .sec-lbl{font-size:0.6875rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;padding:0 2px;margin-bottom:8px}
 .sec-card{background:var(--card);border:1px solid var(--border);overflow:hidden}
-.dsec{margin:12px 16px 0}
-.dsec:first-child{margin-top:14px}
+.dsec{margin:8px 16px 0}
+.dsec:first-child{margin-top:10px}
 .dsec .stand-grid,.dsec .cgrid{border-top:1px solid var(--border)}
 .dsec .stand-grid:first-child,.dsec .cgrid:first-child{border-top:none}
-.item{display:flex;align-items:center;gap:14px;padding:13px 16px;
-  border-bottom:1px solid var(--border);cursor:pointer;min-height:54px;
+.item{display:flex;align-items:center;gap:14px;padding:10px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer;min-height:46px;
   -webkit-user-select:none;user-select:none;transition:background .12s}
 .item:last-child{border-bottom:none}
 .item:active{background:rgba(255,255,255,.03)}
@@ -160,9 +160,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .drow:last-child{border-bottom:none}
 .drow .rname{font-size:0.8125rem;flex:1}
 .mtime{font-size:0.6875rem;color:var(--muted);text-align:right;padding-left:12px;white-space:nowrap}
-.cgrid{display:grid;gap:8px;padding:12px 16px}
+.cgrid{display:grid;gap:8px;padding:8px 16px}
 .cgrid.c3{grid-template-columns:1fr 1fr 1fr}
-.gcell{border:1.5px solid var(--border);padding:10px 6px;text-align:center;
+.gcell{border:1.5px solid var(--border);padding:7px 6px;text-align:center;
   cursor:pointer;transition:all .18s;-webkit-user-select:none;user-select:none}
 .gcell:active{opacity:.7}
 .gcell.done-green{border-color:var(--green);background:rgba(77,184,133,.08)}
@@ -170,12 +170,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .gcell-main{font-size:0.875rem;font-weight:600;color:var(--muted);line-height:1;margin-bottom:3px;transition:color .18s}
 .gcell-sub{font-size:0.6875rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .gcell.done-green .gcell-main{color:var(--green)}
-.stand-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px}
-.sblk{border:1.5px solid var(--border);padding:10px 6px;text-align:center;
+.stand-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 16px}
+.sblk{border:1.5px solid var(--border);padding:6px 6px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;
   cursor:pointer;transition:all .18s;-webkit-user-select:none;user-select:none}
 .sblk:active{opacity:.7}
 .sblk.done{border-color:var(--accent);background:rgba(212,168,67,.08)}
-.snum{font-size:1.25rem;font-weight:600;color:var(--muted);line-height:1;margin-bottom:3px;transition:color .18s}
+.snum{font-size:1.05rem;font-weight:700;color:var(--muted);line-height:1;transition:color .18s}
 .sblk.done .snum{color:var(--accent)}
 .ssub{font-size:0.6875rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .swin{font-size:0.6875rem;color:var(--muted);margin-top:3px}
@@ -793,8 +793,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-edit-done .cch-link{font-weight:600}
 .cch-banner{background:rgba(124,92,255,.12);border:1px solid var(--accent);color:var(--accent);font-size:0.75rem;font-weight:600;padding:9px 12px;border-radius:8px;line-height:1.4;margin-top:10px}
 /* Boredom-binge urge interrupt — dashboard button + urge-loop sheet */
-.urge-btn{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 10px;width:100%;text-align:left;cursor:pointer;
-  background:rgba(212,168,67,.10);border:1px solid #6B5420;border-radius:16px;padding:10px 16px;-webkit-user-select:none;user-select:none}
+.urge-btn{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:2px 10px;width:100%;text-align:left;cursor:pointer;
+  background:rgba(212,168,67,.10);border:1px solid #6B5420;border-radius:14px;padding:8px 14px;-webkit-user-select:none;user-select:none}
 .urge-btn:active{background:rgba(212,168,67,.18)}
 .urge-btn-t{font-size:0.9375rem;font-weight:700;color:var(--accent);letter-spacing:.01em}
 .urge-btn-s{font-size:0.75rem;color:var(--muted);line-height:1.4;flex:1;min-width:120px}
@@ -1450,7 +1450,7 @@ function toggleTightRow(k){toggleTightArea(k);var on=isTight(k);var c=document.g
 function itemHTML(item){if(item.id==='mob')return mobRowHTML(item);var done=state[item.id]?' done':'',hasE=!!item.expand,eo=state['x_'+item.id]?' open':'';var bc=item.t==='lift'?'b-lift':'b-mob';var badge=item.badge?'<span class="ibadge '+bc+'">'+item.badge+'</span>':'';var arrow=hasE?'<span class="arrow'+eo+'" id="ar_'+item.id+'">&#9654;</span>':'';var panel=hasE?'<div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner">'+panelInner(item.expand)+'</div></div>':'';var rc=hasE?'toggleExp(\''+item.id+'\')':'toggleItem(\''+item.id+'\')';var ca=hasE?' onclick="event.stopPropagation();toggleItem(\''+item.id+'\')"':'';var vit=(item.id==='cron')?'<div class="ivit'+(state['vit']?' on':'')+'" onclick="event.stopPropagation();toggleVit()"><span class="ivit-box"><span class="chk-mark">&#10003;</span></span>Vitamins</div>':'';return'<div class="item'+done+'" data-t="'+item.t+'" id="it_'+item.id+'" onclick="'+rc+'"><div class="chk"'+ca+'><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div>'+vit+badge+arrow+'</div>'+panel;}
 function toggleVit(){state['vit']=!state['vit'];save();renderDay();}
 function doToggleWalk(el){toggleWalk(el.getAttribute('data-wid'));}
-function walksHTML(walks){var h='<div class="cgrid c3">';for(var i=0;i<walks.length;i++){var w=walks[i];if(w.blank){h+='<div class="gcell blank"><div class="gcell-main">--</div></div>';continue;}var cls=state[w.id]?' done-green':'';h+='<div class="gcell'+cls+'" id="gc_'+w.id+'" data-wid="'+w.id+'" onclick="doToggleWalk(this)"><div class="gcell-main">'+w.lbl+'</div></div>';}return h+'</div>';}
+function walksHTML(walks){var h='<div class="cgrid c3">';for(var i=0;i<walks.length;i++){var w=walks[i];if(w.blank){h+='<div class="gcell blank"><div class="gcell-main">--</div></div>';continue;}var cls=state[w.id]?' done-green':'';h+='<div class="gcell'+cls+'" id="gc_'+w.id+'" data-wid="'+w.id+'" onclick="doToggleWalk(this)"><div class="gcell-main">'+w.lbl.replace(/ Walk$/,'')+'</div></div>';}return h+'</div>';}
 function cardioRowHTML(){var logged=[],dets=[],nudges=[],all=null;for(var i=0;i<CARDIO.length;i++){if(state[CARDIO[i].id]){logged.push(CARDIO[i].lbl);var ds=cardioDetSummary(CARDIO[i].id);if(ds)dets.push(esc(CARDIO[i].lbl+(CARDIO[i].sub?' ('+CARDIO[i].sub+')':''))+' — '+esc(ds));if(all===null)all=cardioAllSessions();var nu=cardioProgressNudge(CARDIO[i].id,all);if(nu)nudges.push(esc(nu.msg)+' · '+esc(nu.detail));}}var summary=logged.length>0?logged.join(' + '):'Tap to log',has=logged.length>0;var detHTML=dets.length?'<div class="cardio-det">'+dets.map(function(x){return '<div>'+x+'</div>';}).join('')+'</div>':'';detHTML+=nudges.length?'<div class="cardio-nudge">'+nudges.map(function(x){return '<div>&#9650; '+x+'</div>';}).join('')+'</div>':'';return'<div class="item" style="border-bottom:none" onclick="openCardioSheet()"><div class="chk" style="border-color:'+(has?'var(--blue)':'var(--muted)')+(has?';background:var(--blue)':'')+'">'+'<span class="chk-mark" style="display:'+(has?'block':'none')+'">&#10003;</span></div><div class="ibody"><div class="ilbl">Cardio</div><div class="imeta" id="cardio_sum">'+summary+'</div>'+detHTML+'</div><span class="arrow">&#9654;</span></div>';}
 function standHTML(){var h='<div class="stand-grid">';for(var n=1;n<=3;n++){var cls=state['s'+n]?' done':'';h+='<div class="sblk'+cls+'" id="sb'+n+'" onclick="toggleStand('+n+')"><div class="snum">'+n+'</div><div class="ssub">STAND</div></div>';}return h+'</div>';}
 function snacksHTML(){var h='';for(var i=0;i<SNACKS.length;i++){var s=SNACKS[i],v=state[s.id]||0,cls=v===0?' zero':'';var rec=snackRec(s.id),badge='';if(rec==='great')badge='<span class="snack-rec great">GO</span>';else if(rec==='light')badge='<span class="snack-rec light">EASY</span>';h+='<div class="snack-row" onclick="openSnackSheet(\''+s.id+'\',\''+s.lbl+'\')"><span class="snack-name">'+s.lbl+'</span>'+badge+'<span class="snack-total'+cls+'" id="snt_'+s.id+'">'+(v>0?v:'--')+'</span><span class="snack-chev">&#9654;</span></div>';}return h;}
@@ -3153,7 +3153,7 @@ function urgeStats(){var a=urgeLoad(),n=a.length,won=0;for(var i=0;i<n;i++)if(a[
 
 var urgeTxt='',urgeBusy=false,urgeExpand=false,urgeShowAll=false,urgeStage='loop',urgePre='',urgeDone='',urgeTimerId=null,urgeTimerEnd=0;
 
-function urgeCardHTML(){return '<div class="dsec"><button class="urge-btn" onclick="openUrge()"><span class="urge-btn-t">&#127754; Riding an urge</span><span class="urge-btn-s">Not hungry but want to eat? Tap first.</span></button></div>';}
+function urgeCardHTML(){return '<div class="dsec"><button class="urge-btn" onclick="openUrge()"><span class="urge-btn-t">&#127754; Riding an urge</span><span class="urge-btn-s">Not hungry? Tap first.</span></button></div>';}
 
 function urgeContext(){var n=new Date(),st=loadStateForDate(n),today=[];
   if(st['mob']>=1)today.push('floor mobility done');
