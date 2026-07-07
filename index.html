@@ -76,6 +76,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .sec{margin:20px 16px 0}
 .sec-lbl{font-size:0.6875rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;padding:0 2px;margin-bottom:8px}
 .sec-card{background:var(--card);border:1px solid var(--border);overflow:hidden}
+.dsec{margin:12px 16px 0}
+.dsec:first-child{margin-top:14px}
+.dsec .stand-grid,.dsec .cgrid{border-top:1px solid var(--border)}
+.dsec .stand-grid:first-child,.dsec .cgrid:first-child{border-top:none}
 .item{display:flex;align-items:center;gap:14px;padding:13px 16px;
   border-bottom:1px solid var(--border);cursor:pointer;min-height:54px;
   -webkit-user-select:none;user-select:none;transition:background .12s}
@@ -789,11 +793,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .cch-edit-done .cch-link{font-weight:600}
 .cch-banner{background:rgba(124,92,255,.12);border:1px solid var(--accent);color:var(--accent);font-size:0.75rem;font-weight:600;padding:9px 12px;border-radius:8px;line-height:1.4;margin-top:10px}
 /* Boredom-binge urge interrupt — dashboard button + urge-loop sheet */
-.urge-btn{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;cursor:pointer;
-  background:rgba(212,168,67,.10);border:1px solid #6B5420;border-radius:20px;padding:14px 18px;-webkit-user-select:none;user-select:none}
+.urge-btn{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 10px;width:100%;text-align:left;cursor:pointer;
+  background:rgba(212,168,67,.10);border:1px solid #6B5420;border-radius:16px;padding:10px 16px;-webkit-user-select:none;user-select:none}
 .urge-btn:active{background:rgba(212,168,67,.18)}
 .urge-btn-t{font-size:0.9375rem;font-weight:700;color:var(--accent);letter-spacing:.01em}
-.urge-btn-s{font-size:0.75rem;color:var(--muted);line-height:1.4}
+.urge-btn-s{font-size:0.75rem;color:var(--muted);line-height:1.4;flex:1;min-width:120px}
 .urge-say{font-size:0.9375rem;line-height:1.55;color:var(--text);margin-bottom:14px}
 .urge-say p{margin:0}
 .urge-more{font-size:0.875rem;color:var(--muted);line-height:1.5;margin-top:6px}
@@ -1446,13 +1450,29 @@ function toggleTightRow(k){toggleTightArea(k);var on=isTight(k);var c=document.g
 function itemHTML(item){if(item.id==='mob')return mobRowHTML(item);var done=state[item.id]?' done':'',hasE=!!item.expand,eo=state['x_'+item.id]?' open':'';var bc=item.t==='lift'?'b-lift':'b-mob';var badge=item.badge?'<span class="ibadge '+bc+'">'+item.badge+'</span>':'';var arrow=hasE?'<span class="arrow'+eo+'" id="ar_'+item.id+'">&#9654;</span>':'';var panel=hasE?'<div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner">'+panelInner(item.expand)+'</div></div>':'';var rc=hasE?'toggleExp(\''+item.id+'\')':'toggleItem(\''+item.id+'\')';var ca=hasE?' onclick="event.stopPropagation();toggleItem(\''+item.id+'\')"':'';var vit=(item.id==='cron')?'<div class="ivit'+(state['vit']?' on':'')+'" onclick="event.stopPropagation();toggleVit()"><span class="ivit-box"><span class="chk-mark">&#10003;</span></span>Vitamins</div>':'';return'<div class="item'+done+'" data-t="'+item.t+'" id="it_'+item.id+'" onclick="'+rc+'"><div class="chk"'+ca+'><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div>'+vit+badge+arrow+'</div>'+panel;}
 function toggleVit(){state['vit']=!state['vit'];save();renderDay();}
 function doToggleWalk(el){toggleWalk(el.getAttribute('data-wid'));}
-function walksHTML(walks){var h='<div class="cgrid c3">';for(var i=0;i<walks.length;i++){var w=walks[i];if(w.blank){h+='<div class="gcell blank"><div class="gcell-main">--</div></div>';continue;}var cls=state[w.id]?' done-green':'';h+='<div class="gcell'+cls+'" id="gc_'+w.id+'" data-wid="'+w.id+'" onclick="doToggleWalk(this)"><div class="gcell-main">'+w.lbl+'</div><div class="gcell-sub">'+w.sub+'</div></div>';}return h+'</div>';}
+function walksHTML(walks){var h='<div class="cgrid c3">';for(var i=0;i<walks.length;i++){var w=walks[i];if(w.blank){h+='<div class="gcell blank"><div class="gcell-main">--</div></div>';continue;}var cls=state[w.id]?' done-green':'';h+='<div class="gcell'+cls+'" id="gc_'+w.id+'" data-wid="'+w.id+'" onclick="doToggleWalk(this)"><div class="gcell-main">'+w.lbl+'</div></div>';}return h+'</div>';}
 function cardioRowHTML(){var logged=[],dets=[],nudges=[],all=null;for(var i=0;i<CARDIO.length;i++){if(state[CARDIO[i].id]){logged.push(CARDIO[i].lbl);var ds=cardioDetSummary(CARDIO[i].id);if(ds)dets.push(esc(CARDIO[i].lbl+(CARDIO[i].sub?' ('+CARDIO[i].sub+')':''))+' — '+esc(ds));if(all===null)all=cardioAllSessions();var nu=cardioProgressNudge(CARDIO[i].id,all);if(nu)nudges.push(esc(nu.msg)+' · '+esc(nu.detail));}}var summary=logged.length>0?logged.join(' + '):'Tap to log',has=logged.length>0;var detHTML=dets.length?'<div class="cardio-det">'+dets.map(function(x){return '<div>'+x+'</div>';}).join('')+'</div>':'';detHTML+=nudges.length?'<div class="cardio-nudge">'+nudges.map(function(x){return '<div>&#9650; '+x+'</div>';}).join('')+'</div>':'';return'<div class="item" style="border-bottom:none" onclick="openCardioSheet()"><div class="chk" style="border-color:'+(has?'var(--blue)':'var(--muted)')+(has?';background:var(--blue)':'')+'">'+'<span class="chk-mark" style="display:'+(has?'block':'none')+'">&#10003;</span></div><div class="ibody"><div class="ilbl">Cardio</div><div class="imeta" id="cardio_sum">'+summary+'</div>'+detHTML+'</div><span class="arrow">&#9654;</span></div>';}
-function standHTML(){var wins=['6-9:30 AM','12:45 PM','2-4 PM'],lbls=['BLOCK 1','BLOCK 2','BLOCK 3'],h='<div class="stand-grid">';for(var n=1;n<=3;n++){var cls=state['s'+n]?' done':'';h+='<div class="sblk'+cls+'" id="sb'+n+'" onclick="toggleStand('+n+')"><div class="snum">'+n+'</div><div class="ssub">'+lbls[n-1]+'</div><div class="swin">'+wins[n-1]+'</div></div>';}return h+'</div>';}
+function standHTML(){var h='<div class="stand-grid">';for(var n=1;n<=3;n++){var cls=state['s'+n]?' done':'';h+='<div class="sblk'+cls+'" id="sb'+n+'" onclick="toggleStand('+n+')"><div class="snum">'+n+'</div><div class="ssub">STAND</div></div>';}return h+'</div>';}
 function snacksHTML(){var h='';for(var i=0;i<SNACKS.length;i++){var s=SNACKS[i],v=state[s.id]||0,cls=v===0?' zero':'';var rec=snackRec(s.id),badge='';if(rec==='great')badge='<span class="snack-rec great">GO</span>';else if(rec==='light')badge='<span class="snack-rec light">EASY</span>';h+='<div class="snack-row" onclick="openSnackSheet(\''+s.id+'\',\''+s.lbl+'\')"><span class="snack-name">'+s.lbl+'</span>'+badge+'<span class="snack-total'+cls+'" id="snt_'+s.id+'">'+(v>0?v:'--')+'</span><span class="snack-chev">&#9654;</span></div>';}return h;}
 function secHTML(sec){var inner='';if(sec.type==='items')inner=sec.items.map(itemHTML).join('');if(sec.type==='stand')inner=standHTML();if(sec.type==='walks')inner=walksHTML(sec.walks);if(sec.type==='cardio')inner=cardioRowHTML();return'<div class="sec"><div class="sec-lbl">'+sec.time+'</div><div class="sec-card">'+inner+'</div></div>';}
 function renderPills(){var h='';for(var i=0;i<7;i++){var c=i===viewDow?' active-pill':((weekOffset===0&&i===todayDow)?' today-pill':'');h+='<div class="pill'+c+'" onclick="jumpToDay('+i+')">'+DAYS_S[i]+'</div>';}document.getElementById('dayPills').innerHTML=h;}
-function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();var _hm=healthMetricsHTML(vd);var h=_hm?('<div class="sec"><div class="sec-lbl">Apple Health</div>'+_hm+'</div>'):'';if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';for(var i=0;i<sc.sections.length;i++)h+=secHTML(sc.sections[i]);h+=snkDayCardHTML();document.getElementById('root').innerHTML=(it?urgeCardHTML():'')+(it?digestHTML():'')+h;updateProgress();}
+/* Compact single-screen day layout: the section time-eyebrows (MORNING / 8:30 WORKOUT / CARDIO /
+   WALKS / STANDING) are dropped and rows merged into two label-less cards — a checklist (mobility,
+   food, workout, cardio) and a movement grid (walks + standing) — to avoid scrolling. */
+function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();
+  var _hm=healthMetricsHTML(vd),h='';
+  if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';
+  var todo='',mv='';
+  for(var i=0;i<sc.sections.length;i++){var s=sc.sections[i];
+    if(s.type==='items')todo+=s.items.map(itemHTML).join('');
+    else if(s.type==='cardio')todo+=cardioRowHTML();
+    else if(s.type==='walks')mv+=walksHTML(s.walks);
+    else if(s.type==='stand')mv+=standHTML();}
+  if(todo)h+='<div class="dsec"><div class="sec-card">'+todo+'</div></div>';
+  if(mv)h+='<div class="dsec"><div class="sec-card">'+mv+'</div></div>';
+  if(_hm)h+='<div class="dsec"><div class="sec-lbl" style="margin:0 0 6px">Apple Health</div>'+_hm+'</div>';
+  h+=snkDayCardHTML();
+  document.getElementById('root').innerHTML=(it?urgeCardHTML():'')+(it?digestHTML():'')+h;updateProgress();}
 /* ── WEEKLY DIGEST ─────────────────────────────────────
    A proactive "last week in review" recap shown on the home view early in a new week (through
    Wednesday), summarizing the completed prior week from data already logged — workouts vs floor,
@@ -1643,7 +1663,7 @@ function renderSnacks(){var it=(weekOffset===0&&viewDow===todayDow),vd=getDateFo
   document.getElementById('root').innerHTML=h;}
 function snkDayCardHTML(){var covered=snkMealsCovered(state),vigWk=snkVigWeek(),next=snkNextMeal();
   var nextTxt=next?('Next: '+mealById(next).lbl+' → '+(snackExById(snkPickFor(next))||{lbl:''}).lbl):'All 3 meals moved today — nice.';
-  return '<div class="sec"><div class="sec-lbl">Exercise Snacks</div><div class="sec-card"><div class="snk-day" onclick="setView(\'snacks\')"><div class="snk-day-row"><span class="snk-day-cov">'+covered+'/3</span><span class="snk-day-lbl">meals moved today</span><span class="snk-day-vig">'+vigWk+' vig · wk</span></div><div class="snk-day-next">'+esc(nextTxt)+'</div><div class="snk-day-cta">Open Snacks &rsaquo;</div></div></div></div>';}
+  return '<div class="dsec"><div class="sec-card"><div class="snk-day" onclick="setView(\'snacks\')"><div class="snk-day-row"><span class="snk-day-cov">'+covered+'/3</span><span class="snk-day-lbl">meals moved · snacks</span><span class="snk-day-vig">'+vigWk+' vig · wk &rsaquo;</span></div><div class="snk-day-next">'+esc(nextTxt)+'</div></div></div></div>';}
 function render(){if(viewMode==='week')renderWeek();else if(viewMode==='snacks')renderSnacks();else if(viewMode==='stretch')renderStretch();else if(viewMode==='test')renderTest();else if(viewMode==='workout')renderWorkout();else renderDay();}
 function cycleMob(id){var n=(state[id]||0)+1;if(n>2)n=0;state[id]=n;save();var el=document.getElementById('mobcnt_'+id);if(el){el.className='mob-cnt '+(n===2?'c2':n===1?'c1':'');el.textContent=n;}var meta=document.getElementById('mobmeta_'+id);if(meta)meta.textContent=n===0?'Tap to count sessions':n===1?'Done once':'Done twice';var pi=document.getElementById('pi_'+id);if(pi)pi.innerHTML=panelInner(n>=2?'full':'floor');updateProgress();}
 function toggleItem(id){state[id]=!state[id];save();var it=document.getElementById('it_'+id);if(it)it.classList.toggle('done',!!state[id]);updateProgress();}
@@ -3133,7 +3153,7 @@ function urgeStats(){var a=urgeLoad(),n=a.length,won=0;for(var i=0;i<n;i++)if(a[
 
 var urgeTxt='',urgeBusy=false,urgeExpand=false,urgeShowAll=false,urgeStage='loop',urgePre='',urgeDone='',urgeTimerId=null,urgeTimerEnd=0;
 
-function urgeCardHTML(){return '<div class="sec"><button class="urge-btn" onclick="openUrge()"><span class="urge-btn-t">&#127754; Riding an urge</span><span class="urge-btn-s">Not hungry, but want to eat? Tap before you do.</span></button></div>';}
+function urgeCardHTML(){return '<div class="dsec"><button class="urge-btn" onclick="openUrge()"><span class="urge-btn-t">&#127754; Riding an urge</span><span class="urge-btn-s">Not hungry but want to eat? Tap first.</span></button></div>';}
 
 function urgeContext(){var n=new Date(),st=loadStateForDate(n),today=[];
   if(st['mob']>=1)today.push('floor mobility done');
