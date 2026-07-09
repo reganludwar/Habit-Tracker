@@ -1151,6 +1151,22 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   ok(cph.health&&cph.health.weightLb&&cph.health.weightLb.latest===187&&cph.health.weightLb.changeOverRange===-2,'coachPayload.health summarizes bodyweight (latest + change over range)');
   ok(cph.health.restHr&&cph.health.restHr.avg===54&&cph.health.steps&&cph.health.steps.avgPerDay===9000,'coachPayload.health averages resting HR and reports steps per day');
   ok(/\bhealth\b/.test(sandbox.coachPrompt(cph,null)),'coach prompt references the health block');
+  // Nutrition from Cronometer -> Apple Health: capture macros + compute the energy-balance deficit
+  store.clear();
+  var _n0=new Date();_n0.setHours(0,0,0,0);var _n1=new Date(_n0);_n1.setDate(_n0.getDate()-1);
+  var _nutRec=JSON.stringify({dietKcal:2000,activeKcal:600,restKcal:1700,protein:170,carbs:180,fatG:70,fiber:32});
+  store.set(sandbox.healthKeyForDate(_n1),_nutRec);store.set(sandbox.healthKeyForDate(_n0),_nutRec);
+  sandbox.coachRange='month';
+  var cpn=sandbox.coachPayload();
+  ok(cpn.nutrition&&cpn.nutrition.avgCaloriesIn===2000&&cpn.nutrition.avgCaloriesOut===2300&&cpn.nutrition.avgDailyDeficit===300&&cpn.nutrition.inDeficit===true,'coachPayload.nutrition computes the energy-balance deficit (out 2300 - in 2000 = 300/day)');
+  ok(cpn.nutrition.proteinAvgG===170&&cpn.nutrition.proteinTargetG===170&&cpn.nutrition.fiberAvgG===32,'coachPayload.nutrition reports protein vs target and fiber');
+  ok(cpn.health&&cpn.health.protein&&cpn.health.protein.avgPerDay===170,'macros also land in coachPayload.health (protein avg/day)');
+  ok(/NUTRITION/.test(sandbox.coachPrompt(cpn,null)),'coach prompt asks about nutrition & energy balance');
+  // the Apple Health import parses Cronometer macro lines into the right fields
+  store.clear();
+  sandbox.healthIngestText('protein: 165\nfiber: 40\ndietKcal: 1900');
+  var _hp=JSON.parse(store.get(sandbox.healthKeyForDate(new Date()))||'{}');
+  ok(_hp.protein===165&&_hp.fiber===40&&_hp.dietKcal===1900,'the Health import parses Cronometer macros (protein / fiber / dietary energy)');
   // Week view surfaces the Readiness card with a deload nudge
   store.clear();seed(0,8.5,6);seed(7,8.5,6);seed(14,8.5,6);
   sandbox.weekOffset=0;sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
