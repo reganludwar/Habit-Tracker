@@ -1715,101 +1715,68 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
-// ===== Exercise Snacks module: catalog, meal logging, recommender, weekly rollup, coach payload =====
+// ===== Exercise Snacks: a day-long snack logger + weekly VO2max meters (meal-free) =====
 (function(){
   var _snap=new Map(store);store.clear();
-  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,sheetMode:sandbox.sheetMode,state:sandbox.state,coachRange:sandbox.coachRange,snkCoachTxt:sandbox.snkCoachTxt,snkCoachMeal:sandbox.snkCoachMeal};
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,sheetMode:sandbox.sheetMode,state:sandbox.state,coachRange:sandbox.coachRange};
   sandbox.weekOffset=0;
 
-  // -- catalog + goals defined --
-  ok(sandbox.SNACK_EX.length>=4&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength','SNACK_EX catalog defines a vigorous cardio burst + a strength option');
-  ok(sandbox.MEALS.length===5&&sandbox.MEALS[0].id==='breakfast'&&sandbox.MEALS[1].id==='midam'&&sandbox.MEALS[4].id==='evening'&&sandbox.SNACK_GOALS.mealsPerDay===5,'MEALS models the 5-meal day (breakfast, mid-morning, lunch, dinner, evening snack)');
+  // -- catalog + goals (meal concept removed) --
+  ok(sandbox.SNACK_EX.length>=6&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength'&&sandbox.snackExById('sx_walk').light===true,'SNACK_EX keeps vigorous cardio, a walk, and strength options');
+  ok(sandbox.SNACK_GOALS.vigWeek.target===6&&sandbox.SNACK_GOALS.hardSnack.target===3&&sandbox.SNACK_GOALS.hardWeek===18&&sandbox.SNACK_GOALS.mealsPerDay===undefined&&typeof sandbox.MEALS==='undefined','goals keep vigorous + hard-minute targets; the meal model is gone');
 
-  // -- deterministic recommender (clean week) --
-  store.clear();
-  sandbox.viewDow=1;sandbox.state={};   // Monday, nothing banked
-  ok(sandbox.snackSuggest('breakfast').ex==='sx_tread','breakfast with no vigorous work banked recommends a treadmill burst (VO₂max lever)');
-  ok(sandbox.snackSuggest('lunch').ex==='sx_walk'&&sandbox.snackSuggest('dinner').ex==='sx_walk','lunch and dinner default to a walk (post-meal glucose)');
-  ok(sandbox.snackSuggest('midam').ex==='sx_squat'&&sandbox.snackSuggest('evening').ex==='sx_push','the two muscle slots alternate squats (mid-morning) and pushups (evening)');
-  // already banked a hard burst today -> breakfast backs off to an easy incline walk
-  sandbox.state={snkLog:[{ex:'sx_tread',amt:3,meal:'breakfast',ts:Date.now()}]};
-  ok(sandbox.snackSuggest('breakfast').ex==='sx_incl','after a hard burst already done today, the recommender backs off to an easy option');
-  sandbox.viewDow=3;sandbox.state={};   // Wednesday: yesterday (Tue) was a leg day
-  ok(sandbox.snackExRec('sx_squat')==='rest','squats grade as rest the day after a leg day (muscle overlap with WOM)');
-  ok(sandbox.snackSuggest('midam').ex!=='sx_squat','a muscle slot redirects off squats when yesterday hammered the same muscles');
-
-  // -- logging: MULTIPLE movements per meal (walk + squats after dinner) --
+  // -- logging: catalog snacks append to snkLog (no meals) --
   store.clear();
   sandbox.viewDow=4;sandbox.loadState();   // Thursday, empty
-  sandbox.snkOpenAmt('sx_squat','dinner');sandbox.snkLogAmt(25);
-  ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].meal==='dinner'&&sandbox.state.snkLog[0].amt===25,'logging a meal snack appends one entry with amount + meal');
-  sandbox.snkOpenAmt('sx_push','dinner');sandbox.snkLogAmt(30);
-  ok(sandbox.state.snkLog.length===2&&sandbox.snkMealEntries('dinner').length===2,'a meal can hold multiple movements — the second appends, it does not replace');
-  // a walk logs with one tap (no sheet) and still credits the meal
-  sandbox.snkOpenAmt('sx_walk','lunch');
-  ok(sandbox.snkMealEntries('lunch').length===1&&sandbox.snkMealEntries('lunch')[0].ex==='sx_walk','a walk one-taps into the meal (no amount sheet)');
-  // a workout is a selectable post-meal option: one-taps in, credits the meal, stamps the day's lift tag
-  sandbox.snkOpenAmt('sx_lift','midam');
-  var wEnt=sandbox.snkMealEntries('midam')[0];
-  ok(wEnt&&wEnt.ex==='sx_lift'&&wEnt.wtag===sandbox.S[sandbox.viewDow].tag,'a workout logs as a meal movement and records the day\'s lift tag');
+  sandbox.snkOpenAmt('sx_squat','');sandbox.snkLogAmt(25);
+  ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].ex==='sx_squat'&&sandbox.state.snkLog[0].amt===25,'a strength snack logs a reps entry');
+  sandbox.snkOpenAmt('sx_push','');sandbox.snkLogAmt(30);
+  ok(sandbox.state.snkLog.length===2,'each snack appends (no replacement)');
+  sandbox.snkOpenAmt('sx_walk','');
+  ok(sandbox.state.snkLog.length===3&&sandbox.state.snkLog[2].ex==='sx_walk','a walk one-taps in with no amount sheet');
+  sandbox.snkOpenAmt('sx_lift','');
+  var wEnt=sandbox.state.snkLog[sandbox.state.snkLog.length-1];
+  ok(wEnt.ex==='sx_lift'&&wEnt.wtag===sandbox.S[sandbox.viewDow].tag,'a workout one-taps in and records the day\'s lift tag');
   ok(sandbox.snkTag(sandbox.snackExById('sx_lift')).indexOf('LIFT')>=0,'the workout option carries a LIFT tag');
-  sandbox.snkUndoEntry(wEnt.ts);   // remove so downstream coverage counts are unaffected
-  // cardio snacks route to the burst logger (duration + speed + incline + RPE + HR), not the reps grid
-  sandbox.snkOpenAmt('sx_tread','breakfast');
-  ok(sandbox.sheetMode==='snkBurst'&&sandbox.snkDraftEx==='sx_tread','a cardio snack (min unit) opens the burst detail form, not the reps grid');
-  // RPE is a tap-chip row: tapping sets it, tapping the same value clears it
+
+  // -- cardio routes to the burst logger; detail capture + RPE chips --
+  sandbox.snkOpenAmt('sx_tread','');
+  ok(sandbox.sheetMode==='snkBurst'&&sandbox.snkDraftEx==='sx_tread','a cardio snack opens the burst detail form, not the reps grid');
   sandbox.snkBurstRpe(8);
   ok(sandbox.snkDraft.rpe===8&&/snk-chip on"[^>]*>8</.test(sandbox.snkRpeChipsInner()),'tapping an RPE chip selects it');
   sandbox.snkBurstRpe(8);
   ok(sandbox.snkDraft.rpe===undefined,'tapping the selected RPE chip again clears it');
   sandbox.snkDraft={min:4,hard:2,spd:6.0,incl:8,rpe:8,avgHr:125,hr:150,dist:0.25};sandbox.snkBurstLog();
-  var bt=sandbox.snkMealEntry('breakfast');
+  var bt=null,_ll=sandbox.state.snkLog;for(var _i=_ll.length-1;_i>=0;_i--){if(_ll[_i].ex==='sx_tread'){bt=_ll[_i];break;}}
   ok(bt&&bt.det&&bt.det.spd===6.0&&bt.det.incl===8&&bt.det.rpe===8&&bt.amt===4,'the burst logs what was actually done (speed/incline/RPE) with amt = duration');
   ok(bt.det.hard===2&&bt.det.avgHr===125&&bt.det.dist===0.25,'the burst also captures hard-minutes (Zone 3+), avg HR, and distance');
-  ok(sandbox.snkMealsCovered(sandbox.state)===3&&sandbox.snkVigToday()===1,'coverage counts distinct meals (breakfast+lunch+dinner=3); only the treadmill burst counts as vigorous');
+  ok(sandbox.snkVigToday()===1,'only the treadmill burst counts as a vigorous burst today');
   ok(/6 mph/.test(sandbox.snkEntryDetLine(bt))&&/RPE 8/.test(sandbox.snkEntryDetLine(bt))&&/2 hard/.test(sandbox.snkEntryDetLine(bt))&&/125\/150 bpm/.test(sandbox.snkEntryDetLine(bt)),'the entry detail line renders speed, effort, hard-minutes, and avg/max HR');
-  // insight flags a mostly-warmup snack (2 of 4 min hard = 50%)
-  ok(/warmup/.test(sandbox.snkBurstInsight(bt)),'snkBurstInsight flags when much of a short snack was warmup, not hard work');
-  // weekly hard-minutes accumulate
+  ok(/warmup/.test(sandbox.snkBurstInsight(bt)),'snkBurstInsight flags a mostly-warmup snack');
   ok(sandbox.snackWeekAgg().hardMin>=2,'snackWeekAgg tallies weekly hard-minutes from burst detail');
-  // per-snack hard-minute goal: floor 2 counts, target 3 hits, under 2 is light
-  ok(sandbox.SNACK_GOALS.hardSnack.floor===2&&sandbox.SNACK_GOALS.hardSnack.target===3&&sandbox.SNACK_GOALS.hardWeek===18,'goals define per-snack hard floor/target (2/3) and a weekly hard-minute target (18)');
   var g2=sandbox.snkHardGoal(bt);
-  ok(g2&&g2.met==='floor'&&/counts/.test(g2.txt),'2 hard min grades as floor "counts" (short of the 3-min target)');
+  ok(g2&&g2.met==='floor'&&/counts/.test(g2.txt),'2 hard min grades as floor "counts"');
   ok(sandbox.snkHardGoal({det:{hard:3}}).met==='target'&&sandbox.snkHardGoal({det:{hard:1}}).met==='under','3 hard min hits target; 1 grades as light');
   ok(sandbox.snkHardGoal({det:{spd:6}})===null,'a burst with no hard-minutes logged is not graded');
-  // progression: the next burst references the last one and prescribes a bump
   var nud=sandbox.snkBurstNudge('sx_tread');
   ok(/8% incl/.test(nud)&&/incline/.test(nud),'snkBurstNudge recalls the last burst and prescribes a concrete progression');
-  var dCount=sandbox.snkMealEntries('dinner').length;
-  sandbox.snkUndoEntry(sandbox.snkMealEntries('dinner')[0].ts);
-  ok(sandbox.snkMealEntries('dinner').length===dCount-1&&sandbox.snkMealEntry('breakfast')!==null,'undo removes one specific movement and leaves other meals untouched');
 
-  // -- manual pick override --
-  sandbox.snkSetPick&&(sandbox.snkActiveMeal='lunch');
-  sandbox.state.snkPick={lunch:'sx_block'};
-  ok(sandbox.snkPickFor('lunch')==='sx_block','a manual pick overrides the suggested exercise for that meal');
-
-  // -- weekly rollup reads snkLog across the week --
+  // -- weekly rollup + coach payload keep the meters, drop meal coverage --
   var agg=sandbox.snackWeekAgg();
-  ok(typeof agg.vig==='number'&&agg.vig>=1&&agg.total>=1,'snackWeekAgg tallies vigorous bursts and total snacks across the week');
-
-  // -- coach payload surfaces exercise snacks --
+  ok(typeof agg.vig==='number'&&agg.total>=1&&agg.mealsDays===undefined,'snackWeekAgg reports vig + total (no meal-coverage fields)');
   sandbox.coachRange='this';
   var cp=sandbox.coachPayload();
-  ok(cp.exerciseSnacks&&typeof cp.exerciseSnacks.weekVigorousBursts==='number'&&cp.exerciseSnacks.vigorousWeeklyTarget===6,'coachPayload.exerciseSnacks reports weekly vigorous bursts vs the target');
-  ok(cp.exerciseSnacks.burstDetails&&cp.exerciseSnacks.burstDetails.some(function(b){return b.speedMph===6.0&&b.inclinePct===8&&b.rpe===8&&b.hardMin===2&&b.avgHr===125&&b.distMi===0.25;}),'coachPayload.exerciseSnacks.burstDetails carries speed/incline/RPE + hard-min, avg HR, and distance for progression');
-  ok(typeof cp.exerciseSnacks.weekHardMinutes==='number'&&cp.exerciseSnacks.weekHardMinutes>=2,'coachPayload.exerciseSnacks reports weekly hard-minutes (Zone 3+)');
+  ok(cp.exerciseSnacks&&cp.exerciseSnacks.weekVigorousBursts>=1&&cp.exerciseSnacks.vigorousWeeklyTarget===6&&cp.exerciseSnacks.todayMealsCovered===undefined&&cp.exerciseSnacks.weekFullMealDays===undefined,'coachPayload.exerciseSnacks keeps vigorous tracking and drops meal coverage');
+  ok(cp.exerciseSnacks.burstDetails&&cp.exerciseSnacks.burstDetails.some(function(b){return b.speedMph===6.0&&b.hardMin===2&&b.avgHr===125;})&&cp.exerciseSnacks.weekHardMinutes>=2,'burstDetails + weekHardMinutes still flow to the coach');
 
-  // -- Ask-coach degrades to the deterministic pick with no API key (no throw, no network) --
-  sandbox.viewDow=1;sandbox.state={};
-  try{localStorage.removeItem('coach_key');}catch(e){}
-  sandbox.snkAskCoach('breakfast');
-  ok(/Treadmill Burst/.test(sandbox.snkCoachTxt),'snkAskCoach falls back to the deterministic pick when no API key is set');
+  // -- per-entry undo --
+  var _before=sandbox.state.snkLog.length;
+  sandbox.snkUndoEntry(bt.ts);
+  ok(sandbox.state.snkLog.length===_before-1,'snkUndoEntry removes one specific logged snack');
 
-  // -- the router renders the Snacks page without throwing --
+  // -- router renders the meal-free Snacks page without throwing --
   var threw=false;try{sandbox.setView('snacks');}catch(e){threw=true;}
-  ok(!threw,'setView(\'snacks\') renders the module without throwing');
+  ok(!threw,'setView(\'snacks\') renders the meal-free logger without throwing');
 
   for(var gk in _gv)sandbox[gk]=_gv[gk];
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
