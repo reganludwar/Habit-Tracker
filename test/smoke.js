@@ -47,17 +47,17 @@ store.set('tr_1999_1_1',JSON.stringify({mob:1,note:'keepme'}));
 // ---- Monday weight_reps flow ----
 sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.loadState();sandbox.setView('workout');
 const s=sandbox.woSession;
-ok(s&&s.exercises.length===4,'Monday seeded 4 exercises');
+ok(s&&s.exercises.length===6,'Monday seeded 6 exercises (Full Body A)');
 const bench=s.exercises[0];
 ok(bench.sets[0].tag==='W','bench set0 is warm-up');
 var _bt=sandbox.woNormTmpl(sandbox.woEffTemplate('mon')).ex[0];
 ok(bench.sets[0].weight===sandbox.woSnap(sandbox.woSnap(_bt.seedW)*0.55),'warm-up weight ~55% of template seed ('+bench.sets[0].weight+')');
 ok(bench.sets[1].weight===sandbox.woSnap(_bt.seedW)&&bench.sets[1].reps===_bt.seedR,'bench working seeded from the template, not last-session carry-forward');
 ok(bench.prev&&bench.prev.weight===50,'last session is still kept as the Prev reference column');
-// log working set 1 (index1) -> should mark done + start rest (workRest 180)
+// log working set 1 (index1) -> should mark done + start rest (workRest 150)
 sandbox.woLogSet(0,1);
 ok(bench.sets[1].done===true,'bench working set1 logged done');
-ok(sandbox.woRestRemain===180,'rest timer launched at 180s after non-last set');
+ok(sandbox.woRestRemain===150,'rest timer launched at 150s after non-last set');
 ok(sandbox.woRestEndAt>Date.now(),'rest uses a wall-clock deadline (suspend-proof)');
 const restId=Array.from(intervals.keys()).pop();
 // deadline-based: simulate time passing by moving the deadline into the past, then tick once
@@ -393,7 +393,7 @@ var _mp=sandbox.coachMobilityPayload();
 ok(Array.isArray(_mp.mobilityRoutine)&&_mp.mobilityRoutine.length>0&&_mp.mobilityRoutine[0].areas!==undefined,'mobility payload lists the mobility routine with area tags');
 ok(Array.isArray(_mp.areaCoverage)&&_mp.areaCoverage.length===sandbox.TIGHT_AREAS.length&&typeof _mp.areaCoverage[0].drills==='number','payload reports per-area coverage (drills + seconds)');
 ok(Array.isArray(_mp.availableStretches)&&_mp.availableStretches.some(function(d){return d.name==='Double Pigeon';}),'payload offers catalog drills available to add');
-ok(_mp.trainingFocus.length===5&&'mobilityStreak' in _mp&&'mobilityDaysHit' in _mp,'payload includes training split + consistency metrics');
+ok(_mp.trainingFocus.length===3&&'mobilityStreak' in _mp&&'mobilityDaysHit' in _mp,'payload includes training split + consistency metrics');
 // system prompt + edit instruction
 var _ms=sandbox.coachMobilitySystem();
 ok(/## Coverage & Balance/.test(_ms)&&/## Match to Training/.test(_ms),'mobility system prompt defines the report sections');
@@ -761,10 +761,11 @@ ok(sandbox.localStorage.getItem(_wk3)!==null&&JSON.parse(sandbox.localStorage.ge
 sandbox.localStorage.removeItem(_wk3);sandbox.localStorage.removeItem(_tk3);sandbox.localStorage.removeItem('wo_trash');sandbox.woSession=null;
 
 // ===== v13: corrupt template override heals + editor pinned to its day =====
-// simulate the bug's result: a 'wed' override holding THURSDAY's exercises
-sandbox.localStorage.setItem('wo_tmpl',JSON.stringify({wed:sandbox.woNormTmpl(sandbox.WO_TEMPLATES.thu)}));
-ok(!sandbox.woTmplValid(JSON.parse(sandbox.localStorage.getItem('wo_tmpl')).wed,'wed'),'a wed override carrying thu exercises is detected as invalid');
-ok(sandbox.woEffTemplate('wed').ex[0].name==='Pull-Up','woEffTemplate ignores the corrupt override and falls back to built-in UPPER PULL');
+// simulate the bug's result: a 'wed' override holding a DIFFERENT day's exercises (Full Body C shares
+// no exercises with Full Body B, so it reads as a foreign template)
+sandbox.localStorage.setItem('wo_tmpl',JSON.stringify({wed:sandbox.woNormTmpl(sandbox.WO_TEMPLATES.fri)}));
+ok(!sandbox.woTmplValid(JSON.parse(sandbox.localStorage.getItem('wo_tmpl')).wed,'wed'),'a wed override carrying another day\'s exercises is detected as invalid');
+ok(sandbox.woEffTemplate('wed').ex[0].name==='Pull-Up','woEffTemplate ignores the corrupt override and falls back to built-in Full Body B');
 sandbox.woCleanOverrides();
 ok(!JSON.parse(sandbox.localStorage.getItem('wo_tmpl')).wed,'woCleanOverrides purges the corrupt override');
 // an untouched Wednesday now seeds the correct template
@@ -832,7 +833,7 @@ var _cr=sandbox.coachRangeMs('this'),_lr=sandbox.coachRangeMs('last');
 ok(_cr.start<=_cr.end&&_cr.label==='this week'&&_lr.end===_cr.start,'coachRangeMs windows are valid and contiguous (last ends where this begins)');
 function _hasEx(p,n){for(var i=0;i<p.sessions.length;i++)for(var e=0;e<p.sessions[i].exercises.length;e++)if(p.sessions[i].exercises[e].name===n)return true;return false;}
 sandbox.coachRange='this';var _cp=sandbox.coachPayload();
-ok(_cp.weeklyTemplates.length===5&&_cp.weeklyTemplates[0].day==='mon'&&_cp.weeklyTemplates[0].exercises.length>0,'coachPayload bundles all 5 day-templates with exercises');
+ok(_cp.weeklyTemplates.length===3&&_cp.weeklyTemplates[0].day==='mon'&&_cp.weeklyTemplates[0].exercises.length>0,'coachPayload bundles all 3 full-body day-templates with exercises');
 ok(_hasEx(_cp,'CoachProbe')&&!_hasEx(_cp,'CoachOld'),'this-week payload includes today\'s session and excludes the 40-day-old one');
 ok(_cp.sessionsLogged===_cp.sessions.length&&'mobilityRoutine' in _cp&&'stretchRoutine' in _cp,'payload reports session count + mobility/stretch routine');
 sandbox.coachRange='month';ok(!_hasEx(sandbox.coachPayload(),'CoachOld'),'30-day range still excludes the 40-day-old session');
@@ -920,15 +921,15 @@ ok(/Approved 2 changes/.test(sandbox.coachFlash),'approve-all flash reports the 
 sandbox.woResetTmpl('mon');sandbox.coachEdits=[];sandbox.coachResult='';sandbox.coachFlash='';sandbox.coachEditState={};
 
 // ===== coach can approve a starting-load (weight) change, with tolerant name matching =====
-sandbox.woResetTmpl('wed');sandbox.coachEditState={};sandbox.coachParsedCache=null;
-// 'bent-over db row' (lowercase, hyphen) must still resolve to 'Bent Over DB Row' (seedW 40 -> 45)
-var _wjson='```json\n{"edits":[{"day":"wed","exercise":"bent-over db row","field":"seedW","value":45,"why":"earned it"},{"day":"thu","exercise":"Bulgarian Split Squat","field":"seedW","value":15,"why":"add load"}]}\n```';
+sandbox.woResetTmpl('mon');sandbox.coachEditState={};sandbox.coachParsedCache=null;
+// 'bent-over db row' (lowercase, hyphen) must still resolve to 'Bent Over DB Row' on Full Body A (seedW 40 -> 45)
+var _wjson='```json\n{"edits":[{"day":"mon","exercise":"bent-over db row","field":"seedW","value":45,"why":"earned it"},{"day":"wed","exercise":"Bulgarian Split Squat","field":"seedW","value":15,"why":"add load"}]}\n```';
 var _wpe=sandbox.coachParseEdits('## Recommendations\n- row more\n\n'+_wjson);
 ok(_wpe.edits.length===1&&_wpe.edits[0].field==='seedW'&&_wpe.edits[0].exercise==='Bent Over DB Row','seedW edit resolves a loosely-named weighted exercise; bodyweight seedW is rejected');
 ok(/40 lb start/.test(_wpe.edits[0].curStr)&&/45 lb start/.test(_wpe.edits[0].newStr),'seedW card shows current → proposed start load');
 sandbox.coachEdits=_wpe.edits;sandbox.coachResult='## Recommendations\n- row more\n\n'+_wjson;sandbox.coachMode='result';
 sandbox.coachRender('result');// seed the per-report parse cache, as the app does before you tap Approve
-function _rowW(){var t=sandbox.woNormTmpl(sandbox.woEffTemplate('wed'));for(var i=0;i<t.ex.length;i++)if(t.ex[i].name==='Bent Over DB Row')return t.ex[i].seedW;return null;}
+function _rowW(){var t=sandbox.woNormTmpl(sandbox.woEffTemplate('mon'));for(var i=0;i<t.ex.length;i++)if(t.ex[i].name==='Bent Over DB Row')return t.ex[i].seedW;return null;}
 sandbox.coachApproveEdit(0);
 ok(_rowW()===45,'approving a seedW edit raises the starting load in the template');
 sandbox.coachUndoEdit(0);
@@ -936,53 +937,53 @@ ok(_rowW()===40,'undo restores the prior starting load');
 sandbox.woResetTmpl('wed');sandbox.coachEdits=[];sandbox.coachResult='';sandbox.coachFlash='';sandbox.coachEditState={};sandbox.coachParsedCache=null;
 
 // ===== coach can approve ADDING and REMOVING exercises =====
-sandbox.woResetTmpl('thu');sandbox.woResetTmpl('mon');sandbox.coachEditState={};sandbox.coachParsedCache=null;
-function _thuNames(){return sandbox.woNormTmpl(sandbox.woEffTemplate('thu')).ex.map(function(x){return x.name;});}
-// add 'DB Romanian Deadlift' (exists on tue) to thu; remove 'Plank' from thu; reject a made-up move + last-one removal
+sandbox.woResetTmpl('fri');sandbox.woResetTmpl('mon');sandbox.coachEditState={};sandbox.coachParsedCache=null;
+function _friNames(){return sandbox.woNormTmpl(sandbox.woEffTemplate('fri')).ex.map(function(x){return x.name;});}
+// add 'DB Romanian Deadlift' (a library exercise, not on Full Body C) to fri; remove 'Side Plank' from fri; reject a made-up move
 var _sjson='```json\n{"edits":['+
-  '{"day":"thu","exercise":"DB Romanian Deadlift","field":"addExercise","value":"DB Romanian Deadlift","why":"balance hinge"},'+
-  '{"day":"thu","exercise":"Plank","field":"removeExercise","value":"Plank","why":"low value"},'+
-  '{"day":"thu","exercise":"Nordic Curl","field":"addExercise","value":"Nordic Curl","why":"not in program"}]}\n```';
+  '{"day":"fri","exercise":"DB Romanian Deadlift","field":"addExercise","value":"DB Romanian Deadlift","why":"balance hinge"},'+
+  '{"day":"fri","exercise":"Side Plank","field":"removeExercise","value":"Side Plank","why":"low value"},'+
+  '{"day":"fri","exercise":"Nordic Curl","field":"addExercise","value":"Nordic Curl","why":"not in program"}]}\n```';
 var _spe=sandbox.coachParseEdits('## Recommendations\n- balance the hinge\n\n'+_sjson);
 ok(_spe.edits.length===2,'structural edits validate: known add + valid remove kept, unknown exercise rejected');
 ok(_spe.edits[0].field==='addExercise'&&_spe.edits[0].exercise==='DB Romanian Deadlift'&&/add exercise/.test(_spe.edits[0].newStr),'addExercise edit resolves a library exercise');
-ok(_spe.edits[1].field==='removeExercise'&&_spe.edits[1].exercise==='Plank','removeExercise edit targets an exercise on the day');
+ok(_spe.edits[1].field==='removeExercise'&&_spe.edits[1].exercise==='Side Plank','removeExercise edit targets an exercise on the day');
 sandbox.coachEdits=_spe.edits;sandbox.coachResult='## Recommendations\n- balance the hinge\n\n'+_sjson;sandbox.coachMode='result';sandbox.coachRender('result');
 // approve the add
 sandbox.coachApproveEdit(0);
-ok(_thuNames().indexOf('DB Romanian Deadlift')>=0,'approving addExercise inserts the exercise into the thu template');
-var _addedDef=sandbox.woNormTmpl(sandbox.woEffTemplate('thu')).ex.filter(function(x){return x.name==='DB Romanian Deadlift';})[0];
+ok(_friNames().indexOf('DB Romanian Deadlift')>=0,'approving addExercise inserts the exercise into the fri template');
+var _addedDef=sandbox.woNormTmpl(sandbox.woEffTemplate('fri')).ex.filter(function(x){return x.name==='DB Romanian Deadlift';})[0];
 ok(_addedDef&&_addedDef.load==='pb'&&_addedDef.target&&_addedDef.target[0]===8,'the added exercise carries its proven setup (load + rep target)');
-ok(sandbox.woTmplValid(sandbox.woLoadTmplOverrides().thu,'thu'),'a thu template with an added exercise is still a valid override');
+ok(sandbox.woTmplValid(sandbox.woLoadTmplOverrides().fri,'fri'),'a fri template with an added exercise is still a valid override');
 // approve the remove
 sandbox.coachApproveEdit(1);
-ok(_thuNames().indexOf('Plank')<0,'approving removeExercise drops the exercise from the thu template');
-// a freshly-seeded thursday reflects both structural changes
-sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.viewDow=4;sandbox.weekOffset=0;sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
+ok(_friNames().indexOf('Side Plank')<0,'approving removeExercise drops the exercise from the fri template');
+// a freshly-seeded Friday reflects both structural changes
+sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.viewDow=5;sandbox.weekOffset=0;sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
 var _seedNames=sandbox.woSession.exercises.map(function(x){return x.name;});
-ok(_seedNames.indexOf('DB Romanian Deadlift')>=0&&_seedNames.indexOf('Plank')<0,'a seeded Thursday session includes the added exercise and omits the removed one');
+ok(_seedNames.indexOf('DB Romanian Deadlift')>=0&&_seedNames.indexOf('Side Plank')<0,'a seeded Friday session includes the added exercise and omits the removed one');
 // undo both restores the original structure
 sandbox.coachUndoEdit(0);sandbox.coachUndoEdit(1);
-var _fin=_thuNames();
-ok(_fin.indexOf('DB Romanian Deadlift')<0&&_fin.indexOf('Plank')>=0,'undo removes the added exercise and restores the removed one');
-sandbox.woResetTmpl('thu');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.coachEdits=[];sandbox.coachResult='';sandbox.coachFlash='';sandbox.coachEditState={};sandbox.coachParsedCache=null;sandbox.woSession=null;
+var _fin=_friNames();
+ok(_fin.indexOf('DB Romanian Deadlift')<0&&_fin.indexOf('Side Plank')>=0,'undo removes the added exercise and restores the removed one');
+sandbox.woResetTmpl('fri');sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.coachEdits=[];sandbox.coachResult='';sandbox.coachFlash='';sandbox.coachEditState={};sandbox.coachParsedCache=null;sandbox.woSession=null;
 
 // ===== manual template editor can add & remove exercises =====
-sandbox.woResetTmpl('thu');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.viewDow=4;sandbox.weekOffset=0;sandbox.woSession=null;sandbox.woEditing=false;
+sandbox.woResetTmpl('fri');sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.viewDow=5;sandbox.weekOffset=0;sandbox.woSession=null;sandbox.woEditing=false;
 sandbox.woOpenEditor();
-ok(sandbox.woEditTag==='thu','editor opens pinned to thu');
+ok(sandbox.woEditTag==='fri','editor opens pinned to fri');
 var _avail=sandbox.woEdAvail(),_drlIdx=-1;for(var _ai=0;_ai<_avail.length;_ai++)if(_avail[_ai].name==='DB Romanian Deadlift')_drlIdx=_ai;
-ok(_drlIdx>=0&&!_avail.some(function(d){return d.name==='Plank';}),'add picker lists library exercises not already on the day');
+ok(_drlIdx>=0&&!_avail.some(function(d){return d.name==='Side Plank';}),'add picker lists library exercises not already on the day');
 sandbox.woEdAddPick(_drlIdx);
 ok(sandbox.woEditTmpl.ex.some(function(x){return x.name==='DB Romanian Deadlift';}),'picking adds the exercise (with its setup) to the working template');
-var _pIdx=-1;for(var _pi=0;_pi<sandbox.woEditTmpl.ex.length;_pi++)if(sandbox.woEditTmpl.ex[_pi].name==='Plank')_pIdx=_pi;
+var _pIdx=-1;for(var _pi=0;_pi<sandbox.woEditTmpl.ex.length;_pi++)if(sandbox.woEditTmpl.ex[_pi].name==='Side Plank')_pIdx=_pi;
 sandbox.woEdRemove(_pIdx);
-ok(!sandbox.woEditTmpl.ex.some(function(x){return x.name==='Plank';}),'woEdRemove drops the exercise from the working template');
+ok(!sandbox.woEditTmpl.ex.some(function(x){return x.name==='Side Plank';}),'woEdRemove drops the exercise from the working template');
 sandbox.woEdDone();
-var _ee=sandbox.woNormTmpl(sandbox.woEffTemplate('thu')),_en=_ee.ex.map(function(x){return x.name;});
-ok(_en.indexOf('DB Romanian Deadlift')>=0&&_en.indexOf('Plank')<0,'editor Done persists the add + remove to the thu override');
-ok(sandbox.woTmplValid(sandbox.woLoadTmplOverrides().thu,'thu'),'the structurally-edited override stays valid');
-sandbox.woResetTmpl('thu');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.woEditing=false;sandbox.woSession=null;
+var _ee=sandbox.woNormTmpl(sandbox.woEffTemplate('fri')),_en=_ee.ex.map(function(x){return x.name;});
+ok(_en.indexOf('DB Romanian Deadlift')>=0&&_en.indexOf('Side Plank')<0,'editor Done persists the add + remove to the fri override');
+ok(sandbox.woTmplValid(sandbox.woLoadTmplOverrides().fri,'fri'),'the structurally-edited override stays valid');
+sandbox.woResetTmpl('fri');sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.woEditing=false;sandbox.woSession=null;
 
 // ===== re-seed prompt: Keep preserves logged sets, no stash =====
 sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.woEditing=false;
@@ -1043,19 +1044,19 @@ ok(sandbox.woNormTmpl(sandbox.woEffTemplate('mon')).ex.find(function(x){return x
 sandbox.localStorage.removeItem(_mk);sandbox.localStorage.removeItem('wo_carry');sandbox.woResetTmpl('mon');sandbox.woSession=null;sandbox.woWheel=null;
 
 // ===== Make-up: load another day's split onto a date =====
-sandbox.viewDow=4;sandbox.weekOffset=0;sandbox.woEditing=false;
-sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.woSession=null;
-ok(sandbox.woTagForDow(4)==='thu'&&sandbox.woDayTagOverride(4)===null,'a day starts on its native split with no override');
+sandbox.viewDow=5;sandbox.weekOffset=0;sandbox.woEditing=false;
+sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.woSession=null;
+ok(sandbox.woTagForDow(5)==='fri'&&sandbox.woDayTagOverride(5)===null,'a day starts on its native split with no override');
 sandbox.woLoadSplit('mon');
-ok(sandbox.woDayTagOverride(4)==='mon','loading a split records a per-date override');
+ok(sandbox.woDayTagOverride(5)==='mon','loading a split records a per-date override');
 ok(sandbox.woSession&&sandbox.woSession.dayTag==='mon','the reseeded session adopts the loaded split');
 ok(sandbox.woSession.exercises[0].name===sandbox.woNormTmpl(sandbox.woEffTemplate('mon')).ex[0].name,"the day now shows the loaded split's exercises");
 ok(sandbox.isBackupKey('wo_daytag'),'the make-up override map is included in backups');
 sandbox.renderWorkout();
 var _mu=sandbox.document.getElementById('root').innerHTML;
-ok(/Made-up/.test(_mu)&&/UPPER PUSH/.test(_mu),'the day view flags the made-up split');
-sandbox.woLoadSplit('thu');
-ok(sandbox.woDayTagOverride(4)===null&&sandbox.woSession.dayTag==='thu','loading the native split clears the override');
+ok(/Made-up/.test(_mu)&&/FULL BODY A/.test(_mu),'the day view flags the made-up split');
+sandbox.woLoadSplit('fri');
+ok(sandbox.woDayTagOverride(5)===null&&sandbox.woSession.dayTag==='fri','loading the native split clears the override');
 // a rest day (weekend) can host a make-up workout, then be cleared back to rest
 sandbox.viewDow=6;sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(6));sandbox.woSession=null;
 ok(sandbox.woTagForDow(6)===null,'a rest day has no native split');
@@ -1063,7 +1064,7 @@ sandbox.woLoadSplit('wed');
 ok(sandbox.woDayTagOverride(6)==='wed'&&sandbox.woSession&&sandbox.woSession.dayTag==='wed','a rest day can load a split');
 sandbox.woLoadSplit(null);
 ok(sandbox.woDayTagOverride(6)===null,'clearing a rest-day make-up returns it to rest');
-sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(4));sandbox.localStorage.removeItem(sandbox.woKeyForDow(6));sandbox.woSession=null;
+sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.localStorage.removeItem(sandbox.woKeyForDow(6));sandbox.woSession=null;
 
 // ===== Movement-pattern coverage / imbalance readout =====
 (function(){
@@ -1189,7 +1190,7 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   ok(d.z2===30&&d.z2tier&&typeof d.z2tier.lbl==='string','digestData sums Zone 2 minutes with a tier');
   ok(d.prs.length>=1&&d.prs[0].name==='DB Bench Press','digestData surfaces a new PR from last week');
   var bh=sandbox.digestBannerHTML(d);
-  ok(/Last week/.test(bh)&&/2\/5/.test(bh)&&/PR/.test(bh),'digestBannerHTML renders the recap with workouts + PR');
+  ok(/Last week/.test(bh)&&/2\/3/.test(bh)&&/PR/.test(bh),'digestBannerHTML renders the recap with workouts + PR');
   ok(sandbox.digestSeen()===false,'digest starts undismissed');
   sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.viewDow=1;sandbox.todayDow=1;
   sandbox.digestDismiss();
@@ -1226,8 +1227,8 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   var wd=sandbox.getWeekDates();
   // an empty week: every passed weekday (Mon–Thu) is offered as a make-up; today/future are not
   var mk=sandbox.woMakeUpHTML();
-  ok(/Missed/.test(mk)&&/MON · Push/.test(mk)&&/WED · Pull/.test(mk),'make-up lists passed, un-trained weekdays');
-  ok(!/FRI · Mix/.test(mk)&&/woMakeUpToday\('mon'\)/.test(mk),'today/future are excluded and buttons wire to woMakeUpToday');
+  ok(/Missed/.test(mk)&&/MON · FB A/.test(mk)&&/WED · FB B/.test(mk),'make-up lists passed, un-trained weekdays');
+  ok(!/FRI · FB C/.test(mk)&&/woMakeUpToday\('mon'\)/.test(mk),'today/future are excluded and buttons wire to woMakeUpToday');
   // logging a split anywhere this week drops it from the list
   store.set(sandbox.woKeyForDate(wd[3]),JSON.stringify({dateMs:wd[3].getTime(),dayTag:'wed',exercises:[{name:'Pull-Up',sets:[{tag:'work',done:true}]}]}));
   store.set(sandbox.storeKeyForDate(wd[3]),JSON.stringify({lift:true}));
