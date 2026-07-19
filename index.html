@@ -1191,8 +1191,8 @@ var DAYS_S=['SUN','MON','TUE','WED','THU','FRI','SAT'];
 var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var MONTHS_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 /* Three daily walks — one checkbox each (≈70–80 min of steps/day, the fat-loss base). Shared across
-   every day so the routine is consistent; ~AM / midday / evening. */
-var WALKS3=[{id:'w_dog',lbl:'Dog Walk',sub:'AM'},{id:'w_wife',lbl:'Wife Walk',sub:'Midday'},{id:'w_eve',lbl:'Evening Walk',sub:'PM'}];
+   every day so the routine is consistent. Ids kept stable (w_dog/w_wife) so past logs stay checked. */
+var WALKS3=[{id:'w_dog',lbl:'Morning Walk',sub:'AM'},{id:'w_wife',lbl:'Midday Walk',sub:'Midday'},{id:'w_eve',lbl:'Evening Walk',sub:'PM'}];
 var S=[
 {tag:'REST + REVIEW',note:'Sunday review: fill in weekly log. Flag anything that went dark before it becomes a pattern.',sections:[
   {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
