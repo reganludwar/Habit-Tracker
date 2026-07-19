@@ -11,7 +11,7 @@ No backend, no build step, no dependencies. The entire app is one file: [`index.
 - **Snacks** — "exercise snacks" module (brief post-meal bouts, per the research): a breakfast/lunch/dinner card each suggests a context-aware exercise (with a picker and an optional AI-coach pick), tracks **post-meal coverage** and a weekly **vigorous-burst (VO₂max)** tier, and logs cardio or strength snacks anytime.
 - **Stretch** — guided mobility/stretch sessions with a spoken timer and a customizable catalog.
 - **Test** — log fitness-test results (e.g. push-ups, plank) with trends.
-- **Workout** — five day-templates (push / lower+run / pull / lower-variation+run / mix) with per-set logging, rest timers with in-rest mobility, progression nudges, and PR tracking. Templates are editable (add/remove exercises, sets, rest, mobility).
+- **Workout** — a 3-day full-body program (Full Body A / B / C on Mon / Wed / Fri, with Zone 2 cardio + mobility on the off days) with per-set logging, rest timers with in-rest mobility, progression nudges, and PR tracking. Templates are editable (add/remove exercises, sets, rest, mobility). The retired 5-day upper/lower split is archived in [`docs/5-day-split-archive.md`](docs/5-day-split-archive.md).
 - **AI Coach** — paste your own Anthropic API key to get a training analysis; its recommendations become one-tap **Approve / Dismiss** edits to your templates (with Undo).
 - **Apple Health** — import metrics via a Shortcut (paste or `?hl=` URL); export workouts back via `shortcuts://`.
 - **Backup** — export/import all data as a JSON file.
