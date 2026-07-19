@@ -1190,43 +1190,46 @@ var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 var DAYS_S=['SUN','MON','TUE','WED','THU','FRI','SAT'];
 var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var MONTHS_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+/* Three daily walks — one checkbox each (≈70–80 min of steps/day, the fat-loss base). Shared across
+   every day so the routine is consistent; ~AM / midday / evening. */
+var WALKS3=[{id:'w_dog',lbl:'Dog Walk',sub:'AM'},{id:'w_wife',lbl:'Wife Walk',sub:'Midday'},{id:'w_eve',lbl:'Evening Walk',sub:'PM'}];
 var S=[
 {tag:'REST + REVIEW',note:'Sunday review: fill in weekly log. Flag anything that went dark before it becomes a pattern.',sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'},{id:'w_wife',lbl:'Wife Walk',sub:'Noon'},{id:'w_blank',lbl:'--',sub:'',blank:true}]},
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3},
   {time:'AFTERNOON',type:'items',items:[{id:'review',lbl:'Sunday Review',meta:'5 min -- log the week',t:'other'},{id:'wkly_tests',lbl:'Weekly Tests',meta:'4 tests - ~10 min',t:'other'},{id:'mly_tests',lbl:'Monthly Tests',meta:'Full set - ~30 min',t:'other'}]}
 ]},
 {tag:'FULL BODY A',note:null,sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
   {time:'8:30 AM -- WORKOUT',type:'items',items:[{id:'lift',lbl:'Full Body A',meta:'bench, squat, RDL, row, press, core',t:'lift',badge:'FB A',expand:'mon'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3},
   {time:'STANDING BLOCKS',type:'stand'}
 ]},
 {tag:'ZONE 2 + MOBILITY',note:'No lift today — this is where the fat-loss cardio lives. 30 min incline walk at ~12% (Zone 2) protects the muscle you build on lift days, while the deficit does the work. Add mobility and get your steps.',sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'}]},
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3},
   {time:'STANDING BLOCKS',type:'stand'}
 ]},
 {tag:'FULL BODY B',note:null,sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
   {time:'8:30 AM -- WORKOUT',type:'items',items:[{id:'lift',lbl:'Full Body B',meta:'pull-up, RDL, incline, split squat, curl, core',t:'lift',badge:'FB B',expand:'wed'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3},
   {time:'STANDING BLOCKS',type:'stand'}
 ]},
 {tag:'ZONE 2 + MOBILITY',note:'No lift today — this is where the fat-loss cardio lives. 30 min incline walk at ~12% (Zone 2) protects the muscle you build on lift days, while the deficit does the work. Add mobility and get your steps.',sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'}]},
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3},
   {time:'STANDING BLOCKS',type:'stand'}
 ]},
 {tag:'FULL BODY C',note:null,sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
   {time:'8:30 AM -- WORKOUT',type:'items',items:[{id:'lift',lbl:'Full Body C',meta:'lunge, bench, row, press, triceps, core',t:'lift',badge:'FB C',expand:'fri'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3},
   {time:'STANDING BLOCKS',type:'stand'}
 ]},
 {tag:'ACTIVE REST',note:'Long walk with wife is the design, not a deficit. Zone 2 bike optional.',sections:[
-  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'Tap to count sessions',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
-  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:[{id:'w_dog',lbl:'Dog Walk',sub:'6 AM'},{id:'w_wife',lbl:'Wife Walk',sub:'Noon'},{id:'w_blank',lbl:'--',sub:'',blank:true}]}
+  {time:'MORNING',type:'items',items:[{id:'mob',lbl:'Floor Mobility',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'},{id:'cron',lbl:'Log Food -- Cronometer',meta:'Protein target 170g',t:'other'}]},
+  {time:'CARDIO',type:'cardio'},{time:'WALKS',type:'walks',walks:WALKS3}
 ]}
 ];
 var todayDow=new Date().getDay(),viewDow=todayDow,viewMode='day',weekOffset=0;
@@ -1463,7 +1466,9 @@ function mobRows(rows){var h='';for(var i=0;i<rows.length;i++)h+='<div class="dr
 function panelInner(type){if(type==='mon')return'<span class="plbl">Exercises</span>'+exRows(MON,'mon');if(type==='wed')return'<span class="plbl">Exercises</span>'+exRows(WED,'wed');if(type==='fri')return'<span class="plbl">Exercises</span>'+exRows(FRI,'fri');if(type==='floor'){var fr=[];for(var i=0;i<FLOOR_STR.length;i++)fr.push([FLOOR_STR[i].name,FLOOR_STR[i].note||'']);return'<span class="plbl">Stretches &mdash; 10 min</span>'+mobRows(fr);}if(type==='full'){var al=FLOOR_STR.concat(EXTRA_STR),ar=[];for(var i=0;i<al.length;i++)ar.push([al[i].name,al[i].note||'']);return'<span class="plbl">All stretches &mdash; 20 min</span>'+mobRows(ar);}return'';}
 function tightChipLabel(){var n=getTightAreas().length;return n?('<span class="mob-tight-dot"></span>'+n+' tight area'+(n>1?'s':'')):'+ Tight areas';}
 function refreshTightChip(){var el=document.getElementById('mob_tightchip');if(el){var n=getTightAreas().length;el.className='mob-tight'+(n?' on':'');el.innerHTML=tightChipLabel();}}
-function mobRowHTML(item){var n=state[item.id]||0,eo=state['x_'+item.id]?' open':'';var cls=n===2?'c2':n===1?'c1':'';var metaTxt=n===0?item.meta:n===1?'Done once':'Done twice';var tn=getTightAreas().length;return'<div class="mob-row"><div class="mob-cnt '+cls+'" id="mobcnt_'+item.id+'" onclick="cycleMob(\''+item.id+'\')">'+n+'</div><div class="mob-body" onclick="toggleExp(\''+item.id+'\')"><div class="mob-lbl">'+item.lbl+'</div><div class="mob-meta" id="mobmeta_'+item.id+'">'+metaTxt+'</div></div><span class="mob-tight'+(tn?' on':'')+'" id="mob_tightchip" onclick="event.stopPropagation();openTightSheet()">'+tightChipLabel()+'</span><span class="arrow'+eo+'" id="ar_'+item.id+'" onclick="toggleExp(\''+item.id+'\')" style="margin-left:8px">&#9654;</span></div><div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner" id="pi_'+item.id+'">'+panelInner(n>=2?'full':'floor')+'</div></div>';}
+/* Floor Mobility is a simple done/not-done check (no session counter — one round is the routine).
+   The row keeps its tight-areas chip and expands to show the floor-stretch list. */
+function mobRowHTML(item){var done=state[item.id]?' done':'',eo=state['x_'+item.id]?' open':'',tn=getTightAreas().length;return'<div class="item'+done+'" data-t="mob" id="it_'+item.id+'" onclick="toggleExp(\''+item.id+'\')"><div class="chk" onclick="event.stopPropagation();toggleItem(\''+item.id+'\')"><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div><span class="mob-tight'+(tn?' on':'')+'" id="mob_tightchip" onclick="event.stopPropagation();openTightSheet()">'+tightChipLabel()+'</span><span class="arrow'+eo+'" id="ar_'+item.id+'" onclick="event.stopPropagation();toggleExp(\''+item.id+'\')" style="margin-left:8px">&#9654;</span></div><div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner" id="pi_'+item.id+'">'+panelInner('floor')+'</div></div>';}
 function openTightSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Tight areas';document.getElementById('shtSub').textContent='Tap the spots that feel chronically tight';var sel=getTightAreas(),h='<div style="padding:4px 0">';for(var i=0;i<TIGHT_AREAS.length;i++){var a=TIGHT_AREAS[i],on=sel.indexOf(a.key)>=0;h+='<div class="co-row'+(on?' sel':'')+'" id="tgr_'+a.key+'" onclick="toggleTightRow(\''+a.key+'\')"><div class="co-chk'+(on?' sel':'')+'" id="tg_'+a.key+'"><span class="co-chk-mark">&#10003;</span></div><div class="co-body"><div class="co-lbl">'+a.lbl+'</div></div></div>';}h+='<div style="padding:14px 20px;font-size:0.75rem;color:var(--muted);line-height:1.5">These stay flagged until you clear them. Your Stretch tab gives tight areas longer holds and suggests targeted drills.</div></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function toggleTightRow(k){toggleTightArea(k);var on=isTight(k);var c=document.getElementById('tg_'+k);if(c)c.className='co-chk'+(on?' sel':'');var r=document.getElementById('tgr_'+k);if(r)r.className='co-row'+(on?' sel':'');refreshTightChip();stSuggAI=[];stSuggState={};}
 function itemHTML(item){if(item.id==='mob')return mobRowHTML(item);var done=state[item.id]?' done':'',hasE=!!item.expand,eo=state['x_'+item.id]?' open':'';var bc=item.t==='lift'?'b-lift':'b-mob';var badge=item.badge?'<span class="ibadge '+bc+'">'+item.badge+'</span>':'';var arrow=hasE?'<span class="arrow'+eo+'" id="ar_'+item.id+'">&#9654;</span>':'';var panel=hasE?'<div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner">'+panelInner(item.expand)+'</div></div>':'';var rc=hasE?'toggleExp(\''+item.id+'\')':'toggleItem(\''+item.id+'\')';var ca=hasE?' onclick="event.stopPropagation();toggleItem(\''+item.id+'\')"':'';var vit=(item.id==='cron')?'<div class="ivit'+(state['vit']?' on':'')+'" onclick="event.stopPropagation();toggleVit()"><span class="ivit-box"><span class="chk-mark">&#10003;</span></span>Vitamins</div>':'';return'<div class="item'+done+'" data-t="'+item.t+'" id="it_'+item.id+'" onclick="'+rc+'"><div class="chk"'+ca+'><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div>'+vit+badge+arrow+'</div>'+panel;}
@@ -1669,7 +1674,6 @@ function renderSnacks(){var it=(weekOffset===0&&viewDow===todayDow),vd=getDateFo
 function snkDayCardHTML(){var n=(state.snkLog||[]).length,vigWk=snkVigWeek();
   return '<div class="dsec"><div class="sec-card"><div class="snk-day" onclick="setView(\'snacks\')"><div class="snk-day-row"><span class="snk-day-cov">'+n+'</span><span class="snk-day-lbl">snack'+(n===1?'':'s')+' today</span><span class="snk-day-vig">'+vigWk+' vig · wk &rsaquo;</span></div></div></div></div>';}
 function render(){if(viewMode==='week')renderWeek();else if(viewMode==='snacks')renderSnacks();else if(viewMode==='stretch')renderStretch();else if(viewMode==='test')renderTest();else if(viewMode==='workout')renderWorkout();else renderDay();}
-function cycleMob(id){var n=(state[id]||0)+1;if(n>2)n=0;state[id]=n;save();var el=document.getElementById('mobcnt_'+id);if(el){el.className='mob-cnt '+(n===2?'c2':n===1?'c1':'');el.textContent=n;}var meta=document.getElementById('mobmeta_'+id);if(meta)meta.textContent=n===0?'Tap to count sessions':n===1?'Done once':'Done twice';var pi=document.getElementById('pi_'+id);if(pi)pi.innerHTML=panelInner(n>=2?'full':'floor');updateProgress();}
 function toggleItem(id){state[id]=!state[id];save();var it=document.getElementById('it_'+id);if(it)it.classList.toggle('done',!!state[id]);updateProgress();}
 function toggleExp(id){state['x_'+id]=!state['x_'+id];save();var pn=document.getElementById('pn_'+id),ar=document.getElementById('ar_'+id);if(pn)pn.classList.toggle('open',!!state['x_'+id]);if(ar)ar.classList.toggle('open',!!state['x_'+id]);}
 function toggleRow(key){state[key]=!state[key];save();var el=document.getElementById('rr_'+key);if(el)el.classList.toggle('done',!!state[key]);}
