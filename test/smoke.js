@@ -1694,6 +1694,45 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Fat-Loss Day card: weight trend, deficit, levers, bonus incline treadmill =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset};
+  sandbox.viewDow=1;sandbox.weekOffset=0;
+  // weight trend: a descending series reads as losing (negative lb/week)
+  var today=new Date();today.setHours(0,0,0,0);
+  function hkey(dt){return 'hl_'+dt.getFullYear()+'_'+(dt.getMonth()+1)+'_'+dt.getDate();}
+  for(var i=42;i>=0;i-=3){var dt=new Date(today);dt.setDate(today.getDate()-i);store.set(hkey(dt),JSON.stringify({weightLb:Math.round((189+i/42*5)*10)/10}));}
+  var wt=sandbox.weightTrend();
+  ok(wt&&wt.ratePerWeek<0&&wt.current===189,'weightTrend reports the current weight and a negative (losing) weekly rate');
+  // bonus incline treadmill: one-tap add appends a default session; undo removes it
+  sandbox.loadState();
+  var _before=(sandbox.state.inclBonus||[]).length;
+  sandbox.logBonusIncline();
+  var _list=sandbox.state.inclBonus||[];
+  ok(_list.length===_before+1&&_list[_list.length-1].min===30&&_list[_list.length-1].incl===12,'logBonusIncline appends a 30 min @ 12% session');
+  var _ts=_list[_list.length-1].ts;
+  sandbox.undoBonusIncline(_ts);
+  ok((sandbox.state.inclBonus||[]).length===_before,'undoBonusIncline removes the logged session');
+  // the fat-loss card renders trend + deficit + levers, and the incline lever lights when a bonus is logged
+  var mon=sandbox.getDateForDow(1);
+  store.set(hkey(mon),JSON.stringify({weightLb:189,protein:180,steps:11000,dietKcal:2000,activeKcal:600,restKcal:1700}));
+  sandbox.loadState();
+  var flh=sandbox.fatLossHTML(mon);
+  ok(/lb to 175/.test(flh)&&/Protein 180/.test(flh)&&/Steps 11k/.test(flh),'fatLossHTML shows weight-to-goal and hit protein/steps levers');
+  ok(/fl-plus/.test(flh)&&/logBonusIncline\(\)/.test(flh),'fatLossHTML exposes the one-tap bonus incline button');
+  sandbox.logBonusIncline();
+  var flh2=sandbox.fatLossHTML(mon);
+  ok(/Incline &middot;1/.test(flh2)&&/30m @ 12%/.test(flh2),'a logged bonus incline lights the incline lever and shows an undoable chip');
+  // weekStats folds bonus incline minutes into weekly Zone 2 volume
+  var _z2before=sandbox.weekStats().cZ2;
+  var ws=sandbox.weekStats();
+  ok(ws.inclBonusCount>=1&&ws.inclBonusMin>=30&&ws.cZ2>=_z2before,'weekStats counts bonus incline sessions and folds their minutes into Zone 2');
+  sandbox.undoBonusIncline(sandbox.state.inclBonus[sandbox.state.inclBonus.length-1].ts);
+  for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Boredom-binge urge interrupt: logging schema, stats, context, no-moralizing prompt =====
 (function(){
   var _snap=new Map(store);store.clear();
