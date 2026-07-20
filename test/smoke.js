@@ -1866,6 +1866,17 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(!threw,'healthImportClipboard does not throw when navigator.clipboard is absent');
   threw=false;try{sandbox.healthRunImportShortcut();}catch(e){threw=true;}
   ok(!threw,'healthRunImportShortcut does not throw when location is unavailable');
+  // one-tap "Sync Apple Health": marks a pending sync, then consumes it + reads the clipboard on return
+  sandbox.healthClearSyncPending();
+  sandbox.healthSyncNow();
+  ok(sandbox.healthSyncPending()===true,'healthSyncNow marks a sync pending (to auto-import on return)');
+  var _pc=sandbox.navigator.clipboard,_read=false;
+  sandbox.navigator.clipboard={readText:function(){_read=true;return {then:function(){return {catch:function(){}};}};}};
+  sandbox.healthAutoSyncOnReturn();
+  ok(_read===true&&sandbox.healthSyncPending()===false,'returning to the app consumes the pending sync and reads the clipboard');
+  _read=false;sandbox.healthAutoSyncOnReturn();
+  ok(_read===false,'with nothing pending, returning does not re-read the clipboard');
+  sandbox.navigator.clipboard=_pc;
   // clipboard read, when available, ingests what it finds
   var _origNav=sandbox.navigator.clipboard;
   sandbox.navigator.clipboard={readText:function(){return Promise.resolve('{"steps":12000}');}};
