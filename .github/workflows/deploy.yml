@@ -28,7 +28,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      # configure-pages occasionally fails on a transient GitHub API hiccup; retry it up to 3 times
+      # (a bare failure here silently strands the whole deploy — the artifact + deploy get skipped).
+      - id: cfg1
+        uses: actions/configure-pages@v5
+        continue-on-error: true
+      - if: steps.cfg1.outcome == 'failure'
+        run: echo "configure-pages attempt 1 failed — waiting before retry" && sleep 15
+      - id: cfg2
+        if: steps.cfg1.outcome == 'failure'
+        uses: actions/configure-pages@v5
+        continue-on-error: true
+      - if: steps.cfg1.outcome == 'failure' && steps.cfg2.outcome == 'failure'
+        run: echo "configure-pages attempt 2 failed — waiting before final retry" && sleep 30
+      - id: cfg3
+        if: steps.cfg1.outcome == 'failure' && steps.cfg2.outcome == 'failure'
+        uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .

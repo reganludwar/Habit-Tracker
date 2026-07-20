@@ -784,14 +784,14 @@ ok(sandbox.woTmplValid(sandbox.woNormTmpl(sandbox.WO_TEMPLATES.wed),'wed'),'a ma
 sandbox.localStorage.removeItem('wo_tmpl');sandbox.localStorage.removeItem(sandbox.woKeyForDow(3));sandbox.woSession=null;sandbox.woEditing=false;
 
 // ===== v14: UI batch — vitamins, week grid both, PR toggle, custom tests, test edit =====
-// vitamins toggle (Day page, shares the food row)
+// vitamins toggle (now a pill in the Fat-Loss card)
 sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.loadState();sandbox.viewMode='day';
 delete sandbox.state['vit'];sandbox.toggleVit();
 ok(sandbox.state['vit']===true,'toggleVit sets the vitamins flag');
 sandbox.toggleVit();ok(!sandbox.state['vit'],'toggleVit toggles back off');
-// food row renders the inline Vitamins control
-ok(/class="ivit/.test(sandbox.itemHTML({id:'cron',lbl:'Log Food',meta:'x',t:'other'})),'food row renders an inline Vitamins checkbox');
-ok(!/ivit/.test(sandbox.itemHTML({id:'review',lbl:'r',meta:'x',t:'other'})),'other rows do not get the Vitamins control');
+// the manual "Log Food" row is gone; Vitamins now lives as a tappable pill on the Fat-Loss card
+ok(!/Log Food/.test(sandbox.fatLossHTML(sandbox.getDateForDow(1)))&&/toggleVit\(\)/.test(sandbox.fatLossHTML(sandbox.getDateForDow(1))),'Vitamins is a tappable pill on the Fat-Loss card');
+ok(sandbox.S.every(function(day){return day.sections.every(function(s){return !(s.items&&s.items.some(function(it){return it.id==='cron';}));});}),'the manual Log Food checklist row is removed from every day');
 // week grid: a day with BOTH mobility and a lift gets the split "both" cell (no override)
 var todayKey=sandbox.storeKeyForDate(new Date());
 sandbox.localStorage.setItem(todayKey,JSON.stringify({mob:1,lift:true}));
@@ -1720,6 +1720,10 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.loadState();
   var flh=sandbox.fatLossHTML(mon);
   ok(/lb to 175/.test(flh)&&/Protein 180/.test(flh)&&/Steps 11k/.test(flh),'fatLossHTML shows weight-to-goal and hit protein/steps levers');
+  // food-logged auto-derives from Cronometer calories synced via Health (dietKcal), no manual check
+  ok(sandbox.foodLoggedOn(mon)===true,'foodLoggedOn is true when the day has Cronometer calories in Health');
+  var _noFood=sandbox.getDateForDow(3);store.set('hl_'+_noFood.getFullYear()+'_'+(_noFood.getMonth()+1)+'_'+_noFood.getDate(),JSON.stringify({steps:5000}));
+  ok(sandbox.foodLoggedOn(_noFood)===false,'foodLoggedOn is false for a day with Health data but no dietKcal');
   ok(/fl-plus/.test(flh)&&/logBonusIncline\(\)/.test(flh),'fatLossHTML exposes the one-tap bonus incline button');
   sandbox.logBonusIncline();
   var flh2=sandbox.fatLossHTML(mon);
