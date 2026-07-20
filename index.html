@@ -753,6 +753,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .reset-btn{font-size:0.6875rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   background:none;border:1px solid var(--border);padding:11px 22px;cursor:pointer}
 .data-wrap{margin:12px 16px 0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.sync-btn{flex-basis:100%;color:var(--onacc);background:var(--grad);border-color:transparent;font-weight:700}
 .backup-nag{margin:12px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;
   background:rgba(212,168,67,.08);border:1px solid #6B5420;border-radius:8px;padding:11px 14px;font-size:0.7812rem;color:var(--text)}
 .backup-nag b{color:var(--accent)}
@@ -990,6 +991,7 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
   <button class="reset-btn" id="resetBtn" onclick="doReset()">Reset Day</button>
 </div>
 <div class="data-wrap" id="dataWrap">
+  <button class="reset-btn sync-btn" onclick="healthSyncNow()">&#8635; Sync Apple Health</button>
   <button class="reset-btn" onclick="exportData()">Export Backup</button>
   <button class="reset-btn" onclick="copyBackup()">Copy Backup</button>
   <button class="reset-btn" onclick="importData()">Import Backup</button>
@@ -1891,6 +1893,20 @@ function healthIngestText(raw){raw=String(raw||'').trim();if(!raw)return 0;var d
 function healthImportPaste(){var el=document.getElementById('hlPaste');if(!el)return;var raw=(el.value||'').trim();if(!raw){alert('Paste the data your shortcut copied first.');return;}var n=healthIngestText(raw);if(n>0){el.value='';}else if(n<0){alert('Could not read that. Paste the stats your shortcut copied — e.g. {"steps":8421,"weightLb":164,"sleepHr":7.2}');}else{alert('No recognized metrics in that text. Make sure it includes things like steps, weight, sleep, etc.');}}
 function healthImportClipboard(){if(!(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.readText)){alert('Reading the clipboard isn’t available here — paste into the box below instead.');return;}navigator.clipboard.readText().then(function(t){t=String(t||'').trim();if(!t){alert('Clipboard is empty. Run “Copy My Stats” first, then tap this again.');return;}var n=healthIngestText(t);if(n>0)alert('Imported Health data for '+n+' day'+(n>1?'s':'')+'.');else if(n<0)alert('That clipboard text wasn’t recognizable Health stats.');else alert('No recognized metrics on the clipboard.');}).catch(function(){alert('Couldn’t read the clipboard (permission). Paste into the box instead.');});}
 function healthRunImportShortcut(){if(typeof location==='undefined')return;try{location.href='shortcuts://run-shortcut?name='+encodeURIComponent('Copy My Stats');}catch(e){}}
+/* One-tap sync: run the Copy My Stats shortcut (it copies today's Health stats), then auto-import
+   from the clipboard when we come back to the app. If the clipboard read is blocked (iOS may require
+   a tap), fall back to opening the Apple Health sheet where the manual Import button is one tap away.
+   The pending flag lives in both a var and sessionStorage so it survives the round-trip either way. */
+var _hlSyncPending=false;
+function healthSyncPending(){if(_hlSyncPending)return true;try{return sessionStorage.getItem('_hlSyncPending')==='1';}catch(e){return false;}}
+function healthClearSyncPending(){_hlSyncPending=false;try{sessionStorage.removeItem('_hlSyncPending');}catch(e){}}
+function healthSyncNow(){_hlSyncPending=true;try{sessionStorage.setItem('_hlSyncPending','1');}catch(e){}healthRunImportShortcut();}
+function healthAutoSyncOnReturn(){if(!healthSyncPending())return;healthClearSyncPending();
+  if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.readText){
+    navigator.clipboard.readText().then(function(t){t=String(t||'').trim();var n=t?healthIngestText(t):0;if(n>0)alert('Synced Apple Health for '+n+' day'+(n>1?'s':'')+'.');else openHealthSheet();}).catch(function(){openHealthSheet();});
+  }else{openHealthSheet();}}
+if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')healthAutoSyncOnReturn();});
+if(typeof window!=='undefined'&&window.addEventListener){window.addEventListener('focus',healthAutoSyncOnReturn);window.addEventListener('pageshow',healthAutoSyncOnReturn);}
 var healthGuide=false;
 function healthToggleGuide(){healthGuide=!healthGuide;renderHealthSheet();}
 function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">';
