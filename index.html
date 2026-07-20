@@ -254,6 +254,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .snk-day-vig{font-size:0.75rem;color:var(--green);font-weight:700}
 .snk-day-next{font-size:0.8125rem;color:var(--text);margin-top:6px}
 .snk-day-cta{font-size:0.75rem;color:var(--accent);font-weight:700;margin-top:8px}
+.dsec.day-foot{display:flex;gap:8px}
+.foot-cell{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 12px;border-radius:14px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:0.82rem;font-weight:700;line-height:1;-webkit-user-select:none;user-select:none;white-space:nowrap;overflow:hidden}
+.foot-snk{color:var(--text)}
+.foot-main{overflow:hidden;text-overflow:ellipsis}
+.foot-vig{font-size:0.72rem;font-weight:700;color:var(--green);flex-shrink:0}
+.foot-urge{color:var(--accent);background:rgba(212,168,67,.10);border-color:#6B5420}
+.foot-urge:active{background:rgba(212,168,67,.18)}
 .snk-how{font-size:0.75rem;color:var(--muted);line-height:1.45;margin-top:6px;padding:8px 10px;border-left:2px solid var(--border);background:rgba(127,127,127,.05)}
 .snk-nudge{font-size:0.75rem;color:var(--accent);line-height:1.4;margin-top:8px;display:flex;gap:6px}
 .snk-nudge b{color:var(--text)}
@@ -1539,8 +1546,8 @@ function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),v
   if(todo)h+='<div class="dsec"><div class="sec-card">'+todo+'</div></div>';
   if(mv)h+='<div class="dsec"><div class="sec-card">'+mv+'</div></div>';
   if(_hm)h+='<div class="dsec"><div class="sec-lbl" style="margin:0 0 6px">Apple Health</div>'+_hm+'</div>';
-  h+=snkDayCardHTML();
-  document.getElementById('root').innerHTML=(it?urgeCardHTML():'')+(it?digestHTML():'')+h;updateProgress();}
+  h+=dayFooterHTML(it);
+  document.getElementById('root').innerHTML=(it?digestHTML():'')+h;updateProgress();}
 /* ── WEEKLY DIGEST ─────────────────────────────────────
    A proactive "last week in review" recap shown on the home view early in a new week (through
    Wednesday), summarizing the completed prior week from data already logged — workouts vs floor,
@@ -1678,6 +1685,12 @@ function renderSnacks(){var it=(weekOffset===0&&viewDow===todayDow),vd=getDateFo
   document.getElementById('root').innerHTML=h;}
 function snkDayCardHTML(){var n=(state.snkLog||[]).length,vigWk=snkVigWeek();
   return '<div class="dsec"><div class="sec-card"><div class="snk-day" onclick="setView(\'snacks\')"><div class="snk-day-row"><span class="snk-day-cov">'+n+'</span><span class="snk-day-lbl">snack'+(n===1?'':'s')+' today</span><span class="snk-day-vig">'+vigWk+' vig · wk &rsaquo;</span></div></div></div></div>';}
+/* Compact bottom bar: the snacks summary and (on today only) the "riding an urge" button share one
+   row, to save vertical space on the Day page. */
+function dayFooterHTML(it){var n=(state.snkLog||[]).length,vigWk=snkVigWeek();
+  var snk='<div class="foot-cell foot-snk" onclick="setView(\'snacks\')"><span class="foot-main">'+n+' snack'+(n===1?'':'s')+'</span><span class="foot-vig">'+vigWk+' vig &rsaquo;</span></div>';
+  var urge=it?'<button class="foot-cell foot-urge" onclick="openUrge()">&#127754; Riding an urge</button>':'';
+  return '<div class="dsec day-foot">'+snk+urge+'</div>';}
 function render(){if(viewMode==='week')renderWeek();else if(viewMode==='snacks')renderSnacks();else if(viewMode==='stretch')renderStretch();else if(viewMode==='test')renderTest();else if(viewMode==='workout')renderWorkout();else renderDay();}
 function toggleItem(id){state[id]=!state[id];save();var it=document.getElementById('it_'+id);if(it)it.classList.toggle('done',!!state[id]);updateProgress();}
 function toggleExp(id){state['x_'+id]=!state['x_'+id];save();var pn=document.getElementById('pn_'+id),ar=document.getElementById('ar_'+id);if(pn)pn.classList.toggle('open',!!state['x_'+id]);if(ar)ar.classList.toggle('open',!!state['x_'+id]);}
@@ -3199,7 +3212,6 @@ function urgeStats(){var a=urgeLoad(),n=a.length,won=0;for(var i=0;i<n;i++)if(a[
 
 var urgeTxt='',urgeBusy=false,urgeExpand=false,urgeShowAll=false,urgeStage='loop',urgePre='',urgeDone='',urgeTimerId=null,urgeTimerEnd=0;
 
-function urgeCardHTML(){return '<div class="dsec"><button class="urge-btn" onclick="openUrge()"><span class="urge-btn-t">&#127754; Riding an urge</span><span class="urge-btn-s">Not hungry? Tap first.</span></button></div>';}
 
 function urgeContext(){var n=new Date(),st=loadStateForDate(n),today=[];
   if(st['mob']>=1)today.push('floor mobility done');
