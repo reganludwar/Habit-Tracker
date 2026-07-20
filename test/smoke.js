@@ -1852,6 +1852,17 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(n1===1,'healthIngestText: strict JSON imports one day');
   var n2=sandbox.healthIngestText('steps: 9000\nweightLb: 165\nsleepHr: 7.2');
   ok(n2===1,'healthIngestText: loose "key: value" lines import too');
+  // a "date:" line files the import under that day (the morning-after / yesterday flow)
+  sandbox.healthIngestText('date: 2026-06-10\nsteps: 7777');
+  var ymd=JSON.parse(store.get(sandbox.healthKey(2026,6,10))||'null');
+  ok(ymd&&ymd.steps===7777,'a lowercase date: line files the import under that specific day');
+  sandbox.healthIngestText('Date: 2026-06-11\nsteps: 6666');
+  var ymd2=JSON.parse(store.get(sandbox.healthKey(2026,6,11))||'null');
+  ok(ymd2&&ymd2.steps===6666,'a capitalized Date: line is handled the same (case-insensitive)');
+  // a JSON array of dated days backfills each under its own date
+  var nArr=sandbox.healthIngestText('[{"date":"2026-06-08","steps":100},{"date":"2026-06-09","steps":200}]');
+  var d8=JSON.parse(store.get(sandbox.healthKey(2026,6,8))||'null'),d9=JSON.parse(store.get(sandbox.healthKey(2026,6,9))||'null');
+  ok(nArr===2&&d8&&d8.steps===100&&d9&&d9.steps===200,'a JSON array backfills multiple dated days at once');
   // it actually landed in today's hl_ store
   var _td=new Date();var hk=sandbox.healthKeyForDate(_td);var saved=JSON.parse(store.get(hk));
   ok(saved&&saved.steps===9000&&saved.weightLb===165&&saved.sleepHr===7.2,'loose import lands in today\'s hl_ record with parsed numbers');
