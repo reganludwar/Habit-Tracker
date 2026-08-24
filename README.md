@@ -6,7 +6,8 @@ No backend, no build step, no dependencies. The entire app is one file: [`index.
 
 ## Features
 
-- **Day** — daily checklist (habits, vitamins, mobility, lift), with expandable routine details.
+- **Day** — a mantra banner and a **completion ring** that fills as you finish the day's *floor* (the won-day minimum: mantra · stretch · walks · workout-or-cardio · calorie target · vitamins; it adapts weekday vs weekend), turning fully green at 100%. Completion is soft-green everywhere; a Bonus section holds the extras.
+- **Goals** — the Fat-Loss card (bodyweight trend, energy deficit, daily levers) and Apple Health snapshot; home of the broader life portfolio.
 - **Week** — consistency calendar, adherence, and tonnage at a glance.
 - **Snacks** — "exercise snacks" module (brief post-meal bouts, per the research): a breakfast/lunch/dinner card each suggests a context-aware exercise (with a picker and an optional AI-coach pick), tracks **post-meal coverage** and a weekly **vigorous-burst (VO₂max)** tier, and logs cardio or strength snacks anytime.
 - **Stretch** — guided mobility/stretch sessions with a spoken timer and a customizable catalog.
