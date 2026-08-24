@@ -128,22 +128,21 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .fl-chip{font-size:0.7rem;color:var(--accent);border:1px solid var(--border);border-radius:14px;padding:3px 9px}
 .fl-chip b{color:var(--muted);cursor:pointer;margin-left:4px;font-weight:700}
 /* Day v2 — mantra, ring, floor */
-.mantra{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .2s,border-color .2s}
+.day-hero{display:flex;align-items:center;gap:13px}
+.hero-ring{position:relative;width:100px;height:100px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.hero-ring .ring{width:100px;height:100px}
+.ring-track{fill:none;stroke:var(--border);stroke-width:8}
+.ring-arc{fill:none;stroke:var(--green);stroke-width:8;stroke-linecap:round;transition:stroke-dasharray .5s ease}
+.hero-ring .ring-center{position:absolute;text-align:center;line-height:1}
+.hr-num{font-size:1.55rem;font-weight:800;letter-spacing:-.02em}
+.hr-num span{font-size:0.8rem;font-weight:600;color:var(--muted)}
+.hr-check{font-size:1.9rem;font-weight:800;color:var(--green);line-height:1}
+.mantra{flex:1;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 13px;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .2s,border-color .2s}
 .mantra.done{background:rgba(77,184,133,.08);border-color:var(--green)}
-.mantra-q{font-size:1rem;font-weight:700;line-height:1.35;letter-spacing:.01em}
-.mantra-chk{font-size:0.72rem;color:var(--muted);margin-top:7px;letter-spacing:.04em}
+.mantra-q{font-size:0.86rem;font-weight:700;line-height:1.3;letter-spacing:.01em}
+.mantra-chk{font-size:0.66rem;color:var(--muted);margin-top:5px;letter-spacing:.03em}
 .mantra.done .mantra-chk{color:var(--green);font-weight:700}
-.ring-wrap{position:relative;display:flex;align-items:center;justify-content:center;height:172px}
-.ring{width:172px;height:172px;transform:rotate(0)}
-.ring-track{fill:none;stroke:var(--border);stroke-width:11}
-.ring-arc{fill:none;stroke:var(--green);stroke-width:11;stroke-linecap:round;transition:stroke-dasharray .5s ease}
-.ring-center{position:absolute;text-align:center;line-height:1}
-.ring-num{font-size:2.4rem;font-weight:800;letter-spacing:-.02em}
-.ring-num span{font-size:1.1rem;font-weight:600;color:var(--muted)}
-.ring-lbl{font-size:0.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
-.ring-check{font-size:2.6rem;font-weight:800;color:var(--green);line-height:1}
-.ring-wrap.done .ring-lbl{color:var(--green);font-weight:700}
-.sec-btns{padding:12px}
+.sec-btns{padding:10px}
 .floor-hint{font-size:0.72rem;color:var(--muted);text-align:center;margin-top:8px}
 .move-go{font-size:0.72rem;font-weight:700;color:var(--accent);border:1px solid var(--border);border-radius:14px;padding:5px 11px;margin-left:6px;cursor:pointer;white-space:nowrap}
 .gsoon{padding:14px 16px;font-size:0.82rem;color:var(--muted);line-height:1.5}
@@ -1580,10 +1579,10 @@ function floorProgress(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6);
   unit(!!state.caltgt);
   unit(!!state.vit);
   return {done:done,total:total,pct:total?Math.round(done/total*100):0,complete:done>=total,wknd:wknd};}
-function mantraBannerHTML(){var on=!!state.mantra;return '<div class="dsec"><div class="mantra'+(on?' done':'')+'" onclick="dayCheck(\'mantra\')"><div class="mantra-q">“'+MANTRA+'”</div><div class="mantra-chk">'+(on?'&#10003; said it today':'Say it out loud · tap when you have')+'</div></div></div>';}
-function dayRingHTML(vd){var p=floorProgress(vd),R=54,C=Math.round(2*Math.PI*R),dash=Math.round(C*p.pct/100);
-  var center=p.complete?'<div class="ring-check">&#10003;</div><div class="ring-lbl">Day complete</div>':'<div class="ring-num">'+p.done+'<span>/'+p.total+'</span></div><div class="ring-lbl">today’s floor</div>';
-  return '<div class="dsec ring-wrap'+(p.complete?' done':'')+'"><svg class="ring" viewBox="0 0 128 128" aria-hidden="true"><circle class="ring-track" cx="64" cy="64" r="'+R+'"/><circle class="ring-arc" cx="64" cy="64" r="'+R+'" stroke-dasharray="'+dash+' '+C+'" transform="rotate(-90 64 64)"/></svg><div class="ring-center">'+center+'</div></div>';}
+/* Compact hero: a small floor ring beside a slim mantra bar, one row, so the day fits on one screen. */
+function dayHeroHTML(vd){var p=floorProgress(vd),on=!!state.mantra,R=42,C=Math.round(2*Math.PI*R),dash=Math.round(C*p.pct/100);
+  var center=p.complete?'<div class="hr-check">&#10003;</div>':'<div class="hr-num">'+p.done+'<span>/'+p.total+'</span></div>';
+  return '<div class="dsec day-hero"><div class="hero-ring'+(p.complete?' done':'')+'"><svg class="ring" viewBox="0 0 104 104" aria-hidden="true"><circle class="ring-track" cx="52" cy="52" r="'+R+'"/><circle class="ring-arc" cx="52" cy="52" r="'+R+'" stroke-dasharray="'+dash+' '+C+'" transform="rotate(-90 52 52)"/></svg><div class="ring-center">'+center+'</div></div><div class="mantra'+(on?' done':'')+'" onclick="dayCheck(\'mantra\')"><div class="mantra-q">“'+MANTRA+'”</div><div class="mantra-chk">'+(on?'&#10003; said it':(p.complete?'Day complete':'tap when you\'ve said it'))+'</div></div></div>';}
 function floorBtn(label,done,onclick){return '<div class="gcell'+(done?' done-green':'')+'" onclick="'+onclick+'"><div class="gcell-main">'+label+'</div></div>';}
 function moveRowHTML(vd){var lift=!!state.lift,card=cardioDoneToday();
   if(lift||card){var lbl=lift?(woTagLabel(woTagForDow(viewDow)||'')+' done'):'Cardio done';return '<div class="item done" data-t="lift" id="it_move"><div class="chk"><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+lbl+'</div><div class="imeta">Workout or cardio &mdash; logged</div></div></div>';}
@@ -1610,8 +1609,7 @@ function renderGoals(){document.getElementById('dName');var vd=new Date();vd.set
 function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();
   var h='';
   if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';
-  h+=mantraBannerHTML();
-  h+=dayRingHTML(vd);
+  h+=dayHeroHTML(vd);
   h+=floorCardHTML(vd);
   h+=bonusCardHTML(vd);
   h+=dayFooterHTML(it);
