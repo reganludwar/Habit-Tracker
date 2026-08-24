@@ -996,7 +996,7 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
   <div id="goalsHdr" style="display:none">
     <div class="week-hdr" style="margin-bottom:4px"><div class="week-title">Goals</div></div>
   </div>
-  <div id="hdrPb">
+  <div id="hdrPb" style="display:none">
     <div class="pb-wrap"><div class="pb-fill" id="pbFill"></div></div>
     <div class="pb-txt" id="pbTxt">0 / 0 complete</div>
   </div>
@@ -1613,7 +1613,7 @@ function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),v
   h+=floorCardHTML(vd);
   h+=bonusCardHTML(vd);
   h+=dayFooterHTML(it);
-  document.getElementById('root').innerHTML=h;updateProgress();}
+  document.getElementById('root').innerHTML=h;}
 /* ── WEEKLY DIGEST ─────────────────────────────────────
    A proactive "last week in review" recap shown on the home view early in a new week (through
    Wednesday), summarizing the completed prior week from data already logged — workouts vs floor,
