@@ -1737,6 +1737,40 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Day v2: the floor ring (weekday vs weekend, mantra, calorie check) =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _s=sandbox.state,_gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,viewMode:sandbox.viewMode};
+  var mon=sandbox.getDateForDow(1),sun=sandbox.getDateForDow(0);
+  // empty weekday floor = 8 units (mantra · stretch · 3 walks · move · calories · vitamins)
+  sandbox.state={};
+  var f0=sandbox.floorProgress(mon);
+  ok(f0.total===8&&f0.done===0&&f0.complete===false&&f0.wknd===false,'weekday floor is 8 units, starts empty');
+  // a full weekday floor completes the ring
+  sandbox.state={mantra:true,mob:1,w_dog:true,w_wife:true,w_eve:true,lift:true,caltgt:true,vit:true};
+  var f1=sandbox.floorProgress(mon);
+  ok(f1.done===8&&f1.complete===true&&f1.pct===100,'a fully done weekday floor completes the ring (8/8)');
+  // cardio satisfies the workout-or-cardio unit in place of a lift
+  sandbox.state={mantra:true,mob:1,w_dog:true,w_wife:true,w_eve:true,c_incl:true,caltgt:true,vit:true};
+  ok(sandbox.floorProgress(mon).complete===true,'cardio satisfies the workout-or-cardio floor unit');
+  // weekend floor = 5 units (mantra · 2 walks · calories · vitamins); stretch & move don't apply
+  sandbox.state={mantra:true,w_dog:true,w_wife:true,caltgt:true,vit:true};
+  var f2=sandbox.floorProgress(sun);
+  ok(f2.total===5&&f2.done===5&&f2.complete===true&&f2.wknd===true,'weekend floor is 5 units and completes with mantra + 2 walks + calories + vitamins');
+  // a 3rd weekend walk is bonus — walks cap at 2, doesn't over-count
+  sandbox.state={mantra:true,w_dog:true,w_wife:true,w_eve:true,caltgt:true,vit:true};
+  ok(sandbox.floorProgress(sun).done===5,'a 3rd weekend walk is bonus (walk units cap at 2)');
+  // dayCheck toggles a floor flag; the Day page renders the mantra banner + ring
+  sandbox.state={};sandbox.dayCheck('caltgt');
+  ok(sandbox.state.caltgt===true,'dayCheck toggles the calorie-target floor flag');
+  sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.viewMode='day';sandbox.renderDay();
+  var dh=sandbox.document.getElementById('root').innerHTML;
+  ok(/ring-arc/.test(dh)&&/mantra/.test(dh)&&/Today’s Floor/.test(dh),'Day page renders the mantra banner, the ring, and the floor');
+  ok(!/line-through/.test(dh),'no strikethrough styling on the Day page');
+  sandbox.state=_s;for(var gk in _gv)sandbox[gk]=_gv[gk];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Boredom-binge urge interrupt: logging schema, stats, context, no-moralizing prompt =====
 (function(){
   var _snap=new Map(store);store.clear();
@@ -1866,12 +1900,13 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // it actually landed in today's hl_ store
   var _td=new Date();var hk=sandbox.healthKeyForDate(_td);var saved=JSON.parse(store.get(hk));
   ok(saved&&saved.steps===9000&&saved.weightLb===165&&saved.sleepHr===7.2,'loose import lands in today\'s hl_ record with parsed numbers');
-  // imported metrics surface on the MAIN day view (with an "Apple Health" label), not only the sheet
-  sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.viewDow=sandbox.todayDow;
+  // imported metrics surface on the GOALS tab (with an "Apple Health" label), not only the sheet
+  sandbox.viewMode='goals';sandbox.weekOffset=0;sandbox.viewDow=sandbox.todayDow;
   sandbox.healthIngestText('{"steps":5500,"activeKcal":420}');
+  sandbox.renderGoals();
   var rootHTML=sandbox.document.getElementById('root').innerHTML;
-  ok(/Apple Health/.test(rootHTML)&&/5,?500/.test(rootHTML),'day view shows a labeled Apple Health strip with imported metrics');
-  ok(/420/.test(rootHTML),'day-view strip includes every imported metric (active energy too)');
+  ok(/Apple Health/.test(rootHTML)&&/5,?500/.test(rootHTML),'Goals tab shows a labeled Apple Health strip with imported metrics');
+  ok(/420/.test(rootHTML),'Goals strip includes every imported metric (active energy too)');
   // clipboard + run-shortcut paths degrade gracefully without the platform APIs (no throw)
   var threw=false;try{sandbox.healthImportClipboard();}catch(e){threw=true;}
   ok(!threw,'healthImportClipboard does not throw when navigator.clipboard is absent');
