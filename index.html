@@ -791,6 +791,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-nudge.progress b{color:var(--green)}
 /* AI Coach */
 .coach-row{display:flex;justify-content:center;margin-top:9px}
+.wo-coach-foot{margin-top:16px;margin-bottom:10px}
 .coach-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(212,168,67,.10);border:1px solid #6B5420;color:var(--accent);
   font-size:0.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:7px 16px;border-radius:999px;cursor:pointer;-webkit-user-select:none;user-select:none}
 .coach-btn:active{background:rgba(212,168,67,.18)}
@@ -989,7 +990,6 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
       </div>
       <div class="nav-btn" onclick="navDay(1)">&#8594;</div>
     </div>
-    <div class="coach-row"><button class="coach-btn" onclick="openCoach()">&#10024; AI Coach</button></div>
   </div>
   <div id="goalsHdr" style="display:none">
     <div class="week-hdr" style="margin-bottom:4px"><div class="week-title">Goals</div></div>
@@ -2720,7 +2720,7 @@ function _renderWorkout(){
     var _hk=woKeyForDow(viewDow),_hraw=null;try{_hraw=localStorage.getItem(_hk);}catch(e){}
     var _hist=null;if(_hraw){try{var _ho=JSON.parse(_hraw);if(_ho&&_ho.exercises&&woHasProgress(_ho))_hist=_ho;}catch(e){}}
     if(_hist&&_hist.dayTag){tag=_hist.dayTag;}
-    else {woSession=null;document.getElementById('root').innerHTML='<div class="wo-empty">No lift scheduled for '+DAYS[viewDow]+'.<br>Zone 2 cardio + mobility day — the incline walk lives in the Snacks/Stretch tabs.<br><button class="wo-loadbtn" onclick="woOpenSplitSheet()">&#8646; Load a workout onto this day</button></div>';return;}
+    else {woSession=null;document.getElementById('root').innerHTML='<div class="wo-empty">No lift scheduled for '+DAYS[viewDow]+'.<br>Zone 2 cardio + mobility day — the incline walk lives in the Snacks/Stretch tabs.<br><button class="wo-loadbtn" onclick="woOpenSplitSheet()">&#8646; Load a workout onto this day</button></div><div class="coach-row wo-coach-foot"><button class="coach-btn" onclick="openCoach()">&#10024; AI Coach</button></div>';return;}
   }
   if(woEditing){renderWoEditor(tag);return;}
   var key=woKeyForDow(viewDow);
@@ -2740,6 +2740,7 @@ function _renderWorkout(){
   if(sess.finished){var wpay={type:'workout',kind:'strength',name:woTagLabel(tag),start:new Date(sess.started||Date.now()).toISOString(),minutes:Math.max(1,Math.round((sess.elapsed||0)/60))};h+='<a class="wo-health" href="'+healthWriteURL(wpay)+'">&#10084;&#65039; Add to Apple Health</a>';}
   h+='</div>';
   h+='<div class="wo-edit-link wo-edit-foot"><span onclick="woOpenSplitSheet()">&#8646; Load another day</span><span onclick="woOpenEditor()">&#9881; Edit</span><span onclick="woResetDay()">&#8635; Reset</span></div>';
+  h+='<div class="coach-row wo-coach-foot"><button class="coach-btn" onclick="openCoach()">&#10024; AI Coach</button></div>';
   document.getElementById('root').innerHTML=h;if(_sy&&window.scrollTo)window.scrollTo(0,_sy);
 }
 /* weight wheel: tap the weight pill to open a scrolling dial of WO_LADDER values.

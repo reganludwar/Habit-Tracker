@@ -222,6 +222,8 @@ ok(/Mobility: Couch Stretch/.test(html2)||/Mobility:/.test(html2),'workout page 
 ok(!/ramp-up phase/.test(html2)&&!/swipe a set to log/.test(html2),'workout page drops the instructional intro comment');
 ok(/wo-edit-foot/.test(html2)&&/Load another day/.test(html2)&&/woResetDay\(\)/.test(html2),'the Load another day / Edit / Reset row renders at the foot of the workout page');
 ok(html2.indexOf('Load another day')>html2.indexOf('wo-finish'),'the action row sits below the Finish button, not at the top');
+// the AI Coach button renders at the foot of the workout page (moved out of the header)
+ok(/wo-coach-foot/.test(html2)&&/openCoach\(\)/.test(html2)&&html2.indexOf('AI Coach')>html2.indexOf('wo-finish'),'the AI Coach button renders at the foot of the workout page');
 
 // ===== v3: Strong-style grid + wheel weight picker + swipe-to-log =====
 ok(typeof sandbox.woOpenWheel==='function'&&typeof sandbox.woSwStart==='function','wheel + swipe handlers defined');
