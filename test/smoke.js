@@ -985,6 +985,23 @@ ok(_en.indexOf('DB Romanian Deadlift')>=0&&_en.indexOf('Side Plank')<0,'editor D
 ok(sandbox.woTmplValid(sandbox.woLoadTmplOverrides().fri,'fri'),'the structurally-edited override stays valid');
 sandbox.woResetTmpl('fri');sandbox.localStorage.removeItem(sandbox.woKeyForDow(5));sandbox.woEditing=false;sandbox.woSession=null;
 
+// ===== global setting: disable in-rest mobility (all workouts) =====
+sandbox.localStorage.removeItem('wo_rest_mob_off');
+ok(sandbox.woRestMobOff()===false,'in-rest mobility is on by default');
+sandbox.woEditing=false;sandbox.woToggleRestMob();
+ok(sandbox.woRestMobOff()===true,'woToggleRestMob disables in-rest mobility globally');
+// with it off, a rest whose set has a mobility drill still paints the plain timer
+sandbox.woSession={exercises:[{name:'DB Bench Press',sets:[{mobility:'m2'}]}]};sandbox.woRestCtx={ei:0,si:0};
+var _rmThrew=false;try{sandbox.woRestPaintMob();}catch(e){_rmThrew=true;}
+ok(!_rmThrew&&sandbox.document.getElementById('woRestEx').textContent==='Rest'&&sandbox.document.getElementById('woRestSwap').style.display==='none','mobility off: rest shows the plain timer, no drill or swap');
+sandbox.woToggleRestMob();
+ok(sandbox.woRestMobOff()===false,'toggling again re-enables in-rest mobility');
+// the workout editor exposes the global toggle
+sandbox.woEditTmpl=sandbox.woNormTmpl(sandbox.woEffTemplate('mon'));sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.woEditing=true;sandbox.renderWorkout();
+var _edH=sandbox.document.getElementById('root').innerHTML;
+ok(/Mobility between sets/.test(_edH)&&/woToggleRestMob/.test(_edH),'the workout editor shows the global in-rest mobility toggle');
+sandbox.woEditing=false;sandbox.woSession=null;sandbox.woRestCtx=null;sandbox.localStorage.removeItem('wo_rest_mob_off');
+
 // ===== re-seed prompt: Keep preserves logged sets, no stash =====
 sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.woEditing=false;
 var _wk=sandbox.woKeyForDow(3);

@@ -2828,12 +2828,16 @@ var woRestDur=0,woRestBase=0,woRestMin=false;
    interval (screen lock) can't make the rest under-count when the app resumes. */
 function woRestTick(){var rem=Math.ceil((woRestEndAt-Date.now())/1000);if(rem<0)rem=0;if(rem===woRestRemain)return;woRestRemain=rem;if(rem<=0){woRestPaint();beep();woRestEnd();return;}if(rem<=5)beepTick();woRestPaint();}
 function woRestPaint(){var v=fmtMMSSVal(Math.max(0,woRestRemain)),end=woRestRemain<=10;var el=document.getElementById('woRestCount');if(el){el.textContent=v;el.className='wo-rest-count'+(end?' ending':'');}var mt=document.getElementById('woRestMiniTime');if(mt){mt.textContent=v;mt.className='wo-rest-mini-time'+(end?' ending':'');}}
+/* Global setting (all workouts): show mobility drills during rest between sets, or just the timer. */
+function woRestMobOff(){try{return localStorage.getItem('wo_rest_mob_off')==='1';}catch(e){return false;}}
+function woToggleRestMob(){var off=woRestMobOff();try{localStorage.setItem('wo_rest_mob_off',off?'0':'1');}catch(e){}if(woEditing)renderWorkout();}
 function woRestPaintMob(){
-  var mobId=null;if(woRestCtx&&woSession){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];mobId=st?st.mobility:null;}
+  var off=woRestMobOff();
+  var mobId=null;if(!off&&woRestCtx&&woSession){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];mobId=st?st.mobility:null;}
   var nameEl=document.getElementById('woRestEx'),noteEl=document.getElementById('woRestNote'),anim=document.getElementById('woRestMobAnim'),cue=document.getElementById('woRestCue'),swap=document.getElementById('woRestSwap');
   var m=mobId?getCatalogMap()[mobId]:null;
   if(m){nameEl.textContent=m.name;noteEl.textContent=m.note||'Active recovery';anim.innerHTML=SSVG[mobId]||'';anim.style.display=SSVG[mobId]?'flex':'none';cue.textContent=m.cue||'';cue.style.display=m.cue?'':'none';swap.style.display='';}
-  else{nameEl.textContent='Rest';noteEl.textContent=woRestExName||'Next set coming up';anim.innerHTML='';anim.style.display='none';cue.textContent='';cue.style.display='none';swap.style.display=woRestCtx?'':'none';}
+  else{nameEl.textContent='Rest';noteEl.textContent=woRestExName||'Next set coming up';anim.innerHTML='';anim.style.display='none';cue.textContent='';cue.style.display='none';swap.style.display=(!off&&woRestCtx)?'':'none';}
 }
 function woStartRest(sec,exName,nextLbl,mobId,ei,si){
   woRestRemain=sec;woRestExName=exName;woRestCtx=(ei!=null)?{ei:ei,si:si}:null;
@@ -2923,7 +2927,7 @@ var woEditing=false,woEditTmpl=null,woEditTag=null,woEditDow=null;
 function woOpenEditor(){var tag=woDayTag(viewDow);if(!tag)return;woEditTag=tag;woEditDow=viewDow;woEditTmpl=woNormTmpl(woEffTemplate(tag));woEditing=true;renderWorkout();}
 function renderWoEditor(tag){
   var h='<div class="wo-intro">Editing '+woEditTmpl.tag+' template · saves to this device & rides along in backup</div>';
-  h+='<div class="wo-ed-ex"><div class="wo-ed-row"><div class="wo-ed-lbl">Track RPE (per set)</div><div class="wo-toggle'+(woEditTmpl.showRPE!==false?' on':'')+'" onclick="woEdToggleRPE()"><div class="wo-toggle-knob"></div></div></div></div>';
+  h+='<div class="wo-ed-ex"><div class="wo-ed-row"><div class="wo-ed-lbl">Track RPE (per set)</div><div class="wo-toggle'+(woEditTmpl.showRPE!==false?' on':'')+'" onclick="woEdToggleRPE()"><div class="wo-toggle-knob"></div></div></div><div class="wo-ed-row"><div class="wo-ed-lbl">Mobility between sets <span style="color:var(--muted);font-weight:400">· all workouts</span></div><div class="wo-toggle'+(!woRestMobOff()?' on':'')+'" onclick="woToggleRestMob()"><div class="wo-toggle-knob"></div></div></div></div>';
   for(var e=0;e<woEditTmpl.ex.length;e++){
     var x=woEditTmpl.ex[e];
     h+='<div class="wo-ed-ex"><div class="wo-ed-name">'+esc(x.name)+(woEditTmpl.ex.length>1?'<span class="wo-ed-rm" onclick="woEdRemove('+e+')">Remove</span>':'')+'</div>';
