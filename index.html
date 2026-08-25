@@ -1602,11 +1602,17 @@ function floorCardHTML(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6),h='';
   h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Calories',!!state.caltgt,"dayCheck('caltgt')")+floorBtn('Vitamins',!!state.vit,"toggleVit()")+'</div>';
   h+='</div></div>';
   return h;}
-function bonusCardHTML(vd){var sn=standCount(),cardio=cardioDoneToday(),snk=(state.snkLog||[]).length;
+/* Cardio counts as a BONUS only when it isn't the day's main workout — otherwise one cardio
+   session would light both the floor Workout pill and this bonus (double-counted). It's a bonus on
+   lift days (extra on top of the lift) and on weekends (there's no workout floor unit). On a cardio
+   weekday (Tue/Thu) the cardio fills the floor Workout pill, so it's dropped here. Green only when
+   the cardio is genuinely extra: on lift days that means the lift is also done. */
+function bonusCardHTML(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6),liftDay=!!woTagForDow(viewDow);
+  var sn=standCount(),snk=(state.snkLog||[]).length,cardioIsBonus=wknd||liftDay,cardioGreen=cardioDoneToday()&&(wknd||!!state.lift);
   var standBtn='<div class="gcell'+(sn>0?' done-green':'')+'" onclick="standCycle()"><div class="gcell-main">Stand '+sn+'</div></div>';
-  var cardioBtn='<div class="gcell'+(cardio?' done-green':'')+'" onclick="openCardioSheet()"><div class="gcell-main">Cardio</div></div>';
+  var cardioBtn=cardioIsBonus?'<div class="gcell'+(cardioGreen?' done-green':'')+'" onclick="openCardioSheet()"><div class="gcell-main">Cardio</div></div>':'';
   var snackBtn='<div class="gcell" onclick="setView(\'snacks\')"><div class="gcell-main">'+snk+' snack'+(snk===1?'':'s')+'</div></div>';
-  return '<div class="dsec"><div class="sec-lbl">Bonus</div><div class="sec-card sec-btns"><div class="cgrid c3">'+standBtn+cardioBtn+snackBtn+'</div></div></div>';}
+  return '<div class="dsec"><div class="sec-lbl">Bonus</div><div class="sec-card sec-btns"><div class="cgrid '+(cardioIsBonus?'c3':'c2')+'">'+standBtn+cardioBtn+snackBtn+'</div></div></div>';}
 function renderGoals(){document.getElementById('dName');var vd=new Date();vd.setHours(0,0,0,0);
   var h=fatLossHTML(vd);
   var vdH=null;for(var i=0;i<14;i++){var d=new Date();d.setDate(d.getDate()-i);d.setHours(0,0,0,0);if(loadHealth(d)){vdH=d;break;}}
