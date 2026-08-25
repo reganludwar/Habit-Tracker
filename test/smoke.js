@@ -1132,7 +1132,10 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   store.set(sandbox.woKeyForDate(_wd),JSON.stringify({dateMs:_wd.getTime(),dayTag:'mon',exercises:[{name:'DB Bench Press',sets:[{tag:'work',done:true}]},{name:'Pull-Up',sets:[{tag:'work',done:true}]}]}));
   sandbox.renderWeek();
   var wkHTML=sandbox.document.getElementById('root').innerHTML;
-  ok(/Movement Balance/.test(wkHTML)&&/Push vs Pull/.test(wkHTML),'Week view surfaces the Movement Balance card');
+  ok(/The Big Three/.test(wkHTML)&&/Workouts/.test(wkHTML)&&/Cardio/.test(wkHTML)&&/Calories/.test(wkHTML),'Week view leads with the Big Three streak cards');
+  // Movement Balance moved out of the week view (still available via its helper / the AI Coach)
+  var _bal=sandbox.woBalanceHTML();
+  ok(/Movement Balance/.test(_bal)&&/Push vs Pull/.test(_bal),'woBalanceHTML still renders the Movement Balance card from data');
   store.clear();_snap2.forEach(function(v,k){store.set(k,v);});
 })();
 
@@ -1191,11 +1194,54 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   sandbox.healthIngestText('protein: 165\nfiber: 40\ndietKcal: 1900');
   var _hp=JSON.parse(store.get(sandbox.healthKeyForDate(new Date()))||'{}');
   ok(_hp.protein===165&&_hp.fiber===40&&_hp.dietKcal===1900,'the Health import parses Cronometer macros (protein / fiber / dietary energy)');
-  // Week view surfaces the Readiness card with a deload nudge
+  // Readiness moved out of the week view; its helper still produces the deload nudge from data
   store.clear();seed(0,8.5,6);seed(7,8.5,6);seed(14,8.5,6);
-  sandbox.weekOffset=0;sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
-  var wk=sandbox.document.getElementById('root').innerHTML;
-  ok(/Readiness/.test(wk)&&/Deload/.test(wk),'Week view surfaces the Readiness card with a deload nudge');
+  sandbox.weekOffset=0;sandbox.viewDow=new Date().getDay();
+  var wk=sandbox.woReadinessHTML();
+  ok(/Readiness/.test(wk)&&/Deload/.test(wk),'woReadinessHTML surfaces the Readiness card with a deload nudge');
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
+// ===== Week tab: The Big Three streaks (workouts / cardio / calories) =====
+(function(){
+  var _snap=new Map(store);store.clear();
+  var _gv={weekOffset:sandbox.weekOffset,viewDow:sandbox.viewDow};
+  sandbox.weekOffset=0;
+  function day(off){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);return d;}
+  function setDay(off,obj){store.set(sandbox.storeKeyForDate(day(off)),JSON.stringify(obj));}
+  // daily calorie streak: today + 2 prior on target, a miss 3 days back caps it at 3
+  setDay(0,{caltgt:true});setDay(-1,{caltgt:true});setDay(-2,{caltgt:true});setDay(-3,{});
+  var cs=sandbox.metricStreaks(sandbox.ALL_DOWS,sandbox.calDoneOn);
+  ok(cs.cur===3,'calorie streak counts consecutive on-target days up to today ('+cs.cur+')');
+  ok(cs.best>=3,'calorie best streak is at least the current run');
+  // an unfinished today is neutral — it neither breaks nor pads the streak
+  setDay(0,{});
+  ok(sandbox.metricStreaks(sandbox.ALL_DOWS,sandbox.calDoneOn).cur===2,'an unfinished today does not break the streak (counts the 2 prior days)');
+  // a past missed scheduled day ends the streak
+  setDay(0,{caltgt:true});setDay(-1,{});setDay(-2,{caltgt:true});
+  ok(sandbox.metricStreaks(sandbox.ALL_DOWS,sandbox.calDoneOn).cur===1,'a missed day yesterday resets the streak to just today');
+  // this-week cells + counts reflect the viewed week
+  store.clear();
+  var wd=sandbox.getWeekDates();
+  for(var i=0;i<3;i++)store.set(sandbox.storeKeyForDate(wd[i]),JSON.stringify({caltgt:true}));
+  var clW=sandbox.metricWeekCells(wd,sandbox.ALL_DOWS,sandbox.calDoneOn);
+  ok(clW.total===7&&clW.hit===3,'calories week cells: 7 days, 3 hit');
+  // cardio: Tue/Thu are scheduled; any other day is bonus
+  store.clear();
+  store.set(sandbox.storeKeyForDate(wd[1]),JSON.stringify({c_incl:true})); // Monday = bonus
+  store.set(sandbox.storeKeyForDate(wd[2]),JSON.stringify({c_bike:true}));  // Tuesday = scheduled
+  ok(sandbox.cardioBonusWeek(wd)===1,'cardio on a non-scheduled day counts as one bonus');
+  var caW=sandbox.metricWeekCells(wd,sandbox.CARDIO_DOWS,sandbox.cardioDoneOn);
+  ok(caW.total===2&&caW.hit===1,'cardio scheduled cells cover Tue/Thu; the Tuesday cardio is a hit');
+  // bigThreeHTML renders all three cards with dots + the bonus count
+  var b3=sandbox.bigThreeHTML(wd);
+  ok(/The Big Three/.test(b3)&&/Workouts/.test(b3)&&/Cardio/.test(b3)&&/Calories/.test(b3)&&/bc-dot/.test(b3),'bigThreeHTML renders Workouts, Cardio, Calories cards with day dots');
+  ok(/\+1 bonus/.test(b3),'the Cardio card shows the bonus-cardio count');
+  // the boiled-down week view drops the mobility-centric sections
+  sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
+  var wkh=sandbox.document.getElementById('root').innerHTML;
+  ok(!/Daily Habits/.test(wkh)&&!/Standing Blocks/.test(wkh)&&!/Exercise Snacks/.test(wkh)&&!/consistency<br>score/.test(wkh),'the week view drops the mobility / standing / snacks / consistency-score sections');
+  sandbox.weekOffset=_gv.weekOffset;sandbox.viewDow=_gv.viewDow;
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
