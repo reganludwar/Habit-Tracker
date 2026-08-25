@@ -1784,6 +1784,18 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var dh=sandbox.document.getElementById('root').innerHTML;
   ok(/ring-arc/.test(dh)&&/mantra/.test(dh)&&/Today’s Floor/.test(dh),'Day page renders the mantra banner, the ring, and the floor');
   ok(!/line-through/.test(dh),'no strikethrough styling on the Day page');
+  // unified button language: Stretch + Workout are soft-green pills (gcell), not checkbox rows
+  ok(/gcell[^>]*>[^<]*<div class="gcell-main">Stretch/.test(dh)&&/gcell-main">Workout/.test(dh),'Stretch and Workout render as gcell pills on the floor');
+  ok(!/chk-mark/.test(dh)&&!/class="chk"/.test(dh),'the Day-page floor carries no checkboxes / checkmarks');
+  // tapping the Stretch pill toggles its floor unit (no checkbox needed)
+  sandbox.state={};sandbox.dayCheck('mob');
+  ok(sandbox.state.mob===true&&sandbox.floorProgress(sandbox.getDateForDow(1)).done>=1,'tapping Stretch completes the stretch floor unit');
+  // a completed Workout unit shows the green pill (done-green), driven by state.lift
+  sandbox.state={lift:true};sandbox.viewDow=1;sandbox.renderDay();
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.document.getElementById('root').innerHTML),'a logged lift turns the Workout pill soft-green');
+  // tight-areas entry point moved to the Stretch tab (not orphaned when the day row went away)
+  sandbox.viewMode='stretch';sandbox.stSet='floor';sandbox.renderStretch();
+  ok(/mob_tightchip/.test(sandbox.document.getElementById('root').innerHTML),'the Stretch tab hosts the tight-areas chip');
   sandbox.state=_s;for(var gk in _gv)sandbox[gk]=_gv[gk];
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();

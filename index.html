@@ -1403,7 +1403,7 @@ function stTailorParse(txt,mode){txt=txt||'';var raw=null,re=/```json\s*([\s\S]*
       stSuggAIPush({kind:'add',mode:mode,id:cat.id,name:cat.name,area:(cat.areas&&cat.areas[0])||'',cur:0,val:secs,src:'ai',why:String(s.why||'Coach: targets a tight area').slice(0,90)});n++;}}
   return n;}
 function stTailor(){var key=coachKey();if(!key){stSuggErr='Add your Anthropic API key in the Coach tab to use AI tailoring.';renderStretch();return;}
-  if(!getTightAreas().length){stSuggErr='Flag a tight area on the Day page first.';renderStretch();return;}
+  if(!getTightAreas().length){stSuggErr='Flag a tight area first — tap “Tight areas” above.';renderStretch();return;}
   if(stSuggBusy)return;stSuggBusy=true;stSuggErr='';renderStretch();
   var p=stTailorPayload();
   var sys='You are a mobility coach tailoring a '+(p.mode==='mobility'?'mobility':'stretching')+' routine to the user\'s chronically tight areas. You may ONLY (1) increase the hold/duration of a drill already in the routine, or (2) add a drill from availableToAdd. Never reorder, never remove, never invent a drill. Prefer 2-4 high-value changes that best serve the tight areas. Respond with ONLY a fenced ```json block of the form {"suggestions":[{"action":"setDuration"|"addDrill","drill":"<exact name>","seconds":<integer>,"why":"<short reason>"}]}.';
@@ -1477,6 +1477,7 @@ function renderStretch(){
   var isMob=stSet==='mobility';
   var h='<div class="st-set-toggle"><div class="st-tog'+(stSet==='floor'?' active':'')+'" onclick="stSwitch(\'floor\')">Floor &ndash; 10 min</div><div class="st-tog'+(stSet==='full'?' active':'')+'" onclick="stSwitch(\'full\')">Full &ndash; 20 min</div><div class="st-tog'+(isMob?' active':'')+'" onclick="stSwitch(\'mobility\')">Mobility</div></div>';
   h+='<div class="st-mode-desc">'+(isMob?'Active mobility &mdash; controlled movement and activation, not static holds.':'Static stretches &mdash; ease in, hold, and breathe.')+'</div>';
+  h+='<div style="padding:2px 0 10px"><span class="mob-tight'+(getTightAreas().length?' on':'')+'" id="mob_tightchip" onclick="openTightSheet()">'+tightChipLabel()+'</span></div>';
   h+=stSuggHTML();
   h+='<div class="st-list">';
   for(var i=0;i<list.length;i++){var s=list[i],bil=s.note==='Each side';var thumb=getStretchSVG(s.id)?'<div class="st-thumb">'+getStretchSVG(s.id)+'</div>':(s.mob?'<div class="st-thumb st-area">'+(s.area||'Mobility')+'</div>':'');var sub=bil?'<div class="st-note">per side</div>':'';var desc=(s.mob&&s.cue)?'<div class="st-desc">'+esc(s.cue)+'</div>':'';h+='<div class="st-row'+(s.builtin?'':' st-custom')+'">'+thumb+'<div class="st-name"><div class="st-lbl">'+esc(s.name)+'</div>'+sub+desc+'</div><div class="st-adj"><div class="st-btn" onclick="stAdjId(\''+s.id+'\',-30)">&#8722;</div><div class="st-time" id="stt_'+s.id+'">'+fmtTime(s.sec)+'</div><div class="st-btn" onclick="stAdjId(\''+s.id+'\',30)">+</div><div class="st-btn st-remove" onclick="removeFromActive(\''+s.id+'\')" title="Remove">&#215;</div></div></div>';}
@@ -1499,12 +1500,8 @@ function mobRows(rows){var h='';for(var i=0;i<rows.length;i++)h+='<div class="dr
 function panelInner(type){if(type==='mon')return'<span class="plbl">Exercises</span>'+exRows(MON,'mon');if(type==='wed')return'<span class="plbl">Exercises</span>'+exRows(WED,'wed');if(type==='fri')return'<span class="plbl">Exercises</span>'+exRows(FRI,'fri');if(type==='floor'){var fr=[];for(var i=0;i<FLOOR_STR.length;i++)fr.push([FLOOR_STR[i].name,FLOOR_STR[i].note||'']);return'<span class="plbl">Stretches &mdash; 10 min</span>'+mobRows(fr);}if(type==='full'){var al=FLOOR_STR.concat(EXTRA_STR),ar=[];for(var i=0;i<al.length;i++)ar.push([al[i].name,al[i].note||'']);return'<span class="plbl">All stretches &mdash; 20 min</span>'+mobRows(ar);}return'';}
 function tightChipLabel(){var n=getTightAreas().length;return n?('<span class="mob-tight-dot"></span>'+n+' tight area'+(n>1?'s':'')):'+ Tight areas';}
 function refreshTightChip(){var el=document.getElementById('mob_tightchip');if(el){var n=getTightAreas().length;el.className='mob-tight'+(n?' on':'');el.innerHTML=tightChipLabel();}}
-/* Floor Mobility is a simple done/not-done check (no session counter — one round is the routine).
-   The row keeps its tight-areas chip and expands to show the floor-stretch list. */
-function mobRowHTML(item){var done=state[item.id]?' done':'',eo=state['x_'+item.id]?' open':'',tn=getTightAreas().length;return'<div class="item'+done+'" data-t="mob" id="it_'+item.id+'" onclick="toggleExp(\''+item.id+'\')"><div class="chk" onclick="event.stopPropagation();dayCheck(\''+item.id+'\')"><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div><span class="mob-tight'+(tn?' on':'')+'" id="mob_tightchip" onclick="event.stopPropagation();openTightSheet()">'+tightChipLabel()+'</span><span class="arrow'+eo+'" id="ar_'+item.id+'" onclick="event.stopPropagation();toggleExp(\''+item.id+'\')" style="margin-left:8px">&#9654;</span></div><div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner" id="pi_'+item.id+'">'+panelInner('floor')+'</div></div>';}
 function openTightSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Tight areas';document.getElementById('shtSub').textContent='Tap the spots that feel chronically tight';var sel=getTightAreas(),h='<div style="padding:4px 0">';for(var i=0;i<TIGHT_AREAS.length;i++){var a=TIGHT_AREAS[i],on=sel.indexOf(a.key)>=0;h+='<div class="co-row'+(on?' sel':'')+'" id="tgr_'+a.key+'" onclick="toggleTightRow(\''+a.key+'\')"><div class="co-chk'+(on?' sel':'')+'" id="tg_'+a.key+'"><span class="co-chk-mark">&#10003;</span></div><div class="co-body"><div class="co-lbl">'+a.lbl+'</div></div></div>';}h+='<div style="padding:14px 20px;font-size:0.75rem;color:var(--muted);line-height:1.5">These stay flagged until you clear them. Your Stretch tab gives tight areas longer holds and suggests targeted drills.</div></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function toggleTightRow(k){toggleTightArea(k);var on=isTight(k);var c=document.getElementById('tg_'+k);if(c)c.className='co-chk'+(on?' sel':'');var r=document.getElementById('tgr_'+k);if(r)r.className='co-row'+(on?' sel':'');refreshTightChip();stSuggAI=[];stSuggState={};}
-function itemHTML(item){if(item.id==='mob')return mobRowHTML(item);var done=state[item.id]?' done':'',hasE=!!item.expand,eo=state['x_'+item.id]?' open':'';var bc=item.t==='lift'?'b-lift':'b-mob';var badge=item.badge?'<span class="ibadge '+bc+'">'+item.badge+'</span>':'';var arrow=hasE?'<span class="arrow'+eo+'" id="ar_'+item.id+'">&#9654;</span>':'';var panel=hasE?'<div class="panel'+eo+'" id="pn_'+item.id+'"><div class="panel-inner">'+panelInner(item.expand)+'</div></div>':'';var rc=hasE?'toggleExp(\''+item.id+'\')':'toggleItem(\''+item.id+'\')';var ca=hasE?' onclick="event.stopPropagation();toggleItem(\''+item.id+'\')"':'';return'<div class="item'+done+'" data-t="'+item.t+'" id="it_'+item.id+'" onclick="'+rc+'"><div class="chk"'+ca+'><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+item.lbl+'</div><div class="imeta">'+item.meta+'</div></div>'+badge+arrow+'</div>'+panel;}
 function toggleVit(){state['vit']=!state['vit'];save();renderDay();}
 function doToggleWalk(el){toggleWalk(el.getAttribute('data-wid'));}
 function walksHTML(walks){var cols=Math.min(walks.length,3),multi=walks.length>1,h='<div class="cgrid c'+cols+'">';for(var i=0;i<walks.length;i++){var w=walks[i];if(w.blank){h+='<div class="gcell blank"><div class="gcell-main">--</div></div>';continue;}var cls=state[w.id]?' done-green':'';var lbl=multi?w.lbl.replace(/ Walk$/,''):w.lbl;h+='<div class="gcell'+cls+'" id="gc_'+w.id+'" data-wid="'+w.id+'" onclick="doToggleWalk(this)"><div class="gcell-main">'+lbl+'</div></div>';}return h+'</div>';}
@@ -1513,7 +1510,6 @@ function cardioRowHTML(){var logged=[],dets=[],nudges=[],all=null;for(var i=0;i<
 function standCount(ds){ds=ds||state;if(typeof ds.standN==='number')return ds.standN;return (ds.s1?1:0)+(ds.s2?1:0)+(ds.s3?1:0);}
 function standCycle(){var n=standCount()+1;if(n>4)n=0;state.standN=n;save();renderDay();}
 function snacksHTML(){var h='';for(var i=0;i<SNACKS.length;i++){var s=SNACKS[i],v=state[s.id]||0,cls=v===0?' zero':'';var rec=snackRec(s.id),badge='';if(rec==='great')badge='<span class="snack-rec great">GO</span>';else if(rec==='light')badge='<span class="snack-rec light">EASY</span>';h+='<div class="snack-row" onclick="openSnackSheet(\''+s.id+'\',\''+s.lbl+'\')"><span class="snack-name">'+s.lbl+'</span>'+badge+'<span class="snack-total'+cls+'" id="snt_'+s.id+'">'+(v>0?v:'--')+'</span><span class="snack-chev">&#9654;</span></div>';}return h;}
-function secHTML(sec){var inner='';if(sec.type==='items')inner=sec.items.map(itemHTML).join('');if(sec.type==='stand')inner=standHTML();if(sec.type==='walks')inner=walksHTML(sec.walks);if(sec.type==='cardio')inner=cardioRowHTML();return'<div class="sec"><div class="sec-lbl">'+sec.time+'</div><div class="sec-card">'+inner+'</div></div>';}
 function renderPills(){var h='';for(var i=0;i<7;i++){var c=i===viewDow?' active-pill':((weekOffset===0&&i===todayDow)?' today-pill':'');h+='<div class="pill'+c+'" onclick="jumpToDay('+i+')">'+DAYS_S[i]+'</div>';}document.getElementById('dayPills').innerHTML=h;}
 /* ── FAT-LOSS DAY CARD — the weight-loss focus at the top of the Day page.
    A weight-trend headline (toward the goal), the trailing-week energy deficit, and a compact row of
@@ -1585,17 +1581,21 @@ function dayHeroHTML(vd){var p=floorProgress(vd),on=!!state.mantra,R=42,C=Math.r
   var center=p.complete?'<div class="hr-check">&#10003;</div>':'<div class="hr-num">'+p.done+'<span>/'+p.total+'</span></div>';
   return '<div class="dsec day-hero"><div class="hero-ring'+(p.complete?' done':'')+'"><svg class="ring" viewBox="0 0 104 104" aria-hidden="true"><circle class="ring-track" cx="52" cy="52" r="'+R+'"/><circle class="ring-arc" cx="52" cy="52" r="'+R+'" stroke-dasharray="'+dash+' '+C+'" transform="rotate(-90 52 52)"/></svg><div class="ring-center">'+center+'</div></div><div class="mantra'+(on?' done':'')+'" onclick="dayCheck(\'mantra\')"><div class="mantra-q">“'+MANTRA+'”</div><div class="mantra-chk">'+(on?'&#10003; said it':(p.complete?'Day complete':'tap when you\'ve said it'))+'</div></div></div>';}
 function floorBtn(label,done,onclick){return '<div class="gcell'+(done?' done-green':'')+'" onclick="'+onclick+'"><div class="gcell-main">'+label+'</div></div>';}
-function moveRowHTML(vd){var lift=!!state.lift,card=cardioDoneToday();
-  if(lift||card){var lbl=lift?(woTagLabel(woTagForDow(viewDow)||'')+' done'):'Cardio done';return '<div class="item done" data-t="lift" id="it_move"><div class="chk"><span class="chk-mark">&#10003;</span></div><div class="ibody"><div class="ilbl">'+lbl+'</div><div class="imeta">Workout or cardio &mdash; logged</div></div></div>';}
-  return '<div class="item" id="it_move"><div class="chk"></div><div class="ibody"><div class="ilbl">Workout or Cardio</div><div class="imeta">Log a lift or a cardio session</div></div><span class="move-go" onclick="setView(\'workout\')">Lift</span><span class="move-go" onclick="openCardioSheet()">Cardio</span></div>';}
+/* Workout-or-cardio floor unit as a soft-green pill (no checkbox). It reflects work logged
+   elsewhere: green when a lift is done (via the Workout tab) or any cardio is logged today.
+   Tapping opens the Workout tab; cardio is logged from the Bonus Cardio button, which also
+   fills this unit. The sub-label names what satisfied it, or hints at the day's options. */
+function moveBtnHTML(vd){var lift=!!state.lift,card=cardioDoneToday(),done=lift||card,tag=woTagForDow(viewDow);
+  var sub=done?(lift?(woTagLabel(tag||'')+' done'):'Cardio done'):(tag?'Lift or cardio':'Cardio day');
+  return '<div class="gcell'+(done?' done-green':'')+'" onclick="setView(\'workout\')"><div class="gcell-main">Workout</div><div class="gcell-sub">'+sub+'</div></div>';}
+/* One Floor card, one button language: every unit is a soft-green pill (no checkboxes, no
+   crossing-out). Weekday adds Stretch + Workout beside the walks; the Stretch routine and
+   tight-areas live on the Stretch tab. Tap a pill to complete it — it fills green. */
 function floorCardHTML(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6),h='';
-  h+='<div class="dsec"><div class="sec-lbl">Today’s Floor</div><div class="sec-card">';
-  if(!wknd)h+=mobRowHTML({id:'mob',lbl:'Stretch',meta:'10-min floor routine · tap to view',t:'mob',expand:'floor'});
-  if(!wknd)h+=moveRowHTML(vd);
-  h+='</div></div>';
-  h+='<div class="dsec"><div class="sec-card sec-btns">';
+  h+='<div class="dsec"><div class="sec-lbl">Today’s Floor</div><div class="sec-card sec-btns">';
   h+=walksHTML(WALKS3);
   if(wknd)h+='<div class="floor-hint">2 walks for the win · a 3rd is bonus</div>';
+  if(!wknd)h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Stretch',state.mob>=1,"dayCheck('mob')")+moveBtnHTML(vd)+'</div>';
   h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Calories',!!state.caltgt,"dayCheck('caltgt')")+floorBtn('Vitamins',!!state.vit,"toggleVit()")+'</div>';
   h+='</div></div>';
   return h;}
