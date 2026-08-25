@@ -1793,6 +1793,13 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // a completed Workout unit shows the green pill (done-green), driven by state.lift
   sandbox.state={lift:true};sandbox.viewDow=1;sandbox.renderDay();
   ok(/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.document.getElementById('root').innerHTML),'a logged lift turns the Workout pill soft-green');
+  // the Workout pill follows the day: lift day opens the Workout tab, cardio day opens the cardio logger
+  sandbox.state={};sandbox.viewDow=1; // Monday = lift day (Full Body A)
+  var _mon=sandbox.moveBtnHTML(sandbox.getDateForDow(1));
+  ok(/setView\('workout'\)/.test(_mon)&&!/openCardioSheet/.test(_mon)&&/Lift or cardio/.test(_mon),'on a lift day the Workout pill opens the Workout tab');
+  sandbox.viewDow=2; // Tuesday = cardio / Zone-2 day
+  var _tue=sandbox.moveBtnHTML(sandbox.getDateForDow(2));
+  ok(/openCardioSheet\(\)/.test(_tue)&&!/setView\('workout'\)/.test(_tue)&&/Log cardio/.test(_tue),'on a cardio day the Workout pill opens the cardio logger, not the lift tab');
   // tight-areas entry point moved to the Stretch tab (not orphaned when the day row went away)
   sandbox.viewMode='stretch';sandbox.stSet='floor';sandbox.renderStretch();
   ok(/mob_tightchip/.test(sandbox.document.getElementById('root').innerHTML),'the Stretch tab hosts the tight-areas chip');

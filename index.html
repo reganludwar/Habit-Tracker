@@ -1582,12 +1582,14 @@ function dayHeroHTML(vd){var p=floorProgress(vd),on=!!state.mantra,R=42,C=Math.r
   return '<div class="dsec day-hero"><div class="hero-ring'+(p.complete?' done':'')+'"><svg class="ring" viewBox="0 0 104 104" aria-hidden="true"><circle class="ring-track" cx="52" cy="52" r="'+R+'"/><circle class="ring-arc" cx="52" cy="52" r="'+R+'" stroke-dasharray="'+dash+' '+C+'" transform="rotate(-90 52 52)"/></svg><div class="ring-center">'+center+'</div></div><div class="mantra'+(on?' done':'')+'" onclick="dayCheck(\'mantra\')"><div class="mantra-q">“'+MANTRA+'”</div><div class="mantra-chk">'+(on?'&#10003; said it':(p.complete?'Day complete':'tap when you\'ve said it'))+'</div></div></div>';}
 function floorBtn(label,done,onclick){return '<div class="gcell'+(done?' done-green':'')+'" onclick="'+onclick+'"><div class="gcell-main">'+label+'</div></div>';}
 /* Workout-or-cardio floor unit as a soft-green pill (no checkbox). It reflects work logged
-   elsewhere: green when a lift is done (via the Workout tab) or any cardio is logged today.
-   Tapping opens the Workout tab; cardio is logged from the Bonus Cardio button, which also
-   fills this unit. The sub-label names what satisfied it, or hints at the day's options. */
-function moveBtnHTML(vd){var lift=!!state.lift,card=cardioDoneToday(),done=lift||card,tag=woTagForDow(viewDow);
-  var sub=done?(lift?(woTagLabel(tag||'')+' done'):'Cardio done'):(tag?'Lift or cardio':'Cardio day');
-  return '<div class="gcell'+(done?' done-green':'')+'" onclick="setView(\'workout\')"><div class="gcell-main">Workout</div><div class="gcell-sub">'+sub+'</div></div>';}
+   elsewhere: green when a lift is done or any cardio is logged today. The tap follows the day:
+   on a lift day (the split assigns one) it opens the Workout tab; on a cardio/Zone-2 day it
+   opens the cardio logger directly — so a cardio day never dumps you into a lift workout.
+   The sub-label names what satisfied it, or the day's action. */
+function moveBtnHTML(vd){var lift=!!state.lift,card=cardioDoneToday(),done=lift||card,tag=woTagForDow(viewDow),liftDay=!!tag;
+  var sub=done?(lift?(woTagLabel(tag||'')+' done'):'Cardio done'):(liftDay?'Lift or cardio':'Log cardio');
+  var action=(liftDay||lift)?"setView('workout')":"openCardioSheet()";
+  return '<div class="gcell'+(done?' done-green':'')+'" onclick="'+action+'"><div class="gcell-main">Workout</div><div class="gcell-sub">'+sub+'</div></div>';}
 /* One Floor card, one button language: every unit is a soft-green pill (no checkboxes, no
    crossing-out). Weekday adds Stretch + Workout beside the walks; the Stretch routine and
    tight-areas live on the Stretch tab. Tap a pill to complete it — it fills green. */
