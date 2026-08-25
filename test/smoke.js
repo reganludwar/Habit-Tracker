@@ -1806,6 +1806,22 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(sandbox.cardioDoneToday()===true,'logging an incline walk marks cardio done for the day');
   sandbox.closeSheet();
   ok(/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.document.getElementById('root').innerHTML),'closing the cardio sheet re-renders the Day page and greens the Workout pill');
+  // cardio isn't double-counted: on a cardio weekday it fills the floor Workout, so it's not a bonus
+  sandbox.state={};sandbox.state['c_incl']=true;sandbox.viewDow=2; // Tuesday, cardio done, no lift
+  var _bTue=sandbox.bonusCardHTML(sandbox.getDateForDow(2));
+  ok(!/gcell-main">Cardio</.test(_bTue),'on a cardio weekday the Bonus row drops the Cardio button (it is the floor workout)');
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.moveBtnHTML(sandbox.getDateForDow(2))),'the same cardio still fills the floor Workout pill on a cardio day (counted once)');
+  // on a lift day cardio is a genuine bonus once the lift is in — green only then
+  sandbox.state={lift:true};sandbox.state['c_incl']=true;sandbox.viewDow=1; // Monday, lift + cardio
+  var _bMon=sandbox.bonusCardHTML(sandbox.getDateForDow(1));
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bMon),'on a lift day, cardio on top of the lift lights the Bonus Cardio pill');
+  sandbox.state={};sandbox.state['c_incl']=true;sandbox.viewDow=1; // Monday, cardio but no lift yet
+  var _bMon2=sandbox.bonusCardHTML(sandbox.getDateForDow(1));
+  ok(/gcell-main">Cardio</.test(_bMon2)&&!/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bMon2),'on a lift day with cardio but no lift, the Bonus Cardio is shown but not green (cardio fills the floor)');
+  // on the weekend there is no workout floor unit, so cardio is a real bonus and greens
+  sandbox.state={};sandbox.state['c_incl']=true;sandbox.viewDow=0; // Sunday
+  var _bSun=sandbox.bonusCardHTML(sandbox.getDateForDow(0));
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bSun),'on a weekend cardio is a bonus and lights the Bonus Cardio pill');
   // tight-areas entry point moved to the Stretch tab (not orphaned when the day row went away)
   sandbox.viewMode='stretch';sandbox.stSet='floor';sandbox.renderStretch();
   ok(/mob_tightchip/.test(sandbox.document.getElementById('root').innerHTML),'the Stretch tab hosts the tight-areas chip');
