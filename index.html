@@ -589,6 +589,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-rest-mini-skip:active{background:var(--border)}
 .wo-mob-line{font-size:0.8125rem;color:var(--green);text-align:center;padding:5px 16px 7px;letter-spacing:.03em;border-bottom:1px solid var(--border);background:rgba(77,184,133,.04)}
 .wo-edit-link{margin:14px 16px 0;display:flex;gap:8px;justify-content:center}
+.wo-edit-foot{margin-top:24px;margin-bottom:10px}
 .wo-edit-link span{font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
   cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
 .wo-undo{margin:14px 16px 0;display:flex;align-items:center;gap:10px;background:rgba(224,96,96,.08);border:1px solid #6B3030;border-radius:8px;padding:10px 12px}
@@ -2727,9 +2728,10 @@ function _renderWorkout(){
   tag=woSession.dayTag||tag;
   var _sy=window.pageYOffset||(document.documentElement&&document.documentElement.scrollTop)||0;
   var _ov=woDayTagOverride(viewDow),_native=woDayTag(viewDow);
-  var _intro=_ov?('&#8646; Made-up · '+esc(woTagLabel(tag))+' loaded onto '+DAYS[viewDow]+(_native?' (normally '+esc(woTagLabel(_native))+')':'')):(woTagLabel(tag)+' · ramp-up phase · tap ✓ or swipe a set to log · tap the weight to set it');
-  var sess=woSession,h='<div class="wo-intro">'+_intro+'</div>';
-  h+='<div class="wo-edit-link"><span onclick="woOpenSplitSheet()">&#8646; Load another day</span><span onclick="woOpenEditor()">&#9881; Edit</span><span onclick="woResetDay()">&#8635; Reset</span></div>';
+  /* The instructional intro line is gone (Load another day / Edit / Reset now live at the foot of
+     the page); only the "made-up day loaded" state notice stays up top so it isn't missed. */
+  var sess=woSession,h='';
+  if(_ov)h+='<div class="wo-intro">&#8646; Made-up · '+esc(woTagLabel(tag))+' loaded onto '+DAYS[viewDow]+(_native?' (normally '+esc(woTagLabel(_native))+')':'')+'</div>';
   h+=woUndoBannerHTML(key);
   for(var e=0;e<sess.exercises.length;e++)h+=woExHTML(sess.exercises[e],e);
   h+='<div class="wo-notes-wrap"><textarea class="wo-notes" id="woNotes" placeholder="Session notes — how it felt, tweaks, aches…" oninput="woSaveNotes(this.value)">'+esc(sess.notes||'')+'</textarea></div>';
@@ -2737,6 +2739,7 @@ function _renderWorkout(){
   h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button>';
   if(sess.finished){var wpay={type:'workout',kind:'strength',name:woTagLabel(tag),start:new Date(sess.started||Date.now()).toISOString(),minutes:Math.max(1,Math.round((sess.elapsed||0)/60))};h+='<a class="wo-health" href="'+healthWriteURL(wpay)+'">&#10084;&#65039; Add to Apple Health</a>';}
   h+='</div>';
+  h+='<div class="wo-edit-link wo-edit-foot"><span onclick="woOpenSplitSheet()">&#8646; Load another day</span><span onclick="woOpenEditor()">&#9881; Edit</span><span onclick="woResetDay()">&#8635; Reset</span></div>';
   document.getElementById('root').innerHTML=h;if(_sy&&window.scrollTo)window.scrollTo(0,_sy);
 }
 /* weight wheel: tap the weight pill to open a scrolling dial of WO_LADDER values.
