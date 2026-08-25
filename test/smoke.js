@@ -1800,6 +1800,12 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.viewDow=2; // Tuesday = cardio / Zone-2 day
   var _tue=sandbox.moveBtnHTML(sandbox.getDateForDow(2));
   ok(/openCardioSheet\(\)/.test(_tue)&&!/setView\('workout'\)/.test(_tue)&&/Log cardio/.test(_tue),'on a cardio day the Workout pill opens the cardio logger, not the lift tab');
+  // regression: logging cardio then closing the sheet must re-render the Day page so the Workout pill greens
+  sandbox.state={};sandbox.viewDow=2;sandbox.weekOffset=0;sandbox.viewMode='day';
+  sandbox.sheetMode='cardio';sandbox.toggleCardioOpt('c_incl');
+  ok(sandbox.cardioDoneToday()===true,'logging an incline walk marks cardio done for the day');
+  sandbox.closeSheet();
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.document.getElementById('root').innerHTML),'closing the cardio sheet re-renders the Day page and greens the Workout pill');
   // tight-areas entry point moved to the Stretch tab (not orphaned when the day row went away)
   sandbox.viewMode='stretch';sandbox.stSet='floor';sandbox.renderStretch();
   ok(/mob_tightchip/.test(sandbox.document.getElementById('root').innerHTML),'the Stretch tab hosts the tight-areas chip');
