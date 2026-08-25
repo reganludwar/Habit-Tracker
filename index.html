@@ -57,8 +57,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .day-eyebrow{font-size:0.6875rem;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:2px;min-height:14px}
 .day-name{font-size:1.625rem;font-weight:700;letter-spacing:-.02em;line-height:1}
 .day-date{font-size:0.6875rem;color:var(--muted);margin-top:2px}
-.day-tag{display:inline-block;font-size:0.6875rem;letter-spacing:.1em;color:var(--muted);
-  text-transform:uppercase;border:1px solid var(--border);padding:3px 8px;background:var(--card);margin-top:5px}
 .day-pills{display:flex;gap:5px;justify-content:center;margin-bottom:10px}
 .pill{flex:1;text-align:center;font-size:0.6875rem;letter-spacing:.06em;font-weight:600;
   text-transform:uppercase;padding:11px 2px;min-height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);color:var(--muted);
@@ -891,17 +889,19 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
 .vtab{border:none;border-radius:16px;background:transparent;padding:11px 3px;transition:all .18s}
 .vtab.active{background:var(--grad);color:var(--onacc);border-color:transparent;box-shadow:0 6px 18px rgba(124,92,255,.42)}
 /* theme toggle */
-#themeBtn{position:fixed;top:calc(var(--safe-top) + 6px);right:14px;z-index:130;width:38px;height:38px;border-radius:50%;
+/* App settings (text size + light/dark) live in a row near the bottom, by the Apple Health /
+   backup buttons — each is a label beside a compact glass control. */
+.settings-wrap{margin:12px 16px 0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.set-item{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 14px;border-radius:14px;
   background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glassbd);
-  box-shadow:var(--glow);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;-webkit-user-select:none;user-select:none}
-#textBtn{position:fixed;top:calc(var(--safe-top) + 6px);right:58px;z-index:130;height:38px;min-width:38px;padding:0 10px;border-radius:19px;
-  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glassbd);
-  box-shadow:var(--glow);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;letter-spacing:-.5px;color:var(--text);cursor:pointer;-webkit-user-select:none;user-select:none}
+  box-shadow:var(--glow);cursor:pointer;-webkit-user-select:none;user-select:none}
+.set-item:active{opacity:.7}
+.set-lbl{font-size:0.6875rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.set-ctl{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--glassbd);font-weight:800;font-size:0.9rem;letter-spacing:-.5px;color:var(--text)}
 /* full-screen sessions (stretch timer, rest timer, test, done) cover the floating nav + theme toggle,
    and use the same aurora gradient as the rest of the app (not a flat fill) */
 .ts-session,.st-timer,.st-done{z-index:140;background:var(--bgimg)}
-/* keep the header's forward nav arrow clear of the fixed theme toggle (top-right) */
-.hdr-top{padding-right:46px}
 /* rounded glass surfaces */
 .sec-card,.wcard,.wo-ex,.wo-ed-ex,.st-list,.wo-notes,.wo-pr-card,.cmodal-card,.sec-card.cscore-card{
   border-radius:20px;border:1px solid var(--glassbd);background:var(--glass);
@@ -928,7 +928,7 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
 .gcell,.sblk,.num-btn,.ah-cell,.wdot{border-radius:11px}
 .gcell,.sblk,.num-btn{border:1px solid var(--glassbd)}
 .wo-finish,.wo-ed-btn,.cmodal-btn{border-radius:14px}
-.vtab,.pill,.st-tog,.day-tag{border-radius:12px}
+.vtab,.pill,.st-tog{border-radius:12px}
 /* rest mini bar sits above the floating tabs */
 .wo-rest-mini{bottom:calc(var(--safe-bot) + 92px);left:50%;transform:translateX(-50%);width:min(434px,93vw);
   border-radius:20px;border:1px solid var(--glassbd);background:var(--glass);backdrop-filter:blur(20px)}
@@ -937,8 +937,6 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
 </style>
 </head>
 <body>
-<div id="textBtn" onclick="cycleTextSize()" title="Text size">A</div>
-<div id="themeBtn" onclick="toggleTheme()" title="Toggle light / dark">🌙</div>
 <div class="hdr">
   <div id="dayHdr">
     <div class="hdr-top">
@@ -947,7 +945,6 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
         <div class="day-eyebrow" id="dEyebrow" onclick="goToday()">TODAY</div>
         <div class="day-name" id="dName">--</div>
         <div class="day-date" id="dDate">--</div>
-        <div class="day-tag"  id="dTag">--</div>
       </div>
       <div class="nav-btn" onclick="navWeek(1)">&#8594;</div>
     </div>
@@ -1012,6 +1009,10 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
 </div>
 <div class="reset-wrap" id="resetWrap">
   <button class="reset-btn" id="resetBtn" onclick="doReset()">Reset Day</button>
+</div>
+<div class="settings-wrap" id="settingsWrap">
+  <div class="set-item" onclick="cycleTextSize()" title="Text size"><span class="set-lbl">Text size</span><div class="set-ctl" id="textBtn">A</div></div>
+  <div class="set-item" onclick="toggleTheme()" title="Toggle light / dark"><span class="set-lbl">Light / Dark</span><div class="set-ctl" id="themeBtn">🌙</div></div>
 </div>
 <div class="data-wrap" id="dataWrap">
   <button class="reset-btn sync-btn" onclick="healthSyncNow()">&#8635; Sync Apple Health</button>
@@ -1612,7 +1613,7 @@ function renderGoals(){document.getElementById('dName');var vd=new Date();vd.set
   if(vdH){var _hm=healthMetricsHTML(vdH);if(_hm)h+='<div class="dsec"><div class="sec-lbl" style="margin:0 0 6px">Apple Health &middot; '+MONTHS_S[vdH.getMonth()]+' '+vdH.getDate()+'</div>'+_hm+'</div>';}
   h+='<div class="dsec"><div class="sec-lbl">The Portfolio</div><div class="sec-card"><div class="gsoon">Body is live. Next, as we build them: <b>Work &amp; focus</b> · <b>Trading</b> · <b>Formal activity</b> · <b>Financial review</b>.</div></div></div>';
   document.getElementById('root').innerHTML=h;}
-function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();document.getElementById('dTag').textContent=sc.tag;renderPills();
+function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();renderPills();
   var h='';
   if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';
   h+=dayHeroHTML(vd);
