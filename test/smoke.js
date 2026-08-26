@@ -1230,10 +1230,21 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   ok(/ \/ 5 /.test(b3)&&/target 5/.test(b3),'the cardio weekly target is 5');
   ok(/wk-chart/.test(b3)&&/wk-bar/.test(b3)&&/wk-tline/.test(b3)&&/bc-dot/.test(b3),'each card has a weekly bar chart (target line) and a day-check row');
   ok(!/streak/i.test(b3)&&!/bonus/i.test(b3),'no streaks and no separate bonus bucket in the cards');
+  // Zone 2 minutes: per-day sum of cardio-detail z2 + bonus-incline minutes
+  ok(sandbox.zone2MinOn({cdt_c_incl:{z2:30},cdt_c_bike:{z2:20},inclBonus:[{min:15}]})===65,'zone2MinOn sums cardio z2 + bonus-incline minutes (30+20+15)');
+  store.clear();
+  store.set(key(wd[2]),JSON.stringify({cdt_c_bike:{z2:40}}));
+  store.set(key(wd[4]),JSON.stringify({cdt_c_incl:{z2:35}}));
+  var z2ser=sandbox.weeklyValueSeries(sandbox.zone2MinOn,12);
+  ok(z2ser.length===12&&z2ser[11].count===75,'weeklyValueSeries sums Zone 2 minutes for the current week (40+35)');
+  var b3b=sandbox.bigThreeHTML(wd);
+  ok(/Zone 2 minutes \/ week/.test(b3b)&&/wk-sublbl/.test(b3b),'the Cardio card carries a Zone 2 minutes / week chart');
+  ok(b3b.indexOf('Zone 2 minutes')>b3b.indexOf('>Cardio<')&&b3b.indexOf('Zone 2 minutes')<b3b.indexOf('>Calories<'),'the Zone 2 chart sits inside the Cardio card, under the cardio chart');
   // the boiled-down week view still drops the mobility-centric sections
   sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
   var wkh=sandbox.document.getElementById('root').innerHTML;
   ok(!/Daily Habits/.test(wkh)&&!/Standing Blocks/.test(wkh)&&!/Exercise Snacks/.test(wkh)&&!/consistency<br>score/.test(wkh),'the week view drops the mobility / standing / snacks / consistency-score sections');
+  ok(!/Zone 2 Volume/.test(wkh),'the standalone Zone 2 Volume section is removed (now a chart inside the Cardio card)');
   sandbox.weekOffset=_gv.weekOffset;sandbox.viewDow=_gv.viewDow;
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
