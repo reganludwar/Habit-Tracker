@@ -1227,6 +1227,7 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   // the cards render a weekly bar chart (with a target line + month labels) and the day rows, and no streaks
   var b3=sandbox.bigThreeHTML(wd);
   ok(/The Big Three/.test(b3)&&/Workouts/.test(b3)&&/Cardio/.test(b3)&&/Calories/.test(b3),'bigThreeHTML renders all three metric cards');
+  ok(/ \/ 5 /.test(b3)&&/target 5/.test(b3),'the cardio weekly target is 5');
   ok(/wk-chart/.test(b3)&&/wk-bar/.test(b3)&&/wk-tline/.test(b3)&&/bc-dot/.test(b3),'each card has a weekly bar chart (target line) and a day-check row');
   ok(!/streak/i.test(b3)&&!/bonus/i.test(b3),'no streaks and no separate bonus bucket in the cards');
   // the boiled-down week view still drops the mobility-centric sections
