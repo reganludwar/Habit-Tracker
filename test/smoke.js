@@ -1229,6 +1229,7 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   ok(/The Big Three/.test(b3)&&/Workouts/.test(b3)&&/Cardio/.test(b3)&&/Calories/.test(b3),'bigThreeHTML renders all three metric cards');
   ok(/ \/ 5 /.test(b3)&&/target 5/.test(b3),'the cardio weekly target is 5');
   ok(/wk-chart/.test(b3)&&/wk-bar/.test(b3)&&/wk-tline/.test(b3)&&/bc-dot/.test(b3),'each card has a weekly bar chart (target line) and a day-check row');
+  ok(/wk-bval[^>]*>3</.test(b3),'each bar carries its value label (the current workout week reads 3)');
   ok(!/streak/i.test(b3)&&!/bonus/i.test(b3),'no streaks and no separate bonus bucket in the cards');
   // Zone 2 minutes: per-day sum of cardio-detail z2 + bonus-incline minutes
   ok(sandbox.zone2MinOn({cdt_c_incl:{z2:30},cdt_c_bike:{z2:20},inclBonus:[{min:15}]})===65,'zone2MinOn sums cardio z2 + bonus-incline minutes (30+20+15)');
