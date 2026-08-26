@@ -1132,7 +1132,7 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   store.set(sandbox.woKeyForDate(_wd),JSON.stringify({dateMs:_wd.getTime(),dayTag:'mon',exercises:[{name:'DB Bench Press',sets:[{tag:'work',done:true}]},{name:'Pull-Up',sets:[{tag:'work',done:true}]}]}));
   sandbox.renderWeek();
   var wkHTML=sandbox.document.getElementById('root').innerHTML;
-  ok(/The Big Three/.test(wkHTML)&&/Workouts/.test(wkHTML)&&/Cardio/.test(wkHTML)&&/Calories/.test(wkHTML),'Week view leads with the Big Three streak cards');
+  ok(/The Big Three/.test(wkHTML)&&/Workouts/.test(wkHTML)&&/Cardio/.test(wkHTML)&&/Calories/.test(wkHTML),'Week view leads with the Big Three cards');
   // Movement Balance moved out of the week view (still available via its helper / the AI Coach)
   var _bal=sandbox.woBalanceHTML();
   ok(/Movement Balance/.test(_bal)&&/Push vs Pull/.test(_bal),'woBalanceHTML still renders the Movement Balance card from data');
@@ -1202,42 +1202,34 @@ sandbox.localStorage.removeItem('wo_daytag');sandbox.localStorage.removeItem(san
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
-// ===== Week tab: The Big Three streaks (workouts / cardio / calories) =====
+// ===== Week tab: The Big Three — weekly counts (any-day) + Apple-style bar chart, no streaks =====
 (function(){
   var _snap=new Map(store);store.clear();
   var _gv={weekOffset:sandbox.weekOffset,viewDow:sandbox.viewDow};
   sandbox.weekOffset=0;
-  function day(off){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);return d;}
-  function setDay(off,obj){store.set(sandbox.storeKeyForDate(day(off)),JSON.stringify(obj));}
-  // daily calorie streak: today + 2 prior on target, a miss 3 days back caps it at 3
-  setDay(0,{caltgt:true});setDay(-1,{caltgt:true});setDay(-2,{caltgt:true});setDay(-3,{});
-  var cs=sandbox.metricStreaks(sandbox.ALL_DOWS,sandbox.calDoneOn);
-  ok(cs.cur===3,'calorie streak counts consecutive on-target days up to today ('+cs.cur+')');
-  ok(cs.best>=3,'calorie best streak is at least the current run');
-  // an unfinished today is neutral — it neither breaks nor pads the streak
-  setDay(0,{});
-  ok(sandbox.metricStreaks(sandbox.ALL_DOWS,sandbox.calDoneOn).cur===2,'an unfinished today does not break the streak (counts the 2 prior days)');
-  // a past missed scheduled day ends the streak
-  setDay(0,{caltgt:true});setDay(-1,{});setDay(-2,{caltgt:true});
-  ok(sandbox.metricStreaks(sandbox.ALL_DOWS,sandbox.calDoneOn).cur===1,'a missed day yesterday resets the streak to just today');
-  // this-week cells + counts reflect the viewed week
-  store.clear();
   var wd=sandbox.getWeekDates();
-  for(var i=0;i<3;i++)store.set(sandbox.storeKeyForDate(wd[i]),JSON.stringify({caltgt:true}));
-  var clW=sandbox.metricWeekCells(wd,sandbox.ALL_DOWS,sandbox.calDoneOn);
-  ok(clW.total===7&&clW.hit===3,'calories week cells: 7 days, 3 hit');
-  // cardio: Tue/Thu are scheduled; any other day is bonus
-  store.clear();
-  store.set(sandbox.storeKeyForDate(wd[1]),JSON.stringify({c_incl:true})); // Monday = bonus
-  store.set(sandbox.storeKeyForDate(wd[2]),JSON.stringify({c_bike:true}));  // Tuesday = scheduled
-  ok(sandbox.cardioBonusWeek(wd)===1,'cardio on a non-scheduled day counts as one bonus');
-  var caW=sandbox.metricWeekCells(wd,sandbox.CARDIO_DOWS,sandbox.cardioDoneOn);
-  ok(caW.total===2&&caW.hit===1,'cardio scheduled cells cover Tue/Thu; the Tuesday cardio is a hit');
-  // bigThreeHTML renders all three cards with dots + the bonus count
+  function key(d){return sandbox.storeKeyForDate(d);}
+  // Workouts count on ANY day: a Friday miss made up on Saturday still gives 3 this week
+  store.set(key(wd[1]),JSON.stringify({lift:true})); // Mon
+  store.set(key(wd[3]),JSON.stringify({lift:true})); // Wed
+  store.set(key(wd[6]),JSON.stringify({lift:true})); // Sat make-up (Fri skipped)
+  var wk=sandbox.metricWeek(wd,sandbox.woDoneOn);
+  ok(wk.hit===3,'workouts count on any day — a Saturday make-up still gives 3 this week');
+  ok(wk.cells[6].hit===true&&wk.cells[5].hit===false,'the day-check row checks Saturday (done) and leaves Friday empty');
+  // an extra Monday cardio counts toward the weekly cardio total (no separate "bonus" bucket)
+  store.set(key(wd[1]),JSON.stringify({lift:true,c_bike:true})); // Mon lift + cardio
+  store.set(key(wd[2]),JSON.stringify({c_incl:true}));           // Tue cardio
+  ok(sandbox.metricWeek(wd,sandbox.cardioDoneOn).hit===2,'an extra Monday cardio counts toward the weekly cardio total');
+  // weekly series: one count per week, current week last, no streak concept
+  var ser=sandbox.weeklyMetricSeries(sandbox.woDoneOn,12);
+  ok(ser.length===12&&ser[11].wkAgo===0&&ser[11].count===3,'weeklyMetricSeries returns 12 weekly counts ending with the current week');
+  ok(ser[0].sun<ser[11].sun,'the series runs oldest-first to current');
+  // the cards render a weekly bar chart (with a target line + month labels) and the day rows, and no streaks
   var b3=sandbox.bigThreeHTML(wd);
-  ok(/The Big Three/.test(b3)&&/Workouts/.test(b3)&&/Cardio/.test(b3)&&/Calories/.test(b3)&&/bc-dot/.test(b3),'bigThreeHTML renders Workouts, Cardio, Calories cards with day dots');
-  ok(/\+1 bonus/.test(b3),'the Cardio card shows the bonus-cardio count');
-  // the boiled-down week view drops the mobility-centric sections
+  ok(/The Big Three/.test(b3)&&/Workouts/.test(b3)&&/Cardio/.test(b3)&&/Calories/.test(b3),'bigThreeHTML renders all three metric cards');
+  ok(/wk-chart/.test(b3)&&/wk-bar/.test(b3)&&/wk-tline/.test(b3)&&/bc-dot/.test(b3),'each card has a weekly bar chart (target line) and a day-check row');
+  ok(!/streak/i.test(b3)&&!/bonus/i.test(b3),'no streaks and no separate bonus bucket in the cards');
+  // the boiled-down week view still drops the mobility-centric sections
   sandbox.viewDow=new Date().getDay();sandbox.renderWeek();
   var wkh=sandbox.document.getElementById('root').innerHTML;
   ok(!/Daily Habits/.test(wkh)&&!/Standing Blocks/.test(wkh)&&!/Exercise Snacks/.test(wkh)&&!/consistency<br>score/.test(wkh),'the week view drops the mobility / standing / snacks / consistency-score sections');
