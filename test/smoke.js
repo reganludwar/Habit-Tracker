@@ -1862,9 +1862,17 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // unified button language: Stretch + Workout are soft-green pills (gcell), not checkbox rows
   ok(/gcell[^>]*>[^<]*<div class="gcell-main">Stretch/.test(dh)&&/gcell-main">Workout/.test(dh),'Stretch and Workout render as gcell pills on the floor');
   ok(!/chk-mark/.test(dh)&&!/class="chk"/.test(dh),'the Day-page floor carries no checkboxes / checkmarks');
-  // tapping the Stretch pill toggles its floor unit (no checkbox needed)
-  sandbox.state={};sandbox.dayCheck('mob');
-  ok(sandbox.state.mob===true&&sandbox.floorProgress(sandbox.getDateForDow(1)).done>=1,'tapping Stretch completes the stretch floor unit');
+  // the Stretch pill opens the Stretch page (like Workout opens the Workout tab)
+  sandbox.state={};sandbox.viewDow=1;sandbox.renderDay();
+  var _dh2=sandbox.document.getElementById('root').innerHTML;
+  ok(/gcell-main">Stretch/.test(_dh2)&&/setView\('stretch'\)/.test(_dh2),'the Stretch pill opens the Stretch page');
+  // completing a stretch session marks the mob floor unit, greening the pill on return to the Day
+  sandbox.state={};sandbox.stSet='floor';sandbox.stTotalStretches=3;sandbox.stStartMs=sandbox.Date.now()-60000;
+  sandbox.showDone();
+  ok(sandbox.state.mob>=1&&sandbox.floorProgress(sandbox.getDateForDow(1)).done>=1,'finishing a stretch session completes the Day-page Stretch floor unit');
+  sandbox.viewDow=1;sandbox.renderDay();
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Stretch/.test(sandbox.document.getElementById('root').innerHTML),'the Stretch pill is soft-green after a completed session');
+  sandbox.document.getElementById('stDone').style.display='none';
   // a completed Workout unit shows the green pill (done-green), driven by state.lift
   sandbox.state={lift:true};sandbox.viewDow=1;sandbox.renderDay();
   ok(/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.document.getElementById('root').innerHTML),'a logged lift turns the Workout pill soft-green');
