@@ -1002,6 +1002,12 @@ var _rmThrew=false;try{sandbox.woRestPaintMob();}catch(e){_rmThrew=true;}
 ok(!_rmThrew&&sandbox.document.getElementById('woRestEx').textContent==='Rest'&&sandbox.document.getElementById('woRestSwap').style.display==='none','mobility off: rest shows the plain timer, no drill or swap');
 sandbox.woToggleRestMob();
 ok(sandbox.woRestMobOff()===false,'toggling again re-enables in-rest mobility');
+// the card's "Mobility: ..." preview line under the rest divider is ALSO gated by the setting (bugfix)
+sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.woEditing=false;sandbox.localStorage.removeItem(sandbox.woKeyForDow(3));sandbox.woSession=null;sandbox.renderWorkout();
+ok(/Mobility:/.test(sandbox.document.getElementById('root').innerHTML),'with in-rest mobility on, the workout card shows the Mobility preview line');
+sandbox.woToggleRestMob();sandbox.woSession=null;sandbox.renderWorkout();
+ok(!/Mobility:/.test(sandbox.document.getElementById('root').innerHTML),'with in-rest mobility off, the workout card hides the Mobility preview line too');
+sandbox.localStorage.removeItem('wo_rest_mob_off');sandbox.localStorage.removeItem(sandbox.woKeyForDow(3));sandbox.woSession=null;
 // the workout editor exposes the global toggle
 sandbox.woEditTmpl=sandbox.woNormTmpl(sandbox.woEffTemplate('mon'));sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.woEditing=true;sandbox.renderWorkout();
 var _edH=sandbox.document.getElementById('root').innerHTML;

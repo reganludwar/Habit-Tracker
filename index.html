@@ -2727,7 +2727,7 @@ function woSetHTML(ex,ei,si){
   h+='</div>';
   if(!isW&&set.rest>0){
     h+='<div class="wo-rest-divider">Rest '+fmtMMSSVal(set.rest)+'</div>';
-    if(set.mobility)h+='<div class="wo-mob-line">&#9788; Mobility: '+esc(woMobName(set.mobility))+'</div>';
+    if(set.mobility&&!woRestMobOff())h+='<div class="wo-mob-line">&#9788; Mobility: '+esc(woMobName(set.mobility))+'</div>';
   }
   return h;
 }
