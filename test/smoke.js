@@ -1014,6 +1014,17 @@ var _edH=sandbox.document.getElementById('root').innerHTML;
 ok(/Mobility between sets/.test(_edH)&&/woToggleRestMob/.test(_edH),'the workout editor shows the global in-rest mobility toggle');
 sandbox.woEditing=false;sandbox.woSession=null;sandbox.woRestCtx=null;sandbox.localStorage.removeItem('wo_rest_mob_off');
 
+// ===== stretch session completion plays a chime (bugfix: silent after the final stretch) =====
+(function(){
+  ok(typeof sandbox.fanfare==='function','a completion-fanfare helper exists');
+  var _beeps=[],_orig=sandbox.playBeep;sandbox.playBeep=function(f){_beeps.push(f);};
+  sandbox.stSet='floor';sandbox.stTotalStretches=3;sandbox.stStartMs=sandbox.Date.now()-60000;
+  var _threw=false;try{sandbox.showDone();}catch(e){_threw=true;}
+  ok(!_threw&&_beeps.length>=1,'showDone plays a completion chime when the final stretch finishes');
+  sandbox.playBeep=_orig;
+  sandbox.document.getElementById('stDone').style.display='none';
+})();
+
 // ===== re-seed prompt: Keep preserves logged sets, no stash =====
 sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.woEditing=false;
 var _wk=sandbox.woKeyForDow(3);
