@@ -1500,7 +1500,11 @@ function togglePause(){stPaused=!stPaused;document.getElementById('stPlayBtn').i
 function skipFwd(){if(stIdx<stTotalStretches-1){stIdx++;stTransition=false;stSwitchTrans=false;stSwitched=false;stPreStart=true;stSecs=5;updateTimerUI();announceAndStart();}else{clearInterval(stInterval);showDone();}}
 function skipBack(){stTransition=false;stSwitchTrans=false;stSwitched=false;if(stIdx>0)stIdx--;stPreStart=true;stSecs=5;updateTimerUI();announceAndStart();}
 function stopTimer(){clearInterval(stInterval);stInterval=null;clearInterval(window._stKeepAlive);window.speechSynthesis.cancel();releaseWakeLock();stopNoSleep();document.getElementById('stTimer').style.display='none';var _hh=document.querySelector('.hdr');if(_hh)_hh.style.display='';}
-function showDone(){clearInterval(window._stKeepAlive);fanfare();window.speechSynthesis.cancel();releaseWakeLock();stopNoSleep();document.getElementById('stTimer').style.display='none';document.getElementById('stDone').style.display='flex';var n=stTotalStretches;var word=stSet==='mobility'?('mobility drill'+(n!==1?'s':'')):('stretch'+(n!==1?'es':''));document.getElementById('stDoneSub').textContent=n+' '+word+' complete';var hl=document.getElementById('stDoneHealth');if(hl){var mins=Math.max(1,Math.round(((Date.now()-(stStartMs||Date.now()))/60000)));var pay={type:'workout',kind:stSet==='mobility'?'mobility':'flexibility',name:stSet==='mobility'?'Mobility':'Stretch',start:new Date(stStartMs||Date.now()).toISOString(),minutes:mins};hl.href=healthWriteURL(pay);hl.style.display='';}}
+function showDone(){clearInterval(window._stKeepAlive);fanfare();window.speechSynthesis.cancel();releaseWakeLock();stopNoSleep();
+  /* Completing a stretch session marks the Day-page "Stretch" floor unit done (like finishing a
+     workout sets state.lift), so the Day page's Stretch pill turns green on return. */
+  try{state.mob=1;save();}catch(e){}
+  document.getElementById('stTimer').style.display='none';document.getElementById('stDone').style.display='flex';var n=stTotalStretches;var word=stSet==='mobility'?('mobility drill'+(n!==1?'s':'')):('stretch'+(n!==1?'es':''));document.getElementById('stDoneSub').textContent=n+' '+word+' complete';var hl=document.getElementById('stDoneHealth');if(hl){var mins=Math.max(1,Math.round(((Date.now()-(stStartMs||Date.now()))/60000)));var pay={type:'workout',kind:stSet==='mobility'?'mobility':'flexibility',name:stSet==='mobility'?'Mobility':'Stretch',start:new Date(stStartMs||Date.now()).toISOString(),minutes:mins};hl.href=healthWriteURL(pay);hl.style.display='';}}
 function timerDone(){document.getElementById('stDone').style.display='none';var _hh=document.querySelector('.hdr');if(_hh)_hh.style.display='';}
 function stSwitch(set){stSet=set;stTimes=[];renderStretch();}
 function renderStretch(){
@@ -1630,7 +1634,7 @@ function floorCardHTML(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6),h='';
   h+='<div class="dsec"><div class="sec-lbl">Today’s Floor</div><div class="sec-card sec-btns">';
   h+=walksHTML(WALKS3);
   if(wknd)h+='<div class="floor-hint">2 walks for the win · a 3rd is bonus</div>';
-  if(!wknd)h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Stretch',state.mob>=1,"dayCheck('mob')")+moveBtnHTML(vd)+'</div>';
+  if(!wknd)h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Stretch',state.mob>=1,"setView('stretch')")+moveBtnHTML(vd)+'</div>';
   h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Calories',!!state.caltgt,"dayCheck('caltgt')")+floorBtn('Vitamins',!!state.vit,"toggleVit()")+'</div>';
   h+='</div></div>';
   return h;}
