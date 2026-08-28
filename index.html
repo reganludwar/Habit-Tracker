@@ -1917,7 +1917,7 @@ function refreshToday(){var now=new Date();now.setHours(0,0,0,0);if(now.getTime(
   weekOffset=0;var base=getDateForDow(viewDow);weekOffset=Math.round((viewed.getTime()-base.getTime())/6048e5);/* keep the same absolute date in view across the rollover */
   render();}
 setInterval(function(){refreshToday();if(window._swMaybeReload)window._swMaybeReload();},60000);
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer)woRestTick();refreshToday();if(window._swMaybeReload)window._swMaybeReload();}});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer){var _c=getCtx();if(_c&&_c.state==='suspended')_c.resume();woRestTick();}refreshToday();if(window._swMaybeReload)window._swMaybeReload();}});
 /* ── DATA BACKUP ──────────────────────────────────────── */
 function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k==='tight_areas'||k==='urgeEvents'||k.indexOf('test_active_')===0);}
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
@@ -2902,10 +2902,25 @@ function woSaveNotes(v){if(woSession){woSession.notes=v;woSave();}}
 function woFinish(){if(!woSession)return;var hadPR=woSessionPRs().length>0;woSession.finished=true;woSession.elapsed=Math.round((Date.now()-(woSession.started||Date.now()))/1000);woSave();state['lift']=true;save();renderWorkout();try{if(hadPR)woFanfare();else beep();}catch(e){}}
 /* rest timer */
 var woRestRemain=0,woRestEndAt=0,woRestTimer=null,woRestCtx=null,woRestExName='',woMobCb=null;
-var woRestDur=0,woRestBase=0,woRestMin=false;
+var woRestDur=0,woRestBase=0,woRestMin=false,_woRestBeepSrc=null,_woRestBeepPlayed=false;
+/* The end-of-rest tone is pre-scheduled on the AudioContext's hardware clock (not the JS timer),
+   so it fires precisely even if the JS interval is throttled (screen dim) and has the best chance
+   of ringing while the app is backgrounded (the silent keep-alive loop holds the audio session).
+   The JS tick still runs the countdown and provides a catch-up beep if the scheduled one didn't fire. */
+function woClearEndBeep(){try{if(_woRestBeepSrc){_woRestBeepSrc.onended=null;_woRestBeepSrc.stop();_woRestBeepSrc.disconnect();}}catch(e){}_woRestBeepSrc=null;}
+function woScheduleEndBeep(sec){var ctx=getCtx();if(!ctx)return;_woRestBeepPlayed=false;function sched(){try{woClearEndBeep();var sr=ctx.sampleRate,dur=0.6,freq=880,n=Math.floor(sr*dur),buf=ctx.createBuffer(1,n,sr),d=buf.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.sin(2*Math.PI*freq*(i/sr))*(1-i/n);var src=ctx.createBufferSource();src.buffer=buf;src.connect(ctx.destination);src.onended=function(){_woRestBeepPlayed=true;};src.start(ctx.currentTime+Math.max(0.03,sec));_woRestBeepSrc=src;}catch(e){}}if(ctx.state==='suspended')ctx.resume().then(sched);else sched();}
 /* deadline-based: compute remaining from wall clock each tick so iOS suspending the
    interval (screen lock) can't make the rest under-count when the app resumes. */
-function woRestTick(){var rem=Math.ceil((woRestEndAt-Date.now())/1000);if(rem<0)rem=0;if(rem===woRestRemain)return;woRestRemain=rem;if(rem<=0){woRestPaint();beep();woRestEnd();return;}if(rem<=5)beepTick();woRestPaint();}
+function woRestTick(){var rem=Math.ceil((woRestEndAt-Date.now())/1000);if(rem<0)rem=0;if(rem===woRestRemain)return;var prev=woRestRemain;woRestRemain=rem;
+  if(rem<=0){woRestPaint();
+    /* If we only just crossed zero (foreground countdown), the scheduled tone is ringing now — let it.
+       If we jumped here from a big value, the interval was frozen (backgrounded); that scheduled tone is
+       stale, so drop it and ring a catch-up. Either way, guarantee exactly one tone via the 700ms guard. */
+    if(prev>3)woClearEndBeep();
+    woRestEnd(true);
+    setTimeout(function(){if(!_woRestBeepPlayed){_woRestBeepPlayed=true;woClearEndBeep();beep();}},700);
+    return;}
+  if(rem<=5)beepTick();woRestPaint();}
 function woRestPaint(){var v=fmtMMSSVal(Math.max(0,woRestRemain)),end=woRestRemain<=10;var el=document.getElementById('woRestCount');if(el){el.textContent=v;el.className='wo-rest-count'+(end?' ending':'');}var mt=document.getElementById('woRestMiniTime');if(mt){mt.textContent=v;mt.className='wo-rest-mini-time'+(end?' ending':'');}}
 /* Global setting (all workouts): show mobility drills during rest between sets, or just the timer. */
 function woRestMobOff(){try{return localStorage.getItem('wo_rest_mob_off')==='1';}catch(e){return false;}}
@@ -2932,9 +2947,10 @@ function woStartRest(sec,exName,nextLbl,mobId,ei,si){
   window._woKeepAlive=setInterval(function(){var c=getCtx();if(c&&c.state==='suspended')c.resume();if(!_wakeLock||_wakeLock.released)acquireWakeLock();},3000);
   if(woRestTimer)clearInterval(woRestTimer);
   woRestEndAt=Date.now()+sec*1000;woRestRemain=sec;
+  woScheduleEndBeep(sec);
   woRestTimer=setInterval(woRestTick,250);
 }
-function woRestAdd(d){woRestEndAt=Math.max(Date.now()+1000,woRestEndAt+d*1000);woRestRemain=Math.max(1,Math.round((woRestEndAt-Date.now())/1000));woRestDur=Math.max(0,woRestDur+d);woRestPaint();woRestUpdSave();}
+function woRestAdd(d){woRestEndAt=Math.max(Date.now()+1000,woRestEndAt+d*1000);woRestRemain=Math.max(1,Math.round((woRestEndAt-Date.now())/1000));woRestDur=Math.max(0,woRestDur+d);woScheduleEndBeep((woRestEndAt-Date.now())/1000);woRestPaint();woRestUpdSave();}
 /* the +30/-30 buttons retune the live countdown AND the running target duration; if it now
    differs from what the template seeded, offer to persist it to warmRest/workRest. */
 function woRestUpdSave(){var b=document.getElementById('woRestSave');if(!b)return;if(woRestCtx&&woRestDur!==woRestBase){b.style.display='';b.className='wo-rest-save';b.textContent='Save rest ('+fmtMMSSVal(woRestDur)+') to template';}else b.style.display='none';}
@@ -2943,7 +2959,9 @@ function woRestSaveTmpl(){if(!woRestCtx||!woSession)return;var ex=woSession.exer
    the time and dings at zero); expand re-opens the full timer. */
 function woRestMinimize(){woRestMin=true;document.getElementById('woRest').style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';var ml=document.getElementById('woRestMiniLbl');if(ml)ml.textContent=document.getElementById('woRestNext').textContent||woRestExName||'Rest';var mini=document.getElementById('woRestMini');if(mini)mini.style.display='flex';woRestPaint();}
 function woRestExpand(){woRestMin=false;var mini=document.getElementById('woRestMini');if(mini)mini.style.display='none';document.getElementById('woRest').style.display='flex';var hh=document.querySelector('.hdr');if(hh)hh.style.display='none';woRestPaintMob();woRestPaint();}
-function woRestEnd(){if(woRestTimer){clearInterval(woRestTimer);woRestTimer=null;}if(window._woKeepAlive){clearInterval(window._woKeepAlive);window._woKeepAlive=null;}woRestMin=false;document.getElementById('woRest').style.display='none';var mini=document.getElementById('woRestMini');if(mini)mini.style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();stopNoSleep();}
+/* natural=true means the countdown reached zero (let the pre-scheduled end tone ring); a manual
+   Skip/✓ passes nothing, so cancel the pending tone. */
+function woRestEnd(natural){if(!natural)woClearEndBeep();if(woRestTimer){clearInterval(woRestTimer);woRestTimer=null;}if(window._woKeepAlive){clearInterval(window._woKeepAlive);window._woKeepAlive=null;}woRestMin=false;document.getElementById('woRest').style.display='none';var mini=document.getElementById('woRestMini');if(mini)mini.style.display='none';var hh=document.querySelector('.hdr');if(hh)hh.style.display='';releaseWakeLock();stopNoSleep();}
 function woRestSwap(){if(!woRestCtx)return;woMobCb=function(id){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];st.mobility=id;woSave();woRestPaintMob();};woOpenMobSheet('Swap mobility');}
 function woRestSkipMob(){if(woRestCtx){woSession.exercises[woRestCtx.ei].sets[woRestCtx.si].mobility=null;woSave();}woRestPaintMob();}
 function woCatalogList(){var out=[],i;for(i=0;i<MOB_BASE.length;i++)out.push({id:'m'+i,name:MOB_BASE[i].name,note:MOB_BASE[i].note,sec:MOB_BASE[i].sec,area:MOB_BASE[i].area});var cm=loadCustomMobility();for(i=0;i<cm.length;i++)out.push({id:cm[i].id,name:cm[i].name,note:cm[i].note||'',sec:cm[i].sec,area:'Custom'});return out;}

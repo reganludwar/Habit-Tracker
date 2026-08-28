@@ -1025,6 +1025,24 @@ sandbox.woEditing=false;sandbox.woSession=null;sandbox.woRestCtx=null;sandbox.lo
   sandbox.document.getElementById('stDone').style.display='none';
 })();
 
+// ===== workout rest tone: pre-scheduled on the audio clock, cancel on manual skip =====
+(function(){
+  sandbox.woRestTimer=null;sandbox.woRestEndAt=0;sandbox._woRestBeepSrc=null;
+  sandbox.woScheduleEndBeep(120);
+  ok(sandbox._woRestBeepSrc!==null,'woScheduleEndBeep queues the end tone on the audio clock');
+  sandbox.woRestEnd(false);
+  ok(sandbox._woRestBeepSrc===null,'a manual Skip cancels the pending end tone');
+  sandbox.woScheduleEndBeep(1);
+  sandbox.woRestEnd(true);
+  ok(sandbox._woRestBeepSrc!==null,'a natural end leaves the pre-scheduled tone to ring');
+  // the tick ends the rest cleanly once the deadline passes (deadline-based, survives a frozen interval)
+  sandbox.woRestTimer=sandbox.setInterval(function(){},9999);
+  sandbox.woRestEndAt=sandbox.Date.now()-1000;sandbox.woRestRemain=6;
+  var _tt=false;try{sandbox.woRestTick();}catch(e){_tt=true;}
+  ok(!_tt&&sandbox.woRestTimer===null,'the rest tick ends the rest when the deadline has passed');
+  sandbox.woClearEndBeep();sandbox.woRestEndAt=0;sandbox.woRestRemain=0;
+})();
+
 // ===== re-seed prompt: Keep preserves logged sets, no stash =====
 sandbox.viewDow=3;sandbox.weekOffset=0;sandbox.woEditing=false;
 var _wk=sandbox.woKeyForDow(3);
