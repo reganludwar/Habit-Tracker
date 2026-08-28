@@ -1907,7 +1907,12 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bSun),'on a weekend cardio is a bonus and lights the Bonus Cardio pill');
   // tight-areas entry point moved to the Stretch tab (not orphaned when the day row went away)
   sandbox.viewMode='stretch';sandbox.stSet='floor';sandbox.renderStretch();
-  ok(/mob_tightchip/.test(sandbox.document.getElementById('root').innerHTML),'the Stretch tab hosts the tight-areas chip');
+  var _sth=sandbox.document.getElementById('root').innerHTML;
+  ok(/mob_tightchip/.test(_sth),'the Stretch tab hosts the tight-areas chip');
+  // decluttered stretch tab: Start pinned to the top, no mode description, tight chip after the list
+  ok(/st-start-wrap[\s\S]*Start Session/.test(_sth)&&_sth.indexOf('Start Session')<_sth.indexOf('st-list'),'the Start button sits at the top, above the stretch list');
+  ok(!/st-mode-desc/.test(_sth)&&!/ease in, hold/.test(_sth),'the mode description line is gone');
+  ok(_sth.indexOf('mob_tightchip')>_sth.indexOf('st-list'),'the tight-areas chip moved below the stretch list');
   sandbox.state=_s;for(var gk in _gv)sandbox[gk]=_gv[gk];
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
