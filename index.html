@@ -1241,10 +1241,11 @@ var CARDIO_SHEET=['c_incl','c_run','c_hiit'];
    `vig:true` = a hard, VO2max-driving burst. `muscles` feed the same overlap logic
    the legacy snack recommender uses (WOM/olap) so we never pile onto a just-trained group. */
 var SNACK_EX=[
-  {id:'sx_tread',lbl:'Treadmill Burst',     sub:'Hard run, 1-5 min',        kind:'cardio',  vig:true, unit:'min', muscles:[],how:'Short and genuinely hard — skip the long warmup. ~30-45s easy to ramp, then RPE 8-9 (breathing hard, can barely talk). Pick one: 3-4 × 30s hard / 30-60s walk, OR a 2-3 min tempo push. Raise incline first, then speed.',seed:{min:3,spd:6,incl:6}},
-  {id:'sx_incl', lbl:'Fast Incline Walk',   sub:'Steep + brisk',            kind:'cardio',  vig:false,unit:'min', muscles:[],how:'Set a steep incline (8-15%) and walk fast enough that talking gets hard. 3-10 min. Best when your legs are cooked but you still want cardio.',seed:{min:8,spd:3,incl:12}},
-  {id:'sx_block',lbl:'Around-the-Block Run',sub:'Outside, all-out',         kind:'cardio',  vig:true, unit:'min', muscles:[],how:'Out the door and run your block near-max: 20-40s hard efforts with easy walks between, ~3-5 min total. Should feel like 8-9 out of 10.',seed:{min:4}},
-  {id:'sx_walk', lbl:'Walk',                sub:'Dog walk / easy',          kind:'cardio',  vig:false,unit:'min', light:true, muscles:[]},
+  /* Cardio snacks mirror the cardio logger's three sessions (Zone 2 incline walk, outdoor run,
+     Zone 5 HIIT) so there's one cardio vocabulary across the app. */
+  {id:'sx_incl', lbl:'Incline Walk',        sub:'Treadmill · Zone 2',       kind:'cardio',  vig:false,unit:'min', muscles:[],how:'Steep incline (12-15%) at a brisk Zone-2 pace — breathing up but still able to talk. 10-20 min. Your aerobic base.',seed:{min:15,spd:3.2,incl:15}},
+  {id:'sx_block',lbl:'Run',                 sub:'Outdoor',                  kind:'cardio',  vig:false,unit:'min', muscles:[],how:'Easy-to-moderate outdoor run, Zone 2-3. Keep it relaxed. 10-30 min.',seed:{min:15}},
+  {id:'sx_tread',lbl:'HIIT',                sub:'Zone 5 · intervals',       kind:'cardio',  vig:true, unit:'min', muscles:[],how:'Zone 5 VO2max session. Warm up 10 min, then 6 × 1 min HARD (RPE 9) / 90s easy; progress to 4 × 4 min. Raise incline first, then speed. Cool down 5 min.',seed:{min:20}},
   {id:'sx_lift', lbl:'Workout',             sub:'Your lift session',        kind:'workout', vig:false,unit:'',   workout:true, muscles:[]},
   {id:'sx_squat',lbl:'Bodyweight Squats',   sub:'Feed-the-dog reps',        kind:'strength',vig:false,unit:'reps',muscles:['quads','glutes','hamstrings']},
   {id:'sx_push', lbl:'Pushups',             sub:'',                         kind:'strength',vig:false,unit:'reps',muscles:['chest','shoulders','triceps']},

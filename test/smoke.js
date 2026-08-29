@@ -1988,7 +1988,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.weekOffset=0;
 
   // -- catalog + goals (meal concept removed) --
-  ok(sandbox.SNACK_EX.length>=6&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength'&&sandbox.snackExById('sx_walk').light===true,'SNACK_EX keeps vigorous cardio, a walk, and strength options');
+  ok(sandbox.SNACK_EX.length>=6&&sandbox.snackExById('sx_incl').lbl==='Incline Walk'&&sandbox.snackExById('sx_block').lbl==='Run'&&sandbox.snackExById('sx_tread').lbl==='HIIT'&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength'&&sandbox.snackExById('sx_walk')===null,'cardio snacks mirror the cardio workouts (Incline Walk / Run / HIIT); strength snacks stay');
   ok(sandbox.SNACK_GOALS.vigWeek.target===6&&sandbox.SNACK_GOALS.hardSnack.target===3&&sandbox.SNACK_GOALS.hardWeek===18&&sandbox.SNACK_GOALS.mealsPerDay===undefined&&typeof sandbox.MEALS==='undefined','goals keep vigorous + hard-minute targets; the meal model is gone');
 
   // -- logging: catalog snacks append to snkLog (no meals) --
@@ -1998,8 +1998,6 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].ex==='sx_squat'&&sandbox.state.snkLog[0].amt===25,'a strength snack logs a reps entry');
   sandbox.snkOpenAmt('sx_push','');sandbox.snkLogAmt(30);
   ok(sandbox.state.snkLog.length===2,'each snack appends (no replacement)');
-  sandbox.snkOpenAmt('sx_walk','');
-  ok(sandbox.state.snkLog.length===3&&sandbox.state.snkLog[2].ex==='sx_walk','a walk one-taps in with no amount sheet');
   sandbox.snkOpenAmt('sx_lift','');
   var wEnt=sandbox.state.snkLog[sandbox.state.snkLog.length-1];
   ok(wEnt.ex==='sx_lift'&&wEnt.wtag===sandbox.S[sandbox.viewDow].tag,'a workout one-taps in and records the day\'s lift tag');
