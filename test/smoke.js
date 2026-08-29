@@ -1520,6 +1520,14 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();sandbox.state={};sandbox.state['c_mill']=true;sandbox.state['cdt_c_mill']={min:20,incl:0};
   sandbox.toggleCardioOpt('c_mill');sandbox.toggleCardioOpt('c_mill');
   ok(sandbox.state['cdt_c_mill'].incl===0,'an explicit 0% incline is kept, not replaced by the default');
+  // trimmed logger: only the three real cardio sessions are offered, relabeled by zone
+  sandbox.state={};sandbox.cardioDetOpen='';sandbox.renderCardioSheet();
+  var _csheet=sandbox.document.getElementById('shtBody').innerHTML;
+  ok(/Incline Walk/.test(_csheet)&&/Zone 2/.test(_csheet)&&/HIIT/.test(_csheet)&&/Zone 5/.test(_csheet)&&/Outdoor/.test(_csheet),'the cardio logger shows Incline Walk (Zone 2), Run (Outdoor), and HIIT (Zone 5)');
+  ok(!/Bike/.test(_csheet)&&!/Sprints/.test(_csheet)&&!/Treadmill<\/div>/.test(_csheet),'the retired Bike / Sprints / treadmill-run options are no longer shown');
+  ok(sandbox.CARDIO_SHEET.length===3,'the logger set has exactly three types');
+  // retired types still count for old logs (so history is preserved), and incline is still treadmill
+  ok(sandbox.cardioDoneOn({c_bike:true})===true&&sandbox.cardioIsTreadmill('c_incl')===true,'retired types still count and Incline Walk is still treated as a treadmill type');
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
@@ -1980,7 +1988,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.weekOffset=0;
 
   // -- catalog + goals (meal concept removed) --
-  ok(sandbox.SNACK_EX.length>=6&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength'&&sandbox.snackExById('sx_walk').light===true,'SNACK_EX keeps vigorous cardio, a walk, and strength options');
+  ok(sandbox.SNACK_EX.length>=6&&sandbox.snackExById('sx_incl').lbl==='Incline Walk'&&sandbox.snackExById('sx_block').lbl==='Run'&&sandbox.snackExById('sx_tread').lbl==='HIIT'&&sandbox.snackExById('sx_tread').vig===true&&sandbox.snackExById('sx_squat').kind==='strength'&&sandbox.snackExById('sx_walk')===null,'cardio snacks mirror the cardio workouts (Incline Walk / Run / HIIT); strength snacks stay');
   ok(sandbox.SNACK_GOALS.vigWeek.target===6&&sandbox.SNACK_GOALS.hardSnack.target===3&&sandbox.SNACK_GOALS.hardWeek===18&&sandbox.SNACK_GOALS.mealsPerDay===undefined&&typeof sandbox.MEALS==='undefined','goals keep vigorous + hard-minute targets; the meal model is gone');
 
   // -- logging: catalog snacks append to snkLog (no meals) --
@@ -1990,8 +1998,6 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(sandbox.state.snkLog.length===1&&sandbox.state.snkLog[0].ex==='sx_squat'&&sandbox.state.snkLog[0].amt===25,'a strength snack logs a reps entry');
   sandbox.snkOpenAmt('sx_push','');sandbox.snkLogAmt(30);
   ok(sandbox.state.snkLog.length===2,'each snack appends (no replacement)');
-  sandbox.snkOpenAmt('sx_walk','');
-  ok(sandbox.state.snkLog.length===3&&sandbox.state.snkLog[2].ex==='sx_walk','a walk one-taps in with no amount sheet');
   sandbox.snkOpenAmt('sx_lift','');
   var wEnt=sandbox.state.snkLog[sandbox.state.snkLog.length-1];
   ok(wEnt.ex==='sx_lift'&&wEnt.wtag===sandbox.S[sandbox.viewDow].tag,'a workout one-taps in and records the day\'s lift tag');
