@@ -1943,6 +1943,29 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== per-day lock: freeze the Day-page pills after a day is done =====
+(function(){
+  var _snap=new Map(store);var _gv={state:sandbox.state,viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,viewMode:sandbox.viewMode};
+  sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.viewMode='day';sandbox.state={};
+  sandbox.toggleDayLock();
+  ok(sandbox.dayLocked()===true&&sandbox.state.locked===true,'toggleDayLock locks the day (per-day flag)');
+  // every Day-page edit is a no-op while locked
+  sandbox.dayCheck('caltgt');sandbox.toggleVit();sandbox.standCycle();sandbox.toggleWalk('w_dog');sandbox.dayCheck('mantra');
+  ok(!sandbox.state.caltgt&&!sandbox.state.vit&&!sandbox.state.w_dog&&!sandbox.state.mantra&&sandbox.standCount()===0,'edits are ignored while the day is locked');
+  // a locked day renders the frozen wrapper + an unlock button, and hides Reset Day
+  sandbox.renderDay();
+  var lh=sandbox.document.getElementById('root').innerHTML;
+  ok(/day-lockable locked/.test(lh)&&/toggleDayLock\(\)/.test(lh)&&/tap to edit/.test(lh),'a locked day renders the frozen wrapper and an unlock button');
+  ok(sandbox.document.getElementById('resetWrap').style.display==='none','Reset Day is hidden while the day is locked');
+  // unlock re-enables editing
+  sandbox.toggleDayLock();
+  ok(sandbox.dayLocked()===false,'toggleDayLock unlocks the day');
+  sandbox.dayCheck('caltgt');
+  ok(sandbox.state.caltgt===true,'edits work again once unlocked');
+  for(var k in _gv)sandbox[k]=_gv[k];
+  store.clear();_snap.forEach(function(v,k){store.set(k,v);});
+})();
+
 // ===== Boredom-binge urge interrupt: logging schema, stats, context, no-moralizing prompt =====
 (function(){
   var _snap=new Map(store);store.clear();

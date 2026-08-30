@@ -802,6 +802,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .hl-note{font-size:0.75rem;color:var(--muted);background:rgba(212,168,67,.07);border:1px solid #6B5420;border-radius:8px;padding:10px 12px;margin-top:14px;line-height:1.5}
 .hl-note b{color:var(--accent)}
 .reset-wrap{margin:28px 16px 0;display:flex;justify-content:center}
+/* Per-day lock: frozen pills can't be tapped; the lock button stays live (it's outside the wrapper) */
+.day-lockable.locked{pointer-events:none;opacity:.92}
+.lock-wrap{margin:18px 16px 0;display:flex;justify-content:center}
+.lock-btn{font-size:0.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);background:var(--card);padding:11px 22px;border-radius:14px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.lock-btn.on{color:var(--accent);border-color:var(--accent);background:rgba(156,140,255,.10)}
+.lock-btn:active{opacity:.7}
 .reset-btn{font-size:0.6875rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   background:none;border:1px solid var(--border);padding:11px 22px;cursor:pointer}
 .data-wrap{margin:12px 16px 0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
@@ -1549,13 +1555,13 @@ function tightChipLabel(){var n=getTightAreas().length;return n?('<span class="m
 function refreshTightChip(){var el=document.getElementById('mob_tightchip');if(el){var n=getTightAreas().length;el.className='mob-tight'+(n?' on':'');el.innerHTML=tightChipLabel();}}
 function openTightSheet(){sheetMode='';document.getElementById('shtTitle').textContent='Tight areas';document.getElementById('shtSub').textContent='Tap the spots that feel chronically tight';var sel=getTightAreas(),h='<div style="padding:4px 0">';for(var i=0;i<TIGHT_AREAS.length;i++){var a=TIGHT_AREAS[i],on=sel.indexOf(a.key)>=0;h+='<div class="co-row'+(on?' sel':'')+'" id="tgr_'+a.key+'" onclick="toggleTightRow(\''+a.key+'\')"><div class="co-chk'+(on?' sel':'')+'" id="tg_'+a.key+'"><span class="co-chk-mark">&#10003;</span></div><div class="co-body"><div class="co-lbl">'+a.lbl+'</div></div></div>';}h+='<div style="padding:14px 20px;font-size:0.75rem;color:var(--muted);line-height:1.5">These stay flagged until you clear them. Your Stretch tab gives tight areas longer holds and suggests targeted drills.</div></div>';document.getElementById('shtBody').innerHTML=h;document.getElementById('overlay').classList.add('show');document.getElementById('sheet').classList.add('show');}
 function toggleTightRow(k){toggleTightArea(k);var on=isTight(k);var c=document.getElementById('tg_'+k);if(c)c.className='co-chk'+(on?' sel':'');var r=document.getElementById('tgr_'+k);if(r)r.className='co-row'+(on?' sel':'');refreshTightChip();stSuggAI=[];stSuggState={};}
-function toggleVit(){state['vit']=!state['vit'];save();renderDay();}
+function toggleVit(){if(dayLocked())return;state['vit']=!state['vit'];save();renderDay();}
 function doToggleWalk(el){toggleWalk(el.getAttribute('data-wid'));}
 function walksHTML(walks){var cols=Math.min(walks.length,3),multi=walks.length>1,h='<div class="cgrid c'+cols+'">';for(var i=0;i<walks.length;i++){var w=walks[i];if(w.blank){h+='<div class="gcell blank"><div class="gcell-main">--</div></div>';continue;}var cls=state[w.id]?' done-green':'';var lbl=multi?w.lbl.replace(/ Walk$/,''):w.lbl;h+='<div class="gcell'+cls+'" id="gc_'+w.id+'" data-wid="'+w.id+'" onclick="doToggleWalk(this)"><div class="gcell-main">'+lbl+'</div></div>';}return h+'</div>';}
 function cardioRowHTML(){var logged=[],dets=[],nudges=[],all=null;for(var i=0;i<CARDIO.length;i++){if(state[CARDIO[i].id]){logged.push(CARDIO[i].lbl);var ds=cardioDetSummary(CARDIO[i].id);if(ds)dets.push(esc(CARDIO[i].lbl+(CARDIO[i].sub?' ('+CARDIO[i].sub+')':''))+' — '+esc(ds));if(all===null)all=cardioAllSessions();var nu=cardioProgressNudge(CARDIO[i].id,all);if(nu)nudges.push(esc(nu.msg)+' · '+esc(nu.detail));}}var summary=logged.length>0?logged.join(' + '):'Tap to log',has=logged.length>0;var detHTML=dets.length?'<div class="cardio-det">'+dets.map(function(x){return '<div>'+x+'</div>';}).join('')+'</div>':'';detHTML+=nudges.length?'<div class="cardio-nudge">'+nudges.map(function(x){return '<div>&#9650; '+x+'</div>';}).join('')+'</div>':'';return'<div class="item" style="border-bottom:none" onclick="openCardioSheet()"><div class="chk" style="border-color:'+(has?'var(--blue)':'var(--muted)')+(has?';background:var(--blue)':'')+'">'+'<span class="chk-mark" style="display:'+(has?'block':'none')+'">&#10003;</span></div><div class="ibody"><div class="ilbl">Cardio</div><div class="imeta" id="cardio_sum">'+summary+'</div>'+detHTML+'</div><span class="arrow">&#9654;</span></div>';}
 /* Standing is a single tap-to-count button now (0→4→0), replacing the old three toggles. */
 function standCount(ds){ds=ds||state;if(typeof ds.standN==='number')return ds.standN;return (ds.s1?1:0)+(ds.s2?1:0)+(ds.s3?1:0);}
-function standCycle(){var n=standCount()+1;if(n>4)n=0;state.standN=n;save();renderDay();}
+function standCycle(){if(dayLocked())return;var n=standCount()+1;if(n>4)n=0;state.standN=n;save();renderDay();}
 function snacksHTML(){var h='';for(var i=0;i<SNACKS.length;i++){var s=SNACKS[i],v=state[s.id]||0,cls=v===0?' zero':'';var rec=snackRec(s.id),badge='';if(rec==='great')badge='<span class="snack-rec great">GO</span>';else if(rec==='light')badge='<span class="snack-rec light">EASY</span>';h+='<div class="snack-row" onclick="openSnackSheet(\''+s.id+'\',\''+s.lbl+'\')"><span class="snack-name">'+s.lbl+'</span>'+badge+'<span class="snack-total'+cls+'" id="snt_'+s.id+'">'+(v>0?v:'--')+'</span><span class="snack-chev">&#9654;</span></div>';}return h;}
 function renderPills(){var h='';for(var i=0;i<7;i++){var c=i===viewDow?' active-pill':((weekOffset===0&&i===todayDow)?' today-pill':'');h+='<div class="pill'+c+'" onclick="jumpToDay('+i+')">'+DAYS_S[i]+'</div>';}document.getElementById('dayPills').innerHTML=h;}
 /* ── FAT-LOSS DAY CARD — the weight-loss focus at the top of the Day page.
@@ -1609,7 +1615,11 @@ function fatLossHTML(vd){
    on the Goals tab. */
 var MANTRA='I never skip the dog. Today I don’t skip me.';
 var CAL_TARGET=2200;
-function dayCheck(key){state[key]=!state[key];save();renderDay();}
+/* Per-day lock: freezes the Day-page pills so a finished day can't be changed by an accidental tap.
+   Stored per day in state.locked; unlock to edit again. */
+function dayLocked(){return !!state.locked;}
+function toggleDayLock(){state.locked=!state.locked;save();renderDay();}
+function dayCheck(key){if(dayLocked())return;state[key]=!state[key];save();renderDay();}
 function cardioDoneOn(ds){ds=ds||state;for(var i=0;i<CARDIO.length;i++)if(ds[CARDIO[i].id])return true;return false;}
 function cardioDoneToday(){return cardioDoneOn(state);}
 /* The day's floor as a flat list of units (walks count individually) for the ring, day-type aware. */
@@ -1667,13 +1677,18 @@ function renderGoals(){document.getElementById('dName');var vd=new Date();vd.set
   h+='<div class="dsec"><div class="sec-lbl">The Portfolio</div><div class="sec-card"><div class="gsoon">Body is live. Next, as we build them: <b>Work &amp; focus</b> · <b>Trading</b> · <b>Formal activity</b> · <b>Financial review</b>.</div></div></div>';
   document.getElementById('root').innerHTML=h;}
 function renderDay(){var sc=S[viewDow],it=(weekOffset===0&&viewDow===todayDow),vd=getDateForDow(viewDow);document.getElementById('dEyebrow').textContent=it?'TODAY':(weekOffset!==0?relativeWeekLabel(weekOffset):'');document.getElementById('dName').textContent=DAYS[viewDow];document.getElementById('dDate').textContent=MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();renderPills();
+  var locked=dayLocked();
   var h='';
   if(sc.note)h+='<div class="note"><p>'+sc.note+'</p></div>';
+  h+='<div class="day-lockable'+(locked?' locked':'')+'">';
   h+=dayHeroHTML(vd);
   h+=floorCardHTML(vd);
   h+=bonusCardHTML(vd);
+  h+='</div>';
+  h+='<div class="lock-wrap"><button class="lock-btn'+(locked?' on':'')+'" onclick="toggleDayLock()">'+(locked?'&#128274; Locked &middot; tap to edit':'&#128274; Lock day')+'</button></div>';
   h+=dayFooterHTML(it);
-  document.getElementById('root').innerHTML=h;}
+  document.getElementById('root').innerHTML=h;
+  var rw=document.getElementById('resetWrap');if(rw)rw.style.display=locked?'none':'';}
 /* ── WEEKLY DIGEST ─────────────────────────────────────
    A proactive "last week in review" recap shown on the home view early in a new week (through
    Wednesday), summarizing the completed prior week from data already logged — workouts vs floor,
@@ -1839,7 +1854,7 @@ function render(){if(viewMode==='week')renderWeek();else if(viewMode==='snacks')
 function toggleItem(id){state[id]=!state[id];save();var it=document.getElementById('it_'+id);if(it)it.classList.toggle('done',!!state[id]);updateProgress();}
 function toggleExp(id){state['x_'+id]=!state['x_'+id];save();var pn=document.getElementById('pn_'+id),ar=document.getElementById('ar_'+id);if(pn)pn.classList.toggle('open',!!state['x_'+id]);if(ar)ar.classList.toggle('open',!!state['x_'+id]);}
 function toggleRow(key){state[key]=!state[key];save();var el=document.getElementById('rr_'+key);if(el)el.classList.toggle('done',!!state[key]);}
-function toggleWalk(id){state[id]=!state[id];save();if(viewMode==='day')renderDay();else{var el=document.getElementById('gc_'+id);if(el)el.className='gcell'+(state[id]?' done-green':'');updateProgress();}}
+function toggleWalk(id){if(dayLocked())return;state[id]=!state[id];save();if(viewMode==='day')renderDay();else{var el=document.getElementById('gc_'+id);if(el)el.className='gcell'+(state[id]?' done-green':'');updateProgress();}}
 function updateProgress(){var sc=S[viewDow],total=0,done=0;for(var i=0;i<sc.sections.length;i++){var sec=sc.sections[i];if(sec.type==='items'){for(var j=0;j<sec.items.length;j++){total++;if(state[sec.items[j].id])done++;}}else if(sec.type==='stand'){total+=3;for(var n=1;n<=3;n++)if(state['s'+n])done++;}else if(sec.type==='walks'){for(var w=0;w<sec.walks.length;w++)if(!sec.walks[w].blank){total++;if(state[sec.walks[w].id])done++;}}}var p=total>0?Math.round(done/total*100):0;var _pbf=document.getElementById('pbFill');_pbf.style.background='';_pbf.style.width=p+'%';document.getElementById('pbTxt').textContent=done+' / '+total+' complete';}
 var sheetMode='',activeSnackId='';
 var cardioDetOpen='';
@@ -1915,7 +1930,7 @@ function closeSheet(){document.getElementById('overlay').classList.remove('show'
      CARDIO section in place; the v2 Day page has none, so a full re-render is the correct refresh.) */
   if(sheetMode==='cardio')render();sheetMode='';activeSnackId='';cardioDetOpen='';}
 var resetOk=false;
-function doReset(){var btn=document.getElementById('resetBtn');if(resetOk){state={};save();resetOk=false;render();btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}else{resetOk=true;btn.textContent='Tap again to confirm';btn.style.color='#E06060';btn.style.borderColor='#E06060';setTimeout(function(){if(resetOk){resetOk=false;btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}},3000);}}
+function doReset(){if(dayLocked())return;var btn=document.getElementById('resetBtn');if(resetOk){state={};save();resetOk=false;render();btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}else{resetOk=true;btn.textContent='Tap again to confirm';btn.style.color='#E06060';btn.style.borderColor='#E06060';setTimeout(function(){if(resetOk){resetOk=false;btn.textContent='Reset Day';btn.style.color='';btn.style.borderColor='';}},3000);}}
 function refreshToday(){var now=new Date();now.setHours(0,0,0,0);if(now.getTime()===_today.getTime())return;
   var viewed=getDateForDow(viewDow);/* absolute date on screen, under the OLD anchor */
   _today=now;todayDow=now.getDay();
