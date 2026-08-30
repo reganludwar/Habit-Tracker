@@ -1966,6 +1966,23 @@ sandbox.closeSheet&&sandbox.closeSheet();
   store.clear();_snap.forEach(function(v,k){store.set(k,v);});
 })();
 
+// ===== Day-page swipe navigation =====
+(function(){
+  var _gv={viewDow:sandbox.viewDow,weekOffset:sandbox.weekOffset,viewMode:sandbox.viewMode};
+  // the swipe decision: only a quick, clearly-horizontal flick counts
+  ok(sandbox.daySwipeDir(-90,10,300)===1,'a quick leftward swipe advances to the next day');
+  ok(sandbox.daySwipeDir(90,-8,300)===-1,'a quick rightward swipe goes to the previous day');
+  ok(sandbox.daySwipeDir(-90,120,300)===0,'a mostly-vertical drag is ignored (no fighting the scroll)');
+  ok(sandbox.daySwipeDir(-30,5,300)===0,'a short horizontal move is ignored');
+  ok(sandbox.daySwipeDir(-90,10,1200)===0,'a slow drag is ignored');
+  // navDay wraps across week boundaries
+  sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.viewDow=6;sandbox.navDay(1);
+  ok(sandbox.viewDow===0&&sandbox.weekOffset===1,'swiping past Saturday wraps to Sunday of the next week');
+  sandbox.viewDow=0;sandbox.weekOffset=0;sandbox.navDay(-1);
+  ok(sandbox.viewDow===6&&sandbox.weekOffset===-1,'swiping before Sunday wraps to Saturday of the previous week');
+  for(var k in _gv)sandbox[k]=_gv[k];
+})();
+
 // ===== Boredom-binge urge interrupt: logging schema, stats, context, no-moralizing prompt =====
 (function(){
   var _snap=new Map(store);store.clear();

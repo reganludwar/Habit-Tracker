@@ -1938,6 +1938,12 @@ function refreshToday(){var now=new Date();now.setHours(0,0,0,0);if(now.getTime(
   render();}
 setInterval(function(){refreshToday();if(window._swMaybeReload)window._swMaybeReload();},60000);
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){if(stInterval)acquireWakeLock();if(woRestTimer){var _c=getCtx();if(_c&&_c.state==='suspended')_c.resume();woRestTick();}refreshToday();if(window._swMaybeReload)window._swMaybeReload();}});
+/* Swipe left/right across the Day page to move a day (wraps across weeks). Only a clearly horizontal,
+   quick flick counts — vertical scrolls and taps are ignored — so it never fights the page scroll. */
+function daySwipeDir(dx,dy,dt){if(dt>800)return 0;if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.8)return 0;return dx<0?1:-1;}
+var _daySwX=0,_daySwY=0,_daySwT=0,_daySwOn=false;
+document.addEventListener('touchstart',function(e){_daySwOn=false;if(viewMode!=='day'||sheetMode||!e.touches||e.touches.length!==1)return;var t=e.touches[0];_daySwX=t.clientX;_daySwY=t.clientY;_daySwT=Date.now();_daySwOn=true;},{passive:true});
+document.addEventListener('touchend',function(e){if(!_daySwOn)return;_daySwOn=false;if(viewMode!=='day'||sheetMode)return;var t=e.changedTouches&&e.changedTouches[0];if(!t)return;var d=daySwipeDir(t.clientX-_daySwX,t.clientY-_daySwY,Date.now()-_daySwT);if(d)navDay(d);},{passive:true});
 /* ── DATA BACKUP ──────────────────────────────────────── */
 function isBackupKey(k){return k&&(k.indexOf('tr_')===0||(k.indexOf('wo_')===0&&k!=='wo_trash')||k.indexOf('hl_')===0||k==='custom_stretches'||k==='custom_mobility'||k==='custom_tests'||k.indexOf('active_')===0||k==='stretch_times'||k==='test_log'||k==='profile_age'||k==='tight_areas'||k==='urgeEvents'||k.indexOf('test_active_')===0);}
 function collectBackup(){var data={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(isBackupKey(k))data[k]=localStorage.getItem(k);}return{app:'Training',version:1,exported:new Date().toISOString(),data:data};}
