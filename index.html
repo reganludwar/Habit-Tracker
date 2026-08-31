@@ -2376,6 +2376,10 @@ var WO_LADDER=[2.5,5,7.5,10,15,17.5,20,25,27.5,30,35,37.5,40,45,47.5,50,55,57.5,
 function woSnapIdx(v){var bi=0,bd=Infinity;for(var i=0;i<WO_LADDER.length;i++){var d=Math.abs(WO_LADDER[i]-v);if(d<bd){bd=d;bi=i;}}return bi;}
 function woSnap(v){return WO_LADDER[woSnapIdx(v)];}
 function woLadderStep(v,dir){var i=woSnapIdx(v)+dir;if(i<0)i=0;if(i>WO_LADDER.length-1)i=WO_LADDER.length-1;return WO_LADDER[i];}
+/* Warm-up weight: ~55% of the working set, but keeping the working weight's 2.5-lb "insert part"
+   (weight mod 5) so the jump from warm-up to working is always a clean multiple of 5 — you only
+   add/remove 5-lb plates and never touch the 2.5-lb inserts. e.g. 47.5 -> 27.5 (jump 20), 30 -> 15. */
+function woWarmWeight(w){if(!w||w<=0)return 0;var rem=w%10;var v=Math.round((w*0.55-rem)/10)*10+rem;while(v>=w)v-=10;if(v<rem)v=rem;if(v<=0)v=w;return v;}
 var WO_TEMPLATES={
  mon:{tag:'FULL BODY A',ex:[
    {name:'DB Bench Press',load:'pb',input:'wr',warmup:true,sets:2,target:[8,15],warmRest:60,workRest:150,seedW:45,seedR:10,restMob:['m2']},
@@ -2594,7 +2598,7 @@ function woSeed(dow,key){
     var sets=[];
     if(t.warmup){
       var warm={tag:'W',rest:t.warmRest||60,done:false};
-      if(t.load==='pb')warm.weight=woSnap(wW*0.55);
+      if(t.load==='pb')warm.weight=woWarmWeight(wW);
       if(t.input==='reps')warm.reps=Math.max(3,Math.round(wR*0.6));
       else if(t.input==='wr')warm.reps=wR;
       sets.push(warm);
