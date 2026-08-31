@@ -1017,6 +1017,16 @@ sandbox.woEditTmpl=sandbox.woNormTmpl(sandbox.woEffTemplate('mon'));sandbox.view
 var _edH=sandbox.document.getElementById('root').innerHTML;
 ok(/Mobility between sets/.test(_edH)&&/woToggleRestMob/.test(_edH),'the workout editor shows the global in-rest mobility toggle');
 sandbox.woEditing=false;sandbox.woSession=null;sandbox.woRestCtx=null;sandbox.localStorage.removeItem('wo_rest_mob_off');
+// the WORKOUT PAGE FOOTER also exposes the global toggle (discoverable without entering Edit)
+sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.viewMode='workout';sandbox.woEditing=false;sandbox.localStorage.removeItem(sandbox.woKeyForDow(1));sandbox.woSession=null;sandbox.renderWorkout();
+var _ftH=sandbox.document.getElementById('root').innerHTML;
+ok(/wo-pref-row/.test(_ftH)&&/Mobility drills during rest/.test(_ftH)&&/woToggleRestMob/.test(_ftH),'the workout page footer shows the global in-rest mobility toggle (no Edit needed)');
+ok(/wo-toggle on/.test(_ftH),'footer toggle reads ON while in-rest mobility is enabled');
+sandbox.woToggleRestMob();
+ok(sandbox.woRestMobOff()===true,'toggling from the footer disables in-rest mobility');
+var _ftH2=sandbox.document.getElementById('root').innerHTML;
+ok(!/wo-toggle on/.test(_ftH2)&&/wo-pref-row/.test(_ftH2),'footer toggle reads OFF after disabling and re-renders the page immediately');
+sandbox.viewMode='day';sandbox.woEditing=false;sandbox.woSession=null;sandbox.woRestCtx=null;sandbox.localStorage.removeItem('wo_rest_mob_off');sandbox.localStorage.removeItem(sandbox.woKeyForDow(1));
 
 // ===== stretch session completion plays a chime (bugfix: silent after the final stretch) =====
 (function(){

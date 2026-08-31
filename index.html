@@ -620,6 +620,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .wo-edit-foot{margin-top:24px;margin-bottom:10px}
 .wo-edit-link span{font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
   cursor:pointer;border:1px solid var(--border);padding:9px 18px;-webkit-user-select:none;user-select:none}
+.wo-pref-row{margin:22px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.wo-pref-lbl{font-size:0.8125rem;color:var(--text);line-height:1.35}
+.wo-pref-sub{display:block;font-size:0.6875rem;color:var(--muted);margin-top:2px}
 .wo-undo{margin:14px 16px 0;display:flex;align-items:center;gap:10px;background:rgba(224,96,96,.08);border:1px solid #6B3030;border-radius:8px;padding:10px 12px}
 .wo-undo-msg{flex:1;font-size:0.75rem;color:var(--text);line-height:1.4}
 .wo-undo-msg b{color:#E58A8A}
@@ -2831,6 +2835,7 @@ function _renderWorkout(){
   h+='<div class="wo-finish-wrap"><button class="wo-finish'+(sess.finished?' muted':'')+'" onclick="woFinish()">'+(sess.finished?'Logged ✓ · update':'Finish Workout')+'</button>';
   if(sess.finished){var wpay={type:'workout',kind:'strength',name:woTagLabel(tag),start:new Date(sess.started||Date.now()).toISOString(),minutes:Math.max(1,Math.round((sess.elapsed||0)/60))};h+='<a class="wo-health" href="'+healthWriteURL(wpay)+'">&#10084;&#65039; Add to Apple Health</a>';}
   h+='</div>';
+  h+='<div class="wo-pref-row"><div class="wo-pref-lbl">Mobility drills during rest<span class="wo-pref-sub">Applies to every workout</span></div><div class="wo-toggle'+(!woRestMobOff()?' on':'')+'" onclick="woToggleRestMob()"><div class="wo-toggle-knob"></div></div></div>';
   h+='<div class="wo-edit-link wo-edit-foot"><span onclick="woOpenSplitSheet()">&#8646; Load another day</span><span onclick="woOpenEditor()">&#9881; Edit</span><span onclick="woResetDay()">&#8635; Reset</span></div>';
   h+='<div class="coach-row wo-coach-foot"><button class="coach-btn" onclick="openCoach()">&#10024; AI Coach</button></div>';
   document.getElementById('root').innerHTML=h;if(_sy&&window.scrollTo)window.scrollTo(0,_sy);
@@ -2954,7 +2959,9 @@ function woRestTick(){var rem=Math.ceil((woRestEndAt-Date.now())/1000);if(rem<0)
 function woRestPaint(){var v=fmtMMSSVal(Math.max(0,woRestRemain)),end=woRestRemain<=10;var el=document.getElementById('woRestCount');if(el){el.textContent=v;el.className='wo-rest-count'+(end?' ending':'');}var mt=document.getElementById('woRestMiniTime');if(mt){mt.textContent=v;mt.className='wo-rest-mini-time'+(end?' ending':'');}}
 /* Global setting (all workouts): show mobility drills during rest between sets, or just the timer. */
 function woRestMobOff(){try{return localStorage.getItem('wo_rest_mob_off')==='1';}catch(e){return false;}}
-function woToggleRestMob(){var off=woRestMobOff();try{localStorage.setItem('wo_rest_mob_off',off?'0':'1');}catch(e){}if(woEditing)renderWorkout();}
+/* Toggle from the workout footer OR the template editor; either way re-render the workout view
+   (renderWorkout re-renders the editor when woEditing) so the change is visible immediately. */
+function woToggleRestMob(){var off=woRestMobOff();try{localStorage.setItem('wo_rest_mob_off',off?'0':'1');}catch(e){}if(viewMode==='workout')renderWorkout();}
 function woRestPaintMob(){
   var off=woRestMobOff();
   var mobId=null;if(!off&&woRestCtx&&woSession){var st=woSession.exercises[woRestCtx.ei].sets[woRestCtx.si];mobId=st?st.mobility:null;}
