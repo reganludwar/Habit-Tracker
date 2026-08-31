@@ -51,7 +51,11 @@ ok(s&&s.exercises.length===6,'Monday seeded 6 exercises (Full Body A)');
 const bench=s.exercises[0];
 ok(bench.sets[0].tag==='W','bench set0 is warm-up');
 var _bt=sandbox.woNormTmpl(sandbox.woEffTemplate('mon')).ex[0];
-ok(bench.sets[0].weight===sandbox.woSnap(sandbox.woSnap(_bt.seedW)*0.55),'warm-up weight ~55% of template seed ('+bench.sets[0].weight+')');
+ok(bench.sets[0].weight===sandbox.woWarmWeight(sandbox.woSnap(_bt.seedW)),'warm-up weight uses woWarmWeight ('+bench.sets[0].weight+')');
+// the warm-up->working jump is always a clean multiple of 10 (a full plate swap, no insert changes)
+ok(sandbox.woWarmWeight(47.5)===27.5&&sandbox.woWarmWeight(30)===20&&sandbox.woWarmWeight(45)===25&&sandbox.woWarmWeight(42.5)===22.5,'woWarmWeight ~55% of working, jump a multiple of 10 (47.5->27.5, 30->20, 42.5->22.5)');
+ok((47.5-sandbox.woWarmWeight(47.5))%10===0&&(30-sandbox.woWarmWeight(30))%10===0&&(42.5-sandbox.woWarmWeight(42.5))%10===0&&(37.5-sandbox.woWarmWeight(37.5))%10===0&&(25-sandbox.woWarmWeight(25))%10===0,'the warm-up->working jump is always a multiple of 10 (no insert changes at all)');
+ok(sandbox.woWarmWeight(30)<30&&sandbox.woWarmWeight(47.5)<47.5&&sandbox.woWarmWeight(20)<20,'the warm-up is lighter than the working set');
 ok(bench.sets[1].weight===sandbox.woSnap(_bt.seedW)&&bench.sets[1].reps===_bt.seedR,'bench working seeded from the template, not last-session carry-forward');
 ok(bench.prev&&bench.prev.weight===50,'last session is still kept as the Prev reference column');
 // log working set 1 (index1) -> should mark done + start rest (workRest 150)
