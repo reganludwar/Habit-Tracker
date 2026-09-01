@@ -34,8 +34,7 @@ Living list of planned features and deferred work. Newest ideas at the top of "P
 ---
 
 ## 🟦 Planned
-
-_(Next ideas go here — A and B above are shipped.)_
+- **Calorie checkmark → "hit my target" (needs Health intake wired first).** Redefine the Day-page Calories check from "I tracked my calories" to "I met my calorie target." Agreed principle — a **ceiling with a capped, discounted cardio credit**: green if `dietKcal ≤ 2200`, **or** `dietKcal ≤ 2200 + min(bonusCardioKcal × 0.5, 250)`. The ×0.5 discount absorbs inflated watch/machine burn; the +250 cap prevents "I ran, so I can eat 800 more"; treat 2200 as a **ceiling, not a bullseye** (under target is a win). Credit comes only from a **logged bonus-cardio session's** kcal, not all-day active energy. Auto-derive from the Cronometer→Apple Health `dietKcal` sync with a manual override kept. **Blocked on:** the Health intake (`dietKcal`) not being reliably wired in yet — ships once that's flowing.
 
 ---
 
