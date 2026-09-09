@@ -1882,9 +1882,11 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.state={mantra:true,mob:1,w_dog:true,w_wife:true,w_eve:true,lift:true,caltgt:true,vit:true};
   var f1=sandbox.floorProgress(mon);
   ok(f1.done===8&&f1.complete===true&&f1.pct===100,'a fully done weekday floor completes the ring (8/8)');
-  // cardio satisfies the workout-or-cardio unit in place of a lift
+  // on a LIFT day the lift is the workout floor unit — cardio alone does NOT complete it (cardio is bonus)
   sandbox.state={mantra:true,mob:1,w_dog:true,w_wife:true,w_eve:true,c_incl:true,caltgt:true,vit:true};
-  ok(sandbox.floorProgress(mon).complete===true,'cardio satisfies the workout-or-cardio floor unit');
+  ok(sandbox.floorProgress(mon).complete===false,'on a lift day, cardio alone does NOT complete the floor — the lift is the workout unit');
+  // on a CARDIO day (Tue/Thu, no split scheduled) cardio IS the workout floor unit
+  ok(sandbox.floorProgress(sandbox.getDateForDow(2)).complete===true,'on a cardio day, cardio satisfies the workout floor unit');
   // weekend floor = 5 units (mantra · 2 walks · calories · vitamins); stretch & move don't apply
   sandbox.state={mantra:true,w_dog:true,w_wife:true,caltgt:true,vit:true};
   var f2=sandbox.floorProgress(sun);
@@ -1919,7 +1921,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // the Workout pill follows the day: lift day opens the Workout tab, cardio day opens the cardio logger
   sandbox.state={};sandbox.viewDow=1; // Monday = lift day (Full Body A)
   var _mon=sandbox.moveBtnHTML(sandbox.getDateForDow(1));
-  ok(/setView\('workout'\)/.test(_mon)&&!/openCardioSheet/.test(_mon)&&/Lift or cardio/.test(_mon),'on a lift day the Workout pill opens the Workout tab');
+  ok(/setView\('workout'\)/.test(_mon)&&!/openCardioSheet/.test(_mon)&&!/Log cardio/.test(_mon)&&!/Cardio done/.test(_mon),'on a lift day the Workout pill opens the Workout tab and names the lift, not cardio');
   sandbox.viewDow=2; // Tuesday = cardio / Zone-2 day
   var _tue=sandbox.moveBtnHTML(sandbox.getDateForDow(2));
   ok(/openCardioSheet\(\)/.test(_tue)&&!/setView\('workout'\)/.test(_tue)&&/Log cardio/.test(_tue),'on a cardio day the Workout pill opens the cardio logger, not the lift tab');
@@ -1940,7 +1942,8 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bMon),'on a lift day, cardio on top of the lift lights the Bonus Cardio pill');
   sandbox.state={};sandbox.state['c_incl']=true;sandbox.viewDow=1; // Monday, cardio but no lift yet
   var _bMon2=sandbox.bonusCardHTML(sandbox.getDateForDow(1));
-  ok(/gcell-main">Cardio</.test(_bMon2)&&!/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bMon2),'on a lift day with cardio but no lift, the Bonus Cardio is shown but not green (cardio fills the floor)');
+  ok(/done-green[^>]*>[\s\S]*?gcell-main">Cardio</.test(_bMon2),'on a lift day, morning cardio lights the Bonus Cardio pill immediately (cardio is bonus, the lift is the floor)');
+  ok(!/done-green[^>]*>[\s\S]*?gcell-main">Workout/.test(sandbox.moveBtnHTML(sandbox.getDateForDow(1))),'on a lift day, morning cardio does NOT green the floor Workout pill — that waits for the lift');
   // on the weekend there is no workout floor unit, so cardio is a real bonus and greens
   sandbox.state={};sandbox.state['c_incl']=true;sandbox.viewDow=0; // Sunday
   var _bSun=sandbox.bonusCardHTML(sandbox.getDateForDow(0));
