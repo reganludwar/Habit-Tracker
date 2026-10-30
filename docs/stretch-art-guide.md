@@ -38,7 +38,7 @@ Clean, calm, modern wellness-app aesthetic.
 
 > **Match the existing set:** the four finished poses (pigeon, forward fold, double pigeon, folded
 > butterfly) all use this cyan→violet vertical gradient — there is **no gold**. Easiest way to lock it:
-> in Recraft, **import the color palette from `art-source/pigeon.png`** and keep that image as your style
+> in Recraft, **import the color palette from `art-source/pigeon_pose.png`** and keep that image as your style
 > reference, so every new pose comes out the same.
 
 **Pose lines for the set we're (re)doing:**
