@@ -2,6 +2,8 @@
 
 How to make the Aurora-style stretch illustrations for the app, and how to drop a finished one in.
 
+Raw PNGs live in `art-source/` at the repo root (gitignored, local only). Processed `.webp` files go in the repo root, where the app loads them.
+
 Two roles:
 - **Artist** (e.g. a helper/family member) — only needs a **web browser**. Generates art in Recraft, hands back raw PNGs. *Parts 1–3.*
 - **Dev** — runs one command to process + wire each image in. *Part 4.*
@@ -36,7 +38,7 @@ Clean, calm, modern wellness-app aesthetic.
 
 > **Match the existing set:** the four finished poses (pigeon, forward fold, double pigeon, folded
 > butterfly) all use this cyan→violet vertical gradient — there is **no gold**. Easiest way to lock it:
-> in Recraft, **import the color palette from `pigeon_pose.png`** and keep that image as your style
+> in Recraft, **import the color palette from `art-source/pigeon.png`** and keep that image as your style
 > reference, so every new pose comes out the same.
 
 **Pose lines for the set we're (re)doing:**

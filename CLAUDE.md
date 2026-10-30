@@ -12,6 +12,7 @@ Offline-first PWA: habits, mobility/stretch, strength workouts, fitness tests, A
 - `index.html` is the whole app (~3,500 lines, one big inline `<script>`). The test harness extracts the LAST `<script>` block in the file, so keep the app code in the last script tag.
 - `sw.js` caches the app shell. **Bump `CACHE` (currently `ht-v89`) in the same PR whenever `index.html` or any cached asset changes**, or installed PWAs keep serving the old version.
 - `manifest.json`, `icon-*.png`, `apple-touch-icon.png`, `*.webp` stretch images: the webp files must stay committed next to `index.html` or stretch thumbnails break.
+- `art-source/` (gitignored, local only) holds the raw Recraft PNGs. Process one with `node scripts/process-stretch.js art-source/<raw>.png <slug>` (needs `sharp`; install it outside the repo and set `NODE_PATH`). A new or renamed image also needs its `<img>` entry in `index.html` and a line in the `ASSETS` list in `sw.js`, plus a `CACHE` bump.
 - `scripts/process-stretch.js` (`npm run stretch-art`) needs `sharp`, which is NOT declared in package.json (install it ad hoc if you ever run it). Not needed to run the app or the tests.
 - `.github/workflows/`: `ci.yml` (tests), `deploy.yml` (GitHub Pages deploy on push to main).
 
