@@ -8,7 +8,7 @@ var ASSETS = [
   './couch_stretch.webp', './pigeon_pose.webp', './forward_fold.webp',
   './thoracic_rotation.webp', './doorway_chest_opener.webp', './90_90.webp',
   './double_pigeon.webp', './folded_butterfly.webp', './seated_straddle.webp',
-  './frog.webp', './behind_back_clasp.webp'
+  './frog.webp', './behind_back_clasp.webp', './seated_forward_fold.webp'
 ];
 self.addEventListener('install', function (e) {
   e.waitUntil(

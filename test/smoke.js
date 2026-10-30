@@ -455,6 +455,12 @@ ok(_cm2['b9'].name==='Overhead Lat Stretch'&&_cm2['b10'].name==='Spinal Twist','
 ok(_cm2['b11'].areas.indexOf('hips')>=0&&_cm2['b12'].areas.indexOf('chest')>=0&&_cm2['b12'].areas.indexOf('shoulders')>=0,'new poses carry area tags (frog→hips, clasp→chest/shoulders)');
 ok(/frog\.webp/.test(sandbox.getStretchSVG('b11'))&&/behind_back_clasp\.webp/.test(sandbox.getStretchSVG('b12')),'new poses are wired to their image files in SSVG');
 ok(sandbox.stCatalogByName('floor','Frog Stretch').id==='b11','Frog Stretch resolves by name for mobility-report edits');
+// Seated Forward Fold (b13), distinct from the standing Forward Fold (b2)
+var _cm3=sandbox.getCatalogMap();
+ok(_cm3['b13']&&_cm3['b13'].name==='Seated Forward Fold'&&_cm3['b2'].name==='Forward Fold','Seated Forward Fold is b13 and the standing Forward Fold is still b2');
+ok(_cm3['b13'].areas.indexOf('hamstrings')>=0,'Seated Forward Fold carries a hamstrings area tag');
+ok(/seated_forward_fold\.webp/.test(sandbox.getStretchSVG('b13'))&&/forward_fold\.webp/.test(sandbox.getStretchSVG('b2')),'both forward folds point at their own image');
+ok(sandbox.stCatalogByName('floor','Seated Forward Fold').id==='b13','Seated Forward Fold resolves by name');
 
 // ===== v6: reps grid, rest-after-final-set, rest-tick audio, badge removed =====
 sandbox.viewDow=1;sandbox.weekOffset=0;sandbox.loadState();sandbox.woSession=null;sandbox.woEditing=false;sandbox.renderWorkout();
