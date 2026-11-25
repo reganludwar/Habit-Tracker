@@ -56,6 +56,9 @@ A compact `weightLoss` block in `coachPayload` — goal weight, target date, los
 remaining, requiredRate, actualRate, projectedDate, status — so the AI Coach advises
 against the deadline, not just "trending down."
 
-## Out of scope (Phase 2)
-Mode on/off toggle + pinning the dashboard to the Day page, manual weigh-in quick-add,
-weekly check-in nudges, monthly milestone markers, goal-derived in-app calorie ceiling.
+## Phase 2 (shipped)
+Mode on/off toggle (`wl_mode`) + a pinned Day-page progress strip; a manual weigh-in
+quick-add (`wlLogWeight` → today's `hl_` record); a 7-day "this week" delta; monthly
+milestone markers (chart month ticks + next-milestone line). `wl_goal`/`wl_mode` added to
+the backup sweep. Still deferred: wiring the parked goal-derived in-app calorie ceiling
+(calories stay in Cronometer by choice).

@@ -2195,6 +2195,59 @@ sandbox.closeSheet&&sandbox.closeSheet();
     touched.forEach(function(k){if(snap[k]===undefined)store.delete(k);else store.set(k,snap[k]);});
   })();
 
+  // ===== Weight-Loss Mode (Phase 2): mode toggle, Day strip, weigh-in, weekly, milestone =====
+  (function(){
+    var today=new Date();today.setHours(0,0,0,0);
+    function hkey(off){var d=new Date(today);d.setDate(d.getDate()-off);return sandbox.healthKeyForDate(d);}
+    function setW(off,w){var k=hkey(off),cur=store.get(k),o=cur?JSON.parse(cur):{};o.weightLb=w;store.set(k,JSON.stringify(o));}
+    var touched=[hkey(0),hkey(7),hkey(28)],snap={};touched.forEach(function(k){snap[k]=store.get(k);});
+    // new persisted keys are in the backup sweep
+    ok(sandbox.isBackupKey('wl_goal')===true&&sandbox.isBackupKey('wl_mode')===true,'wl_goal and wl_mode are included in the backup sweep');
+    // mode toggle defaults on and flips
+    sandbox.localStorage.removeItem('wl_mode');
+    ok(sandbox.wlModeOn()===true,'weight-loss mode defaults on');
+    sandbox.viewMode='goals';sandbox.wlToggleMode();
+    ok(sandbox.wlModeOn()===false,'wlToggleMode turns the mode off');
+    sandbox.wlToggleMode();
+    ok(sandbox.wlModeOn()===true,'wlToggleMode turns the mode back on');
+    // manual weigh-in writes today's Health weight and feeds latestBodyWeightLb
+    store.delete(hkey(0));
+    ok(sandbox.wlLogWeight(188.4)===true,'wlLogWeight returns true for a valid weight');
+    ok(Math.abs(sandbox.latestBodyWeightLb()-188.4)<0.001,'wlLogWeight lands in today’s Health record and drives latestBodyWeightLb');
+    ok(sandbox.wlLogWeight(0)===false&&sandbox.wlLogWeight(-5)===false,'wlLogWeight rejects non-positive weights');
+    // weigh-in through the form input
+    sandbox.document.getElementById('wlWeighVal').value='187';
+    sandbox.wlLogWeighIn();
+    ok(Math.abs(sandbox.latestBodyWeightLb()-187)<0.001,'wlLogWeighIn reads the form input and records the weight');
+    // weekly delta: 190 seven days ago vs 187 today = −3 lb
+    setW(7,190);setW(0,187);
+    var wd=sandbox.wlWeekDelta();
+    ok(wd&&wd.delta===-3,'wlWeekDelta reports the ~7-day weight change (−3 lb)');
+    // a goal: Day strip + milestone
+    var nowMs=Date.now();
+    sandbox.wlSaveGoal({startW:200,startMs:nowMs-90*864e5,goalW:185,targetMs:nowMs+90*864e5});
+    var st=sandbox.wlStats(),mi=sandbox.wlNextMilestone(st);
+    ok(mi&&mi.targetW<200&&mi.targetW>185&&mi.ms>nowMs,'wlNextMilestone returns a glide-path target between start and goal, in the future');
+    // Day strip renders when mode on + goal set, and opens the Goals tab
+    sandbox.localStorage.setItem('wl_mode','1');
+    var strip=sandbox.wlDayStripHTML();
+    ok(/wl-strip/.test(strip)&&/lb/.test(strip)&&/setView\('goals'\)/.test(strip),'wlDayStripHTML renders a compact strip that links to the Goals tab');
+    // mode off hides the strip
+    sandbox.localStorage.setItem('wl_mode','0');
+    ok(sandbox.wlDayStripHTML()==='','with the mode off, the Day strip is hidden');
+    // no goal hides the strip even with mode on
+    sandbox.localStorage.setItem('wl_mode','1');sandbox.localStorage.removeItem('wl_goal');
+    ok(sandbox.wlDayStripHTML()==='','with no goal set, the Day strip is hidden');
+    // the Day page includes the strip when mode on + goal set
+    sandbox.wlSaveGoal({startW:200,startMs:nowMs-90*864e5,goalW:185,targetMs:nowMs+90*864e5});
+    sandbox.viewMode='day';sandbox.weekOffset=0;sandbox.viewDow=sandbox.todayDow;sandbox.state={};sandbox.renderDay();
+    ok(/wl-strip/.test(sandbox.document.getElementById('root').innerHTML),'the Day page pins the weight-loss strip when the mode is on');
+    // restore
+    sandbox.localStorage.removeItem('wl_goal');sandbox.localStorage.removeItem('wl_mode');sandbox.wlEditing=false;
+    touched.forEach(function(k){if(snap[k]===undefined)store.delete(k);else store.set(k,snap[k]);});
+  })();
+
+
   // clipboard + run-shortcut paths degrade gracefully without the platform APIs (no throw)
   var threw=false;try{sandbox.healthImportClipboard();}catch(e){threw=true;}
   ok(!threw,'healthImportClipboard does not throw when navigator.clipboard is absent');
