@@ -2219,6 +2219,67 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var hh=sandbox.weeklyReviewHTML({wo:0,cZ2:0},wd);ok(/Distance/.test(hh)&&/6\.2 mi total/.test(hh)&&/3\.1 mi\/day/.test(hh),'review: Distance row shows total and mi/day');
   store.clear();_s.forEach(function(v,k){store.set(k,v);});
 })();
+// ---- fat-loss coach: steps card, local suggestion, plan validation, approve/undo ----
+(function(){
+  var _s=new Map(store);store.clear();
+  var d=new Date();d.setHours(0,0,0,0);function ago(n){var x=new Date(d);x.setDate(d.getDate()-n);return x;}
+  function ymd(x){return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate();}
+  function seedSteps(v,n){for(var i=1;i<=n;i++)sandbox.ingestHealth({date:ymd(ago(i)),steps:v});}
+  function seedZ2(min){for(var o=-1;o>=-3;o--){var day=sandbox.flWeekDates(o)[1];store.set(sandbox.storeKeyForDate(day),JSON.stringify({cdt_c_run:{z2:min}}));}}
+  ok(sandbox.stepTarget()===10000,'plan: step target defaults to the 10,000 constant');
+  store.set('fl_plan',JSON.stringify({stepsPerDay:8500,z2Week:90}));ok(sandbox.stepTarget()===8500,'plan: an approved plan overrides the step target');store.delete('fl_plan');
+  ok(sandbox.isBackupKey('fl_plan')===true,'plan: fl_plan rides in the backup sweep');
+  // local suggestion
+  var s0=sandbox.flSuggestPlan();ok(s0.stepsPerDay===10000&&s0.z2Week===45&&s0.sessions===2&&s0.basis.stepsAvg===null,'suggest: no data -> hold the step target, start Zone 2 at 45 min (2 sessions)');
+  seedSteps(6000,14);ok(sandbox.flSuggestPlan().stepsPerDay===7000,'suggest: steps avg 6,000 -> +1,000 toward the target = 7,000');
+  seedSteps(9800,14);ok(sandbox.flSuggestPlan().stepsPerDay===10000,'suggest: avg 9,800 -> +1,000 is capped at the target');
+  seedSteps(11000,14);ok(sandbox.flSuggestPlan().stepsPerDay===10000,'suggest: avg above target -> hold the target');
+  store.clear();seedSteps(5000,2);ok(sandbox.flSuggestPlan().basis.stepsAvg===null,'suggest: fewer than 3 logged days is not enough to base steps on');
+  store.clear();seedZ2(60);var s1=sandbox.flSuggestPlan();ok(s1.z2Week===70&&s1.basis.z2WeeklyAvg===60,'suggest: Zone 2 average 60 -> +20% rounded to 5 = 70 ('+s1.z2Week+')');
+  store.clear();seedZ2(170);ok(sandbox.flSuggestPlan().z2Week===180,'suggest: Zone 2 is capped at the 180 ceiling');
+  // validation / clamp of a model-proposed plan
+  store.clear();seedSteps(6000,14);seedZ2(60);
+  ok(sandbox.flValidPlan({stepsPerDay:100,z2Week:60})===null&&sandbox.flValidPlan({stepsPerDay:'abc',z2Week:60})===null&&sandbox.flValidPlan(null)===null,'validate: nonsense plans are rejected');
+  var v1=sandbox.flValidPlan({stepsPerDay:8500,z2Week:75});ok(v1&&v1.stepsPerDay===8500&&v1.z2Week===75&&!v1.clamped,'validate: a plan within limits passes untouched');
+  var v2=sandbox.flValidPlan({stepsPerDay:18000,z2Week:200});ok(v2.clamped===true&&v2.stepsPerDay<=10000&&v2.z2Week===80,'validate: an aggressive plan is clamped (steps to the target, Zone 2 to +30% of 60 = 80)');
+  var pp=sandbox.coachFlParse('- ok\n```json\n{"plan":{"stepsPerDay":8000,"z2Week":70}}\n```');ok(pp.plan&&pp.plan.stepsPerDay===8000&&pp.prose==='- ok','parse: plan block is read and stripped from the prose');
+  ok(sandbox.coachFlParse('```json\n{oops\n```').plan===null&&sandbox.coachFlParse('no block').plan===null,'parse: malformed or missing plan block gives no plan');
+  // payload + local report
+  var p=sandbox.coachFatLossPayload();ok(p.weeks.length===4&&p.targets.liftsPerWeek===3&&p.localSuggestion&&!/undefined|NaN/.test(JSON.stringify(p)),'payload: 4 weeks, lift floor, local suggestion, no undefined/NaN');
+  var rep=sandbox.flStaticReport(p),pr=sandbox.coachFlParse(rep);ok(/This week/.test(rep)&&pr.plan&&/lifting unchanged/.test(rep),'local report: states the plan, leaves lifts unchanged, plan block parses back');
+  ok(!/\b(should|bad|fail|failed|lazy|cheat|guilt)\b/i.test(rep),'local report: facts-only wording (no verdict words)');
+  var hp=JSON.parse(JSON.stringify(p));hp.lastFullWeekChangePctBodyweight=-1.5;var hrep=sandbox.flStaticReport(hp),hpl=sandbox.coachFlParse(hrep).plan;
+  ok(/faster than 1%/.test(hrep)&&hpl&&hpl.z2Week<=hp.localSuggestion.basis.z2WeeklyAvg,'local report: a >1%/wk loss holds exercise volume (no Zone 2 increase)');
+  // no-key analyze path saves a fatloss report
+  sandbox.coachKind='fatloss';sandbox.coachAnalyze();var lr=sandbox.coachLoadReports()[0];
+  ok(lr&&lr.kind==='fatloss'&&/Local rules/.test(lr.modelLabel)&&sandbox.coachGetParsed(lr.ts,lr.text,'fatloss').plan,'coach: with no API key the fat-loss report runs locally and carries a plan card');
+  // approve / undo
+  sandbox.flPlanApprove(8000,60);var a1=JSON.parse(store.get('fl_plan'));ok(a1.stepsPerDay===8000&&a1.z2Week===60&&a1.prev===null,'approve: plan saved, no previous plan');
+  sandbox.flPlanApprove(9000,70);var a2=JSON.parse(store.get('fl_plan'));ok(a2.stepsPerDay===9000&&a2.prev&&a2.prev.stepsPerDay===8000,'approve: the prior plan is kept inside for undo');
+  sandbox.flPlanUndo();ok(JSON.parse(store.get('fl_plan')).stepsPerDay===8000,'undo: restores the previous plan');
+  sandbox.flPlanUndo();ok(store.get('fl_plan')===undefined||store.get('fl_plan')===null,'undo: with nothing before it, the plan is removed');
+  var card=sandbox.flPlanCardHTML({stepsPerDay:8000,z2Week:60,sessions:2});ok(/Approve/.test(card)&&/Dismiss/.test(card)&&sandbox.flPlanCardHTML(null)==='','card: pending plan shows Approve/Dismiss, no plan shows nothing');
+  // steps card
+  store.clear();var wd=sandbox.flWeekDates(0);ok(sandbox.stepsCardHTML(wd)==='','steps card: hidden with no step data');
+  sandbox.ingestHealth({date:ymd(wd[0]),steps:12000});var sc=sandbox.stepsCardHTML(wd);ok(/Steps/.test(sc)&&/12,000/.test(sc)&&!/NaN|undefined/.test(sc),'steps card: shows the week average and bars');
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});sandbox.coachKind='workout';
+})();
+// ---- fat-loss coach: AI branch with a stubbed network call (no real key, no real request) ----
+(function(){
+  var _s=new Map(store);store.clear();var _fetch=sandbox.fetch,_key=sandbox.coachKey,seen=null;
+  function sync(v){return {then:function(f){var x;try{x=f?f(v):v;}catch(e){return sync(undefined);}return (x&&typeof x.then==='function')?x:sync(x);},catch:function(){return this;}};}
+  sandbox.coachKey=function(){return 'stub';};sandbox.coachKind='fatloss';sandbox.coachBusy=false;
+  sandbox.fetch=function(url,opts){seen={url:url,body:JSON.parse(opts.body)};return sync({ok:true,status:200,json:function(){return sync({content:[{type:'text',text:'- steps are flat\n```json\n{"plan":{"stepsPerDay":9000,"z2Week":200}}\n```'}]});}});};
+  sandbox.coachAnalyze();var r=sandbox.coachLoadReports()[0];
+  ok(seen&&/api\.anthropic\.com/.test(seen.url)&&/NEVER recommend reducing or dropping the lifting days/.test(seen.body.system),'AI: request carries the fat-loss system prompt with the "never cut lifts" rule');
+  ok(/"weeks"/.test(seen.body.messages[0].content)&&!/sk-ant/.test(JSON.stringify(seen.body)),'AI: the user message carries the 4-week data, no key in the body');
+  var pl=sandbox.coachGetParsed(r.ts,r.text,'fatloss').plan;ok(r.kind==='fatloss'&&pl&&pl.z2Week<=45&&pl.clamped===true,'AI: a model plan with an aggressive Zone 2 number (200 min) is clamped before it is shown');
+  sandbox.fetch=function(){return sync({ok:false,status:401,json:function(){return sync({error:{message:'bad key'}});}});};
+  sandbox.coachBusy=false;sandbox.coachFlash='';sandbox.coachAnalyze();var r2=sandbox.coachLoadReports()[0];
+  ok(/Local rules \(AI unavailable\)/.test(r2.modelLabel)&&/Showing local suggestions/.test(sandbox.coachFlash),'AI: a rejected key falls back to the local report with a note');
+  sandbox.fetch=_fetch;sandbox.coachKey=_key;sandbox.coachKind='workout';sandbox.coachBusy=false;
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
 (function(){
   var _snap=new Map(store);store.clear();
   // healthIngestText parses strict JSON, loose "key: value" text, and reports outcome codes
