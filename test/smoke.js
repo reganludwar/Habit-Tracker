@@ -844,7 +844,7 @@ sandbox.tsEditing=false;sandbox.localStorage.removeItem('custom_tests');
 // ===== AI Coach =====
 sandbox.localStorage.setItem('wo_coach_a',JSON.stringify({dateMs:Date.now(),dayTag:'mon',exercises:[{name:'CoachProbe',sets:[{tag:'work',done:true,weight:50,reps:10,rpe:8}]}]}));
 sandbox.localStorage.setItem('wo_coach_b',JSON.stringify({dateMs:Date.now()-40*864e5,dayTag:'wed',exercises:[{name:'CoachOld',sets:[{tag:'work',done:true,reps:8}]}]}));
-ok(sandbox.coachModel()==='claude-sonnet-4-6','coach defaults to Sonnet 4.6 when no model set');
+ok(sandbox.coachModel()==='claude-sonnet-5-5','coach defaults to Sonnet 5.5 when no model set');
 var _cr=sandbox.coachRangeMs('this'),_lr=sandbox.coachRangeMs('last');
 ok(_cr.start<=_cr.end&&_cr.label==='this week'&&_lr.end===_cr.start,'coachRangeMs windows are valid and contiguous (last ends where this begins)');
 function _hasEx(p,n){for(var i=0;i<p.sessions.length;i++)for(var e=0;e<p.sessions[i].exercises.length;e++)if(p.sessions[i].exercises[e].name===n)return true;return false;}
@@ -2309,6 +2309,23 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.coachBusy=false;sandbox.coachFlash='';sandbox.coachAnalyze();var r2=sandbox.coachLoadReports()[0];
   ok(/Local rules \(AI unavailable\)/.test(r2.modelLabel)&&/Showing local suggestions/.test(sandbox.coachFlash),'AI: a rejected key falls back to the local report with a note');
   sandbox.fetch=_fetch;sandbox.coachKey=_key;sandbox.coachKind='workout';sandbox.coachBusy=false;
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
+// ---- coach model list: built-in defaults and live refresh (stubbed network, no real key) ----
+(function(){
+  var _s=new Map(store);store.clear();var _fetch=sandbox.fetch,_key=sandbox.coachKey,seen=null;
+  function sync(v){return {then:function(f){var x;try{x=f?f(v):v;}catch(e){return sync(undefined);}return (x&&typeof x.then==='function')?x:sync(x);},catch:function(){return this;}};}
+  ok(sandbox.coachModels().some(function(m){return m[0]==='claude-sonnet-5-5';}),'built-in model list offers Sonnet 5.5');
+  store.set('coach_model','claude-custom-x');
+  ok(sandbox.coachModels().some(function(m){return m[0]==='claude-custom-x';}),'a saved model missing from the list stays selectable');
+  store.clear();
+  sandbox.coachKey=function(){return 'sk-test';};
+  sandbox.fetch=function(url,opts){seen={url:url,h:opts.headers};return sync({ok:true,status:200,json:function(){return sync({data:[{id:'claude-sonnet-9-9',display_name:'Sonnet 9.9'},{id:'other-model',display_name:'Not Claude'}]});}});};
+  sandbox.coachRefreshModels();
+  ok(seen&&/\/v1\/models/.test(seen.url)&&seen.h['x-api-key']==='sk-test','refresh calls /v1/models with the key');
+  var L=sandbox.coachModels();
+  ok(L.length>=1&&L[0][0]==='claude-sonnet-9-9'&&!L.some(function(m){return m[0]==='other-model';}),'refresh caches live Claude models only');
+  sandbox.fetch=_fetch;sandbox.coachKey=_key;
   store.clear();_s.forEach(function(v,k){store.set(k,v);});
 })();
 (function(){

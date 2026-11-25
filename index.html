@@ -3447,7 +3447,21 @@ function woHideReseed(){var m=document.getElementById('woModal');if(m)m.classLis
 function woReseedKeep(){woReseedKey='';woHideReseed();renderWorkout();}
 function woReseedErase(){var key=woReseedKey;woReseedKey='';woHideReseed();if(key){woStashSession(key);try{localStorage.removeItem(key);}catch(e){}woSetLiftForKey(key,false);woSession=null;}renderWorkout();}
 /* ===== AI Coach — on-device analysis via the Anthropic API (bring-your-own key) ===== */
-var COACH_MODELS=[['claude-sonnet-4-6','Sonnet 4.6 — fast & inexpensive'],['claude-opus-4-8','Opus 4.8 — deepest analysis'],['claude-haiku-4-5-20251001','Haiku 4.5 — cheapest']];
+var COACH_MODELS_BUILTIN=[['claude-sonnet-5-5','Sonnet 5.5 — fast & capable'],['claude-opus-5-5','Opus 5.5 — deepest analysis'],['claude-haiku-5-5','Haiku 5.5 — cheapest'],['claude-sonnet-4-6','Sonnet 4.6 — previous'],['claude-opus-4-8','Opus 4.8 — previous']];
+/* Live list from Anthropic's /v1/models (fetched on demand with the user's key, cached in localStorage); falls back to the built-in list. The saved model is always kept selectable. */
+function coachModels(){var l=COACH_MODELS_BUILTIN;try{var c=JSON.parse(localStorage.getItem('coach_models')||'null');if(c&&c.length)l=c;}catch(e){}
+  var m=coachGet('coach_model','claude-sonnet-5-5'),has=false;for(var i=0;i<l.length;i++)if(l[i][0]===m)has=true;
+  return has?l:l.concat([[m,m]]);}
+var COACH_MODELS=COACH_MODELS_BUILTIN;
+function coachRefreshModels(){var key=coachKey();if(!key)return;coachModelsMsg='Checking…';coachRender('setup');
+  fetch('https://api.anthropic.com/v1/models?limit=100',{headers:{'x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}})
+    .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+    .then(function(r){if(!r.ok||!r.j||!r.j.data)throw new Error('bad response');
+      var l=[];for(var i=0;i<r.j.data.length;i++){var d=r.j.data[i];if(d&&/^claude-/.test(d.id))l.push([d.id,(d.display_name||d.id)]);}
+      if(!l.length)throw new Error('empty');try{localStorage.setItem('coach_models',JSON.stringify(l));}catch(e){}
+      coachModelsMsg='Loaded '+l.length+' models.';coachRender('setup');})
+    .catch(function(){coachModelsMsg='Could not load the list — using the built-in one.';coachRender('setup');});}
+var coachModelsMsg='';
 var COACH_RANGES=[['this','This week'],['last','Last week'],['2w','Last 2 weeks'],['month','Last 30 days']];
 var COACH_SYSTEM_BASE='You are an expert strength & conditioning coach and physiotherapist reviewing a client\'s training data exported from their workout app. The client trains mostly with adjustable dumbbells (PowerBlocks) and bodyweight across a 3-day full-body program (Full Body A on Mon, B on Wed, C on Fri) — chosen to hit each muscle 2-3x/week and protect lean mass during a fat-loss phase — with Zone 2 cardio + mobility on the off days (Tue/Thu) and daily mobility and stretching. Cardio / conditioning sessions (treadmill runs, incline walks, bike, intervals) may be included as "cardioSessions" with duration, distance, incline, speed, calories and average heart rate; factor conditioning into your Progress and Recommendations — aerobic volume and intensity, and how it interacts with lifting and recovery. Be specific and honest but encouraging. Ground every point in the actual numbers from the data. Reply in GitHub-flavored markdown with exactly these sections in order: "## Progress", "## Programming Review", "## Recommendations", "## Watch-outs".';
 var COACH_LENS=[['lean','Lean'],['standard','Standard'],['detailed','Detailed']];
@@ -3471,8 +3485,8 @@ function coachClearReports(){try{localStorage.removeItem('coach_reports');}catch
 function coachAgo(ts){var s=Math.max(0,Date.now()-ts),m=Math.floor(s/6e4),h=Math.floor(m/60),d=Math.floor(h/24);if(d>=1)return d+'d ago';if(h>=1)return h+'h ago';if(m>=1)return m+'m ago';return 'just now';}
 function coachGet(k,d){try{var v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}}
 function coachKey(){return coachGet('coach_key','');}
-function coachModel(){return coachGet('coach_model','claude-sonnet-4-6');}
-function coachModelLabel(){var m=coachModel();for(var i=0;i<COACH_MODELS.length;i++)if(COACH_MODELS[i][0]===m)return COACH_MODELS[i][1].split(' — ')[0];return m;}
+function coachModel(){return coachGet('coach_model','claude-sonnet-5-5');}
+function coachModelLabel(){var m=coachModel(),L=coachModels();for(var i=0;i<L.length;i++)if(L[i][0]===m)return L[i][1].split(' — ')[0];return m;}
 function coachRangeLabel(){for(var i=0;i<COACH_RANGES.length;i++)if(COACH_RANGES[i][0]===coachRange)return COACH_RANGES[i][1];return '';}
 function coachRangeMs(rk){var now=new Date();var end=now.getTime();var t0=new Date(now);t0.setHours(0,0,0,0);var sun=new Date(t0);sun.setDate(t0.getDate()-t0.getDay());
   if(rk==='last'){var ls=new Date(sun);ls.setDate(sun.getDate()-7);return {start:ls.getTime(),end:sun.getTime(),label:'last week'};}
@@ -3699,8 +3713,10 @@ function coachSetupHTML(){var model=coachModel(),h='<div class="cch-pad">';
   h+='<div class="cch-lbl">Anthropic API key</div><input id="cchKey" class="cch-in" type="password" placeholder="sk-ant-…" value="'+esc(coachKey())+'" autocomplete="off" autocapitalize="off" spellcheck="false">';
   h+='<div style="font-size:0.7188rem;color:var(--muted);line-height:1.5;margin:8px 0 16px">Stored only on this device and sent directly to Anthropic for each analysis. Never included in backups. Create a key at console.anthropic.com.</div>';
   h+='<div class="cch-lbl">Model</div><select id="cchModel" class="cch-in" style="font-size:0.9375rem">';
-  for(var i=0;i<COACH_MODELS.length;i++)h+='<option value="'+COACH_MODELS[i][0]+'"'+(COACH_MODELS[i][0]===model?' selected':'')+'>'+COACH_MODELS[i][1]+'</option>';
-  h+='</select><div style="height:18px"></div><button class="cch-go" onclick="coachSaveSettings()">Save</button>';
+  var L=coachModels();for(var i=0;i<L.length;i++)h+='<option value="'+esc(L[i][0])+'"'+(L[i][0]===model?' selected':'')+'>'+esc(L[i][1])+'</option>';
+  h+='</select>';
+  if(coachKey())h+='<div style="margin-top:8px;font-size:0.75rem;color:var(--muted)"><span class="cch-link" onclick="coachRefreshModels()">Refresh model list from Anthropic</span> '+esc(coachModelsMsg)+'</div>';
+  h+='<div style="height:18px"></div><button class="cch-go" onclick="coachSaveSettings()">Save</button>';
   if(coachKey())h+='<div style="text-align:center;margin-top:14px"><span class="cch-link" onclick="coachRender(\'home\')">Back</span> &nbsp;&middot;&nbsp; <span class="cch-link" onclick="coachClearKey()">Remove key</span></div>';
   return h+'</div>';}
 function coachSaveSettings(){var k=document.getElementById('cchKey'),m=document.getElementById('cchModel');try{if(k)localStorage.setItem('coach_key',k.value.trim());if(m)localStorage.setItem('coach_model',m.value);}catch(e){}coachRender(coachKey()?'home':'setup');}
