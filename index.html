@@ -122,6 +122,34 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .fl-pill.fl-tap{cursor:pointer}
 .fl-dot{font-size:0.7rem;line-height:1}
 .fl-plus{margin-left:4px;width:18px;height:18px;line-height:16px;text-align:center;border-radius:50%;border:1px solid var(--accent);color:var(--accent);background:transparent;font-size:0.85rem;font-weight:800;cursor:pointer;padding:0}
+.wl-card{padding:14px}
+.wl-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+.wl-lost{font-size:1.5rem;font-weight:800;line-height:1}
+.wl-lost b{color:var(--green)}
+.wl-lost-u{font-size:0.78rem;color:var(--muted);font-weight:600;margin-left:3px}
+.wl-pct{font-size:0.78rem;color:var(--muted);font-weight:700}
+.wl-bar{height:8px;border-radius:5px;background:var(--border);overflow:hidden;margin:8px 0 4px}
+.wl-bar-fill{height:100%;background:var(--green);border-radius:5px}
+.wl-chart{margin:10px 0 6px}
+.wl-chart svg{display:block;width:100%;height:auto}
+.wl-row{display:flex;gap:8px;margin-top:8px}
+.wl-stat{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:0}
+.wl-stat-l{font-size:0.66rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.wl-stat-v{font-size:0.92rem;font-weight:800;margin-top:2px}
+.wl-banner{margin-top:10px;padding:9px 11px;border-radius:8px;font-size:0.8rem;line-height:1.35;border:1px solid var(--border)}
+.wl-banner.ahead,.wl-banner.ontrack,.wl-banner.done{color:var(--green);border-color:var(--green);background:rgba(74,190,120,.08)}
+.wl-banner.behind{color:var(--red);border-color:var(--red);background:rgba(224,96,96,.08)}
+.wl-banner b{font-weight:800}
+.wl-foot{display:flex;gap:14px;margin-top:10px}
+.wl-foot span{font-size:0.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.wl-setup{padding:14px}
+.wl-setup h3{margin:0 0 3px;font-size:0.98rem}
+.wl-setup p{margin:0 0 12px;font-size:0.78rem;color:var(--muted);line-height:1.4}
+.wl-field{margin-bottom:11px}
+.wl-field label{display:block;font-size:0.72rem;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.wl-field input{width:100%;background:var(--surf);border:1px solid var(--border);color:var(--fg);font-size:1rem;padding:10px;-webkit-appearance:none;border-radius:8px;outline:none;box-sizing:border-box}
+.wl-save{width:100%;margin-top:4px;padding:12px;border:none;border-radius:8px;background:var(--accent);color:#000;font-size:0.9rem;font-weight:800;cursor:pointer}
+.wl-err{color:var(--red);font-size:0.74rem;margin:-4px 0 10px;min-height:1px}
 .fl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .fl-chip{font-size:0.7rem;color:var(--accent);border:1px solid var(--border);border-radius:14px;padding:3px 9px}
 .fl-chip b{color:var(--muted);cursor:pointer;margin-left:4px;font-weight:700}
@@ -1576,6 +1604,34 @@ function renderPills(){var h='';for(var i=0;i<7;i++){var c=i===viewDow?' active-
    TREADMILL logger: extra Zone-2 incline sessions (default 30 min @ 12%) stored per-day on
    state.inclBonus=[{min,incl,ts}] — they light the incline lever and feed weekly Zone 2 volume. */
 var GOAL_WEIGHT_LB=175,STEP_TARGET=10000,INCL_BONUS_DEF={min:30,incl:12};
+/* ── WEIGHT-LOSS MODE ────────────────────────────────────────────────────────
+   A goal-with-a-deadline over the existing fat-loss data: set a target weight and
+   date, and the Goals tab shows progress, required vs actual pace, and a projected
+   finish against the deadline. The daily calorie number is managed in Cronometer —
+   the app only reads the resulting deficit (reference), never sets a ceiling here.
+   Stored globally in localStorage (wl_goal), NOT in the per-day state blob. */
+function wlGoal(){try{var s=localStorage.getItem('wl_goal');if(!s)return null;var g=JSON.parse(s);return(g&&g.goalW>0&&g.startW>0&&g.targetMs>0&&g.startMs>0)?g:null;}catch(e){return null;}}
+function wlSaveGoal(g){try{localStorage.setItem('wl_goal',JSON.stringify(g));}catch(e){storageFail();}}
+function wlClearGoal(){try{localStorage.removeItem('wl_goal');}catch(e){}}
+/* goal weight falls back to the legacy constant so the Fat-Loss card works with no goal set */
+function goalWeight(){var g=wlGoal();return(g&&g.goalW>0)?g.goalW:GOAL_WEIGHT_LB;}
+/* All the pace/projection math off the goal + the live weight trend. Null when no goal. */
+function wlStats(){var g=wlGoal();if(!g)return null;var now=Date.now();
+  var cur=latestBodyWeightLb();if(cur==null)cur=g.startW;
+  var toLose=g.startW-g.goalW,lost=g.startW-cur,remaining=cur-g.goalW;
+  var pct=toLose>0?Math.max(0,Math.min(100,Math.round(lost/toLose*100))):(remaining<=0?100:0);
+  var msLeft=g.targetMs-now,weeksLeft=msLeft/6048e5,daysLeft=Math.round(msLeft/864e5);
+  var requiredRate=(weeksLeft>0.1&&remaining>0)?remaining/weeksLeft:0;
+  var requiredDeficit=Math.round(requiredRate*3500/7);
+  var wt=weightTrend(),actualRate=(wt&&wt.ratePerWeek!=null)?wt.ratePerWeek:null;
+  var projMs=null;if(remaining<=0)projMs=now;else if(actualRate!=null&&actualRate<-0.02)projMs=now+(remaining/(-actualRate))*6048e5;
+  var status='unknown';
+  if(remaining<=0)status='done';
+  else if(actualRate==null||actualRate>=-0.02)status='behind';
+  else if(projMs!=null){var grace=4*864e5;status=(projMs<=g.targetMs-grace)?'ahead':(projMs<=g.targetMs+grace?'ontrack':'behind');}
+  return {goal:g,current:cur,toLose:Math.round(toLose*10)/10,lost:Math.round(lost*10)/10,remaining:Math.round(remaining*10)/10,
+    pct:pct,daysLeft:daysLeft,weeksLeft:Math.round(weeksLeft*10)/10,requiredRate:Math.round(requiredRate*100)/100,
+    requiredDeficit:requiredDeficit,actualRate:actualRate,projMs:projMs,status:status};}
 /* Food is "logged" for a day when Cronometer's calories have synced in via Apple Health (dietKcal>0).
    Falls back to the retired manual `cron` check so older days that were ticked by hand still count. */
 function foodLoggedOn(dt){try{var h=loadHealth(dt);if(h&&typeof h.dietKcal==='number'&&h.dietKcal>0)return true;var ds=loadStateForDate(dt);return !!(ds&&ds.cron);}catch(e){return false;}}
@@ -1592,11 +1648,11 @@ function weightTrend(){var s=woWeightSeries(56);if(!s||s.length<2)return null;va
 function flPill(lbl,done){return '<span class="fl-pill'+(done?' done':'')+'"><span class="fl-dot">'+(done?'&#10003;':'&#9675;')+'</span>'+lbl+'</span>';}
 function fatLossHTML(vd){
   var h='<div class="dsec"><div class="sec-lbl">Fat-Loss</div><div class="sec-card fatloss">';
-  var cw=latestBodyWeightLb(),wt=weightTrend();
-  if(cw!=null){var toGo=Math.round((cw-GOAL_WEIGHT_LB)*10)/10,rt='',rc='var(--muted)';
+  var cw=latestBodyWeightLb(),wt=weightTrend(),gw=goalWeight();
+  if(cw!=null){var toGo=Math.round((cw-gw)*10)/10,rt='',rc='var(--muted)';
     if(wt&&wt.ratePerWeek!=null){var r=wt.ratePerWeek;if(r<=-0.05){rt='&#9660; '+Math.abs(r)+' lb/wk';rc='var(--green)';}else if(r>=0.05){rt='&#9650; '+r+' lb/wk';rc='var(--red)';}else{rt='&#8212; holding';}}
-    h+='<div class="fl-head"><div class="fl-wwrap"><span class="fl-w">'+cw+'</span><span class="fl-wu">lb</span>'+(rt?'<span class="fl-rate" style="color:'+rc+'">'+rt+'</span>':'')+'</div><div class="fl-goal">'+(toGo>0?('<b>'+toGo+'</b> lb to '+GOAL_WEIGHT_LB):'at goal &#10003;')+'</div></div>';
-  }else{h+='<div class="fl-empty">Log your weight in Apple Health to track the trend toward '+GOAL_WEIGHT_LB+' lb.</div>';}
+    h+='<div class="fl-head"><div class="fl-wwrap"><span class="fl-w">'+cw+'</span><span class="fl-wu">lb</span>'+(rt?'<span class="fl-rate" style="color:'+rc+'">'+rt+'</span>':'')+'</div><div class="fl-goal">'+(toGo>0?('<b>'+toGo+'</b> lb to '+gw):'at goal &#10003;')+'</div></div>';
+  }else{h+='<div class="fl-empty">Log your weight in Apple Health to track the trend toward '+gw+' lb.</div>';}
   var end=new Date(vd);end.setHours(0,0,0,0);var start=new Date(end);start.setDate(end.getDate()-6);
   var nut=nutritionSummary(start.getTime(),end.getTime());
   if(nut&&nut.dietDays>0&&nut.deficit!=null){var d=Math.round(nut.deficit),dc=d>0?'var(--green)':'var(--red)';
@@ -1676,8 +1732,94 @@ function bonusCardHTML(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6),liftDay=!
   var cardioBtn=cardioIsBonus?'<div class="gcell'+(cardioGreen?' done-green':'')+'" onclick="openCardioSheet()"><div class="gcell-main">Cardio</div></div>':'';
   var snackBtn='<div class="gcell" onclick="setView(\'snacks\')"><div class="gcell-main">'+snk+' snack'+(snk===1?'':'s')+'</div></div>';
   return '<div class="dsec"><div class="sec-lbl">Bonus</div><div class="sec-card sec-btns"><div class="cgrid '+(cardioIsBonus?'c3':'c2')+'">'+standBtn+cardioBtn+snackBtn+'</div></div></div>';}
+var wlEditing=false;
+function wlFmtShort(ms){var d=new Date(ms);return MONTHS_S[d.getMonth()]+' '+d.getDate();}
+function wlDateInputVal(ms){var d=new Date(ms),m=d.getMonth()+1,day=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day;}
+/* The glide-path chart: the straight target line (start→goal by the deadline), the actual
+   smoothed weight trend so far, a "today" marker, and a dashed projection to the deadline at
+   the current rate (green on/ahead, red behind). SVG scales to the card width, ratio fixed. */
+function wlChartSVG(st){var g=st.goal,W=320,H=150,PX=8,PY=12,i;
+  var series=woWeightSeries(400).filter(function(p){return p.ms>=g.startMs-864e5;});
+  var xMin=g.startMs,xMax=g.targetMs;
+  var ws=[g.startW,g.goalW,st.current];for(i=0;i<series.length;i++)ws.push(series[i].w);
+  var projAt=(st.actualRate!=null)?(st.current+st.actualRate*st.weeksLeft):null;if(projAt!=null)ws.push(projAt);
+  var yHi=Math.max.apply(null,ws)+1,yLo=Math.min.apply(null,ws)-1;if(yHi-yLo<2){yHi+=1;yLo-=1;}
+  function X(ms){var t=(ms-xMin)/((xMax-xMin)||1);if(t<0)t=0;if(t>1)t=1;return(PX+t*(W-2*PX)).toFixed(1);}
+  function Y(w){var t=(yHi-w)/((yHi-yLo)||1);if(t<0)t=0;if(t>1)t=1;return(PY+t*(H-2*PY)).toFixed(1);}
+  var now=Date.now();
+  var s='<svg viewBox="0 0 '+W+' '+H+'" aria-hidden="true">';
+  s+='<line x1="'+X(g.startMs)+'" y1="'+Y(g.startW)+'" x2="'+X(g.targetMs)+'" y2="'+Y(g.goalW)+'" stroke="var(--muted)" stroke-width="1.5" opacity="0.55"/>';
+  s+='<line x1="'+X(now)+'" y1="'+PY+'" x2="'+X(now)+'" y2="'+(H-PY)+'" stroke="var(--border)" stroke-width="1"/>';
+  var ptsIn=series.filter(function(p){return p.ms<=now+864e5;});
+  if(ptsIn.length>=2){var poly='';for(i=0;i<ptsIn.length;i++)poly+=X(ptsIn[i].ms)+','+Y(ptsIn[i].w)+' ';
+    var col=(st.actualRate!=null&&st.actualRate<-0.02)?'var(--green)':'var(--accent)';
+    s+='<polyline points="'+poly.replace(/\s+$/,'')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round"/>';}
+  if(projAt!=null){var pcol=(st.status==='behind')?'var(--red)':'var(--green)';
+    s+='<line x1="'+X(now)+'" y1="'+Y(st.current)+'" x2="'+X(g.targetMs)+'" y2="'+Y(projAt)+'" stroke="'+pcol+'" stroke-width="1.5" stroke-dasharray="4 3"/>';}
+  s+='<circle cx="'+X(now)+'" cy="'+Y(st.current)+'" r="3" fill="var(--fg)"/>';
+  s+='</svg>';return s;}
+function wlBannerText(st){var g=st.goal;
+  if(st.status==='done')return '<b>Goal reached</b> — you hit '+g.goalW+' lb. 💪';
+  if(st.status==='behind'){
+    if(st.actualRate==null||st.actualRate>=-0.02)return '<b>Behind</b> — the trend isn’t moving down yet. You need '+st.requiredRate.toFixed(2)+' lb/wk ('+st.remaining+' lb in '+st.weeksLeft+' wk) to reach '+g.goalW+' by '+wlFmtShort(g.targetMs)+'.';
+    return '<b>Behind</b> — at '+Math.abs(st.actualRate).toFixed(2)+' lb/wk you’d reach goal around '+wlFmtShort(st.projMs)+', after the '+wlFmtShort(g.targetMs)+' deadline. Tighten to ~'+st.requiredRate.toFixed(2)+' lb/wk.';}
+  if(st.status==='ahead')return '<b>Ahead of pace</b> — on the current trend you’d hit '+g.goalW+' lb around '+wlFmtShort(st.projMs)+', before '+wlFmtShort(g.targetMs)+'.';
+  if(st.status==='ontrack')return '<b>On track</b> — projected to hit '+g.goalW+' lb around '+wlFmtShort(st.projMs)+', right on the '+wlFmtShort(g.targetMs)+' deadline.';
+  return 'Keep logging your weight in Apple Health to project a finish date.';}
+function wlDashHTML(vd){
+  if(wlEditing||!wlGoal())return wlSetupHTML();
+  var st=wlStats();if(!st)return wlSetupHTML();var g=st.goal;
+  var h='<div class="dsec"><div class="sec-lbl">Weight-Loss Goal</div><div class="sec-card wl-card">';
+  h+='<div class="wl-hd"><div class="wl-lost"><b>'+st.lost+'</b><span class="wl-lost-u">of '+st.toLose+' lb lost</span></div><div class="wl-pct">'+st.pct+'%</div></div>';
+  h+='<div class="wl-bar"><div class="wl-bar-fill" style="width:'+st.pct+'%"></div></div>';
+  h+='<div class="wl-chart">'+wlChartSVG(st)+'</div>';
+  var reqTxt=(st.remaining<=0)?'—':(st.requiredRate.toFixed(2)+' lb/wk');
+  var actTxt=(st.actualRate==null)?'no data':((st.actualRate<0?'':'+')+st.actualRate.toFixed(2)+' lb/wk');
+  var projTxt=(st.projMs!=null)?wlFmtShort(st.projMs):'—';
+  h+='<div class="wl-row"><div class="wl-stat"><div class="wl-stat-l">Need</div><div class="wl-stat-v">'+reqTxt+'</div></div>';
+  h+='<div class="wl-stat"><div class="wl-stat-l">Actual</div><div class="wl-stat-v">'+actTxt+'</div></div>';
+  h+='<div class="wl-stat"><div class="wl-stat-l">'+(st.daysLeft>=0?st.daysLeft+'d left':'past due')+'</div><div class="wl-stat-v">'+projTxt+'</div></div></div>';
+  h+='<div class="wl-banner '+st.status+'">'+wlBannerText(st)+'</div>';
+  var end=new Date(vd);end.setHours(0,0,0,0);var start=new Date(end);start.setDate(end.getDate()-6);
+  var nut=nutritionSummary(start.getTime(),end.getTime());
+  if(st.requiredDeficit>0){var actD=(nut&&nut.deficit!=null)?Math.round(nut.deficit):null;
+    h+='<div class="wl-stat-l" style="margin-top:11px">Calories · managed in Cronometer</div>';
+    h+='<div style="font-size:0.8rem;margin-top:3px">Need ~<b>'+st.requiredDeficit.toLocaleString()+'</b> kcal/day deficit'+(actD!=null?(' · running <b style="color:'+(actD>=st.requiredDeficit*0.85?'var(--green)':'var(--red)')+'">'+(actD>0?'−':'+')+Math.abs(actD).toLocaleString()+'</b>'):'')+'</div>';}
+  h+='<div class="wl-foot"><span onclick="wlEditGoal()">Edit goal</span><span onclick="wlConfirmClear()">Clear</span></div>';
+  h+='</div></div>';return h;}
+function wlSetupHTML(){
+  var g=wlGoal(),cur=latestBodyWeightLb();
+  var defW=g?g.startW:(cur!=null?cur:'');
+  var defLose=g?(Math.round((g.startW-g.goalW)*10)/10):15;
+  var defDate=g?wlDateInputVal(g.targetMs):(function(){var d=new Date();d.setMonth(d.getMonth()+4);return wlDateInputVal(d.getTime());})();
+  var h='<div class="dsec"><div class="sec-lbl">Weight-Loss Goal</div><div class="sec-card wl-setup">';
+  h+='<h3>'+(g?'Edit your goal':'Set your weight-loss goal')+'</h3>';
+  h+='<p>Pick a target and a date. Progress and pace track from your Apple Health weight trend; your daily calories stay in Cronometer.</p>';
+  h+='<div class="wl-err" id="wlErr"></div>';
+  h+='<div class="wl-field"><label>Current weight (lb)</label><input id="wlfW" inputmode="decimal" value="'+(defW!==''?esc(String(defW)):'')+'" placeholder="e.g. 190"></div>';
+  h+='<div class="wl-field"><label>Pounds to lose</label><input id="wlfLose" inputmode="decimal" value="'+esc(String(defLose))+'" placeholder="15"></div>';
+  h+='<div class="wl-field"><label>Target date</label><input id="wlfDate" type="date" value="'+defDate+'"></div>';
+  h+='<button class="wl-save" onclick="wlSaveFromForm()">'+(g?'Save goal':'Start tracking')+'</button>';
+  if(g)h+='<div class="wl-foot"><span onclick="wlCancelEdit()">Cancel</span></div>';
+  h+='</div></div>';return h;}
+function wlEditGoal(){wlEditing=true;renderGoals();}
+function wlCancelEdit(){wlEditing=false;renderGoals();}
+function wlConfirmClear(){if(confirm('Clear your weight-loss goal? Your weight history stays.')){wlClearGoal();wlEditing=false;renderGoals();}}
+function wlSaveFromForm(){
+  var wEl=document.getElementById('wlfW'),lEl=document.getElementById('wlfLose'),dEl=document.getElementById('wlfDate'),err=document.getElementById('wlErr');
+  function num(el){if(!el)return NaN;return parseFloat(String(el.value||'').replace(/[^0-9.\-]/g,''));}
+  function fail(m){if(err)err.textContent=m;}
+  var w=num(wEl),lose=num(lEl),dv=dEl?dEl.value:'';
+  if(isNaN(w)||w<=0)return fail('Enter your current weight.');
+  if(isNaN(lose)||lose<=0)return fail('Enter how many pounds to lose.');
+  if(!dv)return fail('Pick a target date.');
+  var p=dv.split('-'),tms=new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10)).getTime();
+  if(isNaN(tms)||tms<=Date.now())return fail('Target date must be in the future.');
+  var existing=wlGoal(),startMs=existing?existing.startMs:Date.now();
+  wlSaveGoal({startW:Math.round(w*10)/10,startMs:startMs,goalW:Math.round((w-lose)*10)/10,targetMs:tms});
+  wlEditing=false;renderGoals();}
 function renderGoals(){document.getElementById('dName');var vd=new Date();vd.setHours(0,0,0,0);
-  var h=fatLossHTML(vd);
+  var h=wlDashHTML(vd)+fatLossHTML(vd);
   var vdH=null;for(var i=0;i<14;i++){var d=new Date();d.setDate(d.getDate()-i);d.setHours(0,0,0,0);if(loadHealth(d)){vdH=d;break;}}
   if(vdH){var _hm=healthMetricsHTML(vdH);if(_hm)h+='<div class="dsec"><div class="sec-lbl" style="margin:0 0 6px">Apple Health &middot; '+MONTHS_S[vdH.getMonth()]+' '+vdH.getDate()+'</div>'+_hm+'</div>';}
   h+='<div class="dsec"><div class="sec-lbl">The Portfolio</div><div class="sec-card"><div class="gsoon">Body is live. Next, as we build them: <b>Work &amp; focus</b> · <b>Trading</b> · <b>Formal activity</b> · <b>Financial review</b>.</div></div></div>';
@@ -3193,10 +3335,13 @@ function coachSnacks(){try{var n=new Date();n.setHours(0,0,0,0);var sun=new Date
   for(var j=0;j<td.length;j++){var e2=snackExById(td[j].ex),it={exercise:e2?e2.lbl:td[j].ex,amount:td[j].amt,unit:e2?e2.unit:'',meal:td[j].meal||'anytime',vigorous:!!(e2&&e2.vig)};if(td[j].det&&typeof td[j].det==='object')it.detail=td[j].det;items.push(it);}
   var byArr=[];for(var k in byEx){if(!byEx.hasOwnProperty(k))continue;var ee=snackExById(k);byArr.push({exercise:ee?ee.lbl:k,count:byEx[k]});}
   return {todayCount:td.length,todaySnacks:items,weekVigorousBursts:vig,vigorousWeeklyTarget:SNACK_GOALS.vigWeek.target,weekTotalSnacks:total,weekHardMinutes:Math.round(hardMin*10)/10,hardMinutesWeeklyTarget:SNACK_GOALS.hardWeek,hardMinutesPerSnackTarget:SNACK_GOALS.hardSnack.target,weekByExercise:byArr,burstDetails:bursts};}catch(e){return null;}}
-function coachPayload(){_woInRender=true;_woScan=null;try{var r=coachRangeMs(coachRange),sessions=coachSessions(r),cardio=coachCardio(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),age:getProfileAge(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),cardioLogged:cardio.length,cardioSessions:cardio,progressTrends:coachTrends(sessions),progressionNudges:coachNudges(),movementBalance:(function(){var b=woBalanceReport(woMovementStatsFromSessions(sessions));return {setsByGroup:{push:b.push,pull:b.pull,legs:b.legs,core:b.core},squatSets:b.squat,hingeSets:b.hinge,setsByPattern:b.st.pat,setsByMuscle:b.st.mus,flags:b.flags};})(),trainingLoad:(function(){var rd=woReadiness();return {status:rd.status,deloadRecommended:rd.deload,detail:rd.detail,weeks:rd.weeks.map(function(w){return {wkAgo:w.wkAgo,sets:w.sets,tonnage:w.tonnage,avgRpe:w.avgRpe,sessions:w.sessions};})};})(),health:coachHealth(r),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch'),tightAreas:coachTightSummary(),exerciseSnacks:coachSnacks(),nutrition:coachNutrition(r)};}finally{_woInRender=false;_woScan=null;}}
+function coachWeightLoss(){var st=wlStats();if(!st)return null;var g=st.goal;
+  return {goalWeightLb:g.goalW,startWeightLb:g.startW,targetDate:wlDateInputVal(g.targetMs),currentWeightLb:st.current,lbsLost:st.lost,lbsRemaining:st.remaining,pctToGoal:st.pct,daysLeft:st.daysLeft,weeksLeft:st.weeksLeft,requiredRateLbPerWk:st.requiredRate,requiredDeficitKcal:st.requiredDeficit,actualRateLbPerWk:st.actualRate,projectedFinish:st.projMs!=null?wlDateInputVal(st.projMs):null,status:st.status};}
+function coachPayload(){_woInRender=true;_woScan=null;try{var r=coachRangeMs(coachRange),sessions=coachSessions(r),cardio=coachCardio(r),n=new Date();return {rangeLabel:r.label,today:n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate(),age:getProfileAge(),sessionsLogged:sessions.length,sessions:sessions.map(coachSessSummary),cardioLogged:cardio.length,cardioSessions:cardio,progressTrends:coachTrends(sessions),progressionNudges:coachNudges(),movementBalance:(function(){var b=woBalanceReport(woMovementStatsFromSessions(sessions));return {setsByGroup:{push:b.push,pull:b.pull,legs:b.legs,core:b.core},squatSets:b.squat,hingeSets:b.hinge,setsByPattern:b.st.pat,setsByMuscle:b.st.mus,flags:b.flags};})(),trainingLoad:(function(){var rd=woReadiness();return {status:rd.status,deloadRecommended:rd.deload,detail:rd.detail,weeks:rd.weeks.map(function(w){return {wkAgo:w.wkAgo,sets:w.sets,tonnage:w.tonnage,avgRpe:w.avgRpe,sessions:w.sessions};})};})(),health:coachHealth(r),weeklyTemplates:coachTemplates(),mobilityRoutine:coachRoutine('mobility'),stretchRoutine:coachRoutine('stretch'),tightAreas:coachTightSummary(),exerciseSnacks:coachSnacks(),nutrition:coachNutrition(r),weightLoss:coachWeightLoss()};}finally{_woInRender=false;_woScan=null;}}
 function coachPrompt(p,prev){var s='Analyze my training for '+p.rangeLabel+' (today is '+p.today+').\n\nCover these:\n1. PROGRESS — how my lifts, volume, and effort (RPE) trended over this range. Call out wins and stalls using the numbers.\n2. PROGRAMMING REVIEW of my current day-templates — have I drifted into poor exercise / set / rep choices? Are there muscle or movement imbalances (push vs pull, squat vs hinge, vertical vs horizontal, core, unilateral) or critical patterns I am MISSING? Ground this in movementBalance — actual completed-set counts per movement pattern, group, and muscle over this range, plus auto-detected flags.\n3. CONDITIONING — review my cardio sessions (cardioSessions): aerobic volume (how often / how long), intensity (incline, speed, pace, average heart rate), how it is trending, and whether it complements my lifting and recovery rather than interfering. Weave this into the sections above.\n4. READINESS — based on my progress, am I ready to add exercises, sets, reps, or load, or to add mobility / stretch / conditioning work? Be specific, with target sets and reps. Use trainingLoad (weekly working sets, tonnage, avg RPE, and the deloadRecommended flag) to judge accumulated fatigue — if a deload is due, prescribe it (which week, how much to cut) rather than adding volume. Also factor in health where present (bodyweight trend, resting HR, sleep, HRV, daily steps/energy): e.g. a climbing resting HR, falling HRV, short sleep, or a sharp bodyweight drop all signal under-recovery and argue against adding load. If my age is given (see "age"), factor it into recovery capacity, how aggressively to progress, and joint-friendly exercise selection.';
   s+='\n5. EXERCISE SNACKS — review exerciseSnacks: brief vigorous bursts through the day (the VO₂max lever) and their hard-minutes. Note if the weekly vigorous-burst target is being missed, and fold this into the conditioning and readiness picture rather than treating it separately.';
   s+='\n6. NUTRITION & ENERGY BALANCE — if nutrition is present (from Cronometer via Apple Health), assess whether I am in a calorie deficit (avgDailyDeficit / inDeficit; caloriesOut is an Apple Health estimate, so treat it as directional) and whether it fits my goals of losing fat while gaining muscle. Check protein against proteinTargetG (enough to protect/build muscle in a deficit) and fiber against fiberTargetG. Cross-reference the deficit size with trainingLoad and bodyweight trend: a deficit that is too aggressive alongside heavy training risks muscle loss and under-recovery. Give a specific calorie/protein adjustment if warranted.';
+  s+='\n7. WEIGHT-LOSS GOAL — if weightLoss is present, judge pace against the deadline: compare actualRateLbPerWk with requiredRateLbPerWk, and whether projectedFinish beats targetDate (status says ahead / ontrack / behind). If behind, say concretely what to change (deficit, cardio, pace) to land by targetDate; if the actual rate is faster than required, note whether it is aggressive enough to risk muscle loss given trainingLoad and protein. Tie this to the nutrition and training picture, not as a separate silo.';
   if(prev)s+='\n\nFor reference, here is your previous analysis ('+prev.when+', covering '+prev.rangeLabel+'). Briefly note what has changed since and whether I acted on it — do NOT just repeat it:\n"""\n'+prev.text+'\n"""';
   s+='\n\nMy data as JSON:\n```json\n'+JSON.stringify(p,null,1)+'\n```';return s;}
 function coachFriendlyErr(status,msg){if(status===401)return 'Your API key was rejected (401). Open settings and paste a valid Anthropic key.';if(status===429)return 'Rate limited or out of credits (429). '+msg;if(status===400)return 'Request rejected (400): '+msg;if(status===0)return 'Could not reach Anthropic. Check your connection.';return 'Error '+status+': '+msg;}

@@ -2140,6 +2140,61 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var rootHTML=sandbox.document.getElementById('root').innerHTML;
   ok(/Apple Health/.test(rootHTML)&&/5,?500/.test(rootHTML),'Goals tab shows a labeled Apple Health strip with imported metrics');
   ok(/420/.test(rootHTML),'Goals strip includes every imported metric (active energy too)');
+
+  // ===== Weight-Loss Mode (Phase 1): goal + pace/projection/dashboard =====
+  (function(){
+    var today=new Date();today.setHours(0,0,0,0);
+    function hkey(off){var d=new Date(today);d.setDate(d.getDate()-off);return sandbox.healthKeyForDate(d);}
+    function setW(off,w){var k=hkey(off),cur=store.get(k),o=cur?JSON.parse(cur):{};o.weightLb=w;store.set(k,JSON.stringify(o));}
+    var touched=[hkey(0),hkey(14),hkey(28)],snap={};touched.forEach(function(k){snap[k]=store.get(k);});
+    // no goal: fallbacks + setup form
+    sandbox.localStorage.removeItem('wl_goal');sandbox.wlEditing=false;
+    ok(sandbox.wlGoal()===null,'wlGoal() is null with nothing set');
+    ok(sandbox.goalWeight()===175,'goalWeight() falls back to the legacy 175 with no goal');
+    ok(sandbox.wlStats()===null&&sandbox.coachWeightLoss()===null,'wlStats()/coachWeightLoss() are null with no goal');
+    sandbox.viewMode='goals';sandbox.renderGoals();
+    ok(/Set your weight-loss goal/.test(sandbox.document.getElementById('root').innerHTML)&&/wlfW/.test(sandbox.document.getElementById('root').innerHTML),'Goals tab shows the goal setup form when no goal is set');
+    // seed a losing trend (193 -> 191.5 -> 190) and a goal (200 -> 185 by +60d)
+    setW(28,193);setW(14,191.5);setW(0,190);
+    var nowMs=Date.now();
+    sandbox.wlSaveGoal({startW:200,startMs:nowMs-90*864e5,goalW:185,targetMs:nowMs+60*864e5});
+    ok(sandbox.goalWeight()===185,'goalWeight() reflects the saved goal weight');
+    var st=sandbox.wlStats();
+    ok(st&&st.toLose===15&&st.lost===10&&st.remaining===5,'wlStats: lost 10 of 15, 5 to go (current 190, goal 185)');
+    ok(st.pct===67,'wlStats: percent-to-goal rounds to 67%');
+    ok(st.requiredRate>0.45&&st.requiredRate<0.75,'wlStats: required rate ~0.58 lb/wk (5 lb in ~8.5 wk)');
+    ok(st.actualRate!=null&&st.actualRate<0,'wlStats: actual rate is negative (losing) from the seeded trend');
+    ok(st.status==='ahead','wlStats: ahead of pace (projected before the deadline)');
+    ok(st.requiredDeficit>0,'wlStats: required deficit is a positive kcal/day number');
+    sandbox.renderGoals();
+    var dashH=sandbox.document.getElementById('root').innerHTML;
+    ok(/Weight-Loss Goal/.test(dashH)&&/lb lost/.test(dashH)&&/<svg/.test(dashH),'Goals tab renders the weight-loss dashboard with the glide-path chart');
+    var cwl=sandbox.coachWeightLoss();
+    ok(cwl&&cwl.goalWeightLb===185&&cwl.lbsRemaining===5&&cwl.status==='ahead'&&!!cwl.targetDate,'coachWeightLoss() exposes goal, remaining, status, and target date');
+    // behind: wipe the trend (only today's weight remains) -> no actual rate
+    store.delete(hkey(14));store.delete(hkey(28));
+    var st2=sandbox.wlStats();
+    ok(st2.actualRate==null&&st2.status==='behind','wlStats: with no weight trend yet, status is behind');
+    // done: current at/under goal weight
+    setW(0,184);
+    var st3=sandbox.wlStats();
+    ok(st3.remaining<=0&&st3.status==='done'&&st3.pct===100,'wlStats: at/under goal weight reads done, 100%');
+    // setup form saves a goal through the DOM
+    sandbox.localStorage.removeItem('wl_goal');sandbox.wlEditing=false;
+    var fut=new Date(nowMs+120*864e5),fv=fut.getFullYear()+'-'+((fut.getMonth()+1<10?'0':'')+(fut.getMonth()+1))+'-'+((fut.getDate()<10?'0':'')+fut.getDate());
+    sandbox.document.getElementById('wlfW').value='190';
+    sandbox.document.getElementById('wlfLose').value='15';
+    sandbox.document.getElementById('wlfDate').value=fv;
+    sandbox.wlSaveFromForm();
+    var g=sandbox.wlGoal();
+    ok(g&&g.startW===190&&g.goalW===175,'wlSaveFromForm: stores start 190 and goal 175 (15 to lose) from the form');
+    sandbox.wlConfirmClear();
+    ok(sandbox.wlGoal()===null,'wlConfirmClear() removes the goal');
+    // restore
+    sandbox.localStorage.removeItem('wl_goal');sandbox.wlEditing=false;
+    touched.forEach(function(k){if(snap[k]===undefined)store.delete(k);else store.set(k,snap[k]);});
+  })();
+
   // clipboard + run-shortcut paths degrade gracefully without the platform APIs (no throw)
   var threw=false;try{sandbox.healthImportClipboard();}catch(e){threw=true;}
   ok(!threw,'healthImportClipboard does not throw when navigator.clipboard is absent');
