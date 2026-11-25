@@ -837,6 +837,18 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .hl-sec{padding:12px 18px;border-top:1px solid var(--border)}
 .hl-sec-t{font-size:0.8125rem;font-weight:700;color:var(--text);margin-bottom:6px}
 .hl-sec-b{font-size:0.7812rem;color:var(--muted);line-height:1.5}
+.wc-txt{font-size:0.75rem;color:var(--muted);line-height:1.5;margin-top:6px}
+.wc-txt b{color:var(--text)}
+.fl-foot{margin-top:10px;font-size:0.72rem;font-weight:600;color:var(--accent);cursor:pointer}
+.hs-row{display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);padding:3px 0}
+.hs-day{flex:1;font-variant-numeric:tabular-nums}
+.hs-h{width:44px;text-align:center;font-size:0.625rem;letter-spacing:.06em;text-transform:uppercase}
+.hs-d{width:44px;text-align:center;font-weight:700}
+.hs-d.ok{color:var(--green)}.hs-d.man{color:var(--accent)}
+.hs-warn{font-size:0.75rem;color:var(--red);margin-top:6px;line-height:1.4}
+.hm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.hm-f{display:flex;flex-direction:column;gap:3px;font-size:0.6875rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.hm-f input{background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:0.9375rem;padding:10px;border-radius:6px;-webkit-appearance:none;outline:none;width:100%;box-sizing:border-box}
 .hl-sec-b b{color:var(--text);font-weight:600}
 .hl-url{margin:8px 0 4px;padding:10px;background:var(--surf);border:1px solid var(--border);border-radius:6px;
   font-family:ui-monospace,Menlo,monospace;font-size:0.75rem;color:var(--accent);word-break:break-all;cursor:pointer}
@@ -861,6 +873,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .reset-btn{font-size:0.6875rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   background:none;border:1px solid var(--border);padding:11px 22px;cursor:pointer}
 .data-wrap{margin:12px 16px 0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.sync-btn2{flex-basis:100%;color:var(--accent);border-color:var(--accent)}
 .sync-btn{flex-basis:100%;color:var(--onacc);background:var(--grad);border-color:transparent;font-weight:700}
 .backup-nag{margin:12px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;
   background:rgba(212,168,67,.08);border:1px solid #6B5420;border-radius:8px;padding:11px 14px;font-size:0.7812rem;color:var(--text)}
@@ -1106,6 +1119,7 @@ body{background:var(--bgimg);background-attachment:fixed;padding-bottom:calc(var
 </div>
 <div class="data-wrap" id="dataWrap">
   <button class="reset-btn sync-btn" onclick="healthSyncNow()">&#8635; Sync Apple Health</button>
+  <button class="reset-btn sync-btn2" onclick="healthSyncNow('Copy My Stats Yesterday')">&#8635; Sync yesterday</button>
   <button class="reset-btn" onclick="exportData()">Export Backup</button>
   <button class="reset-btn" onclick="copyBackup()">Copy Backup</button>
   <button class="reset-btn" onclick="importData()">Import Backup</button>
@@ -1687,6 +1701,26 @@ function weightTrend(){var s=woWeightSeries(56);if(!s||s.length<2)return null;va
   var early=s.slice(0,k),late=s.slice(n-k),msE=early[Math.floor((k-1)/2)].ms,msL=late[Math.floor((k-1)/2)].ms,days=(msL-msE)/864e5;
   if(days<3)return null;var rate=(avg(late)-avg(early))/days*7;
   return {current:s[n-1].w,ratePerWeek:Math.round(rate*100)/100,days:Math.round((s[n-1].ms-s[0].ms)/864e5),n:n};}
+/* Real-deficit check: the deficit Health/Cronometer report vs the deficit the scale implies
+   (trend change x 3,500 kcal/lb). Needs 6+ weigh-ins over 10+ days and 10+ days of calorie data in that span.
+   gap > 0 means Health reports a bigger deficit than the scale shows (burn overstated or intake understated). */
+var CAL_MIN_WEIGH=6,CAL_MIN_SPAN=10,CAL_MIN_DEF=10,KCAL_PER_LB=3500;
+function deficitCalibration(){var s=woWeightSeries(28),r={ok:false,weighIns:s.length,spanDays:0,deficitDays:0};if(s.length<CAL_MIN_WEIGH)return r;
+  function avg(a){var t=0;for(var i=0;i<a.length;i++)t+=a[i].w;return t/a.length;}
+  var e=s.slice(0,3),l=s.slice(-3),msE=e[1].ms,msL=l[1].ms,span=(msL-msE)/864e5;r.spanDays=Math.round(span);if(span<CAL_MIN_SPAN)return r;
+  var n=nutritionSummary(msE,msL);r.deficitDays=n?(n.deficitDays||0):0;if(!n||n.deficit==null||r.deficitDays<CAL_MIN_DEF)return r;
+  var actual=-(avg(l)-avg(e))*KCAL_PER_LB/span;
+  r.ok=true;r.reported=n.deficit;r.actual=actual;r.gap=n.deficit-actual;r.caloriesOut=n.caloriesOut;r.adjustedOut=(n.caloriesOut!=null)?n.caloriesOut-r.gap:null;return r;}
+function calibrationHTML(){var c=deficitCalibration(),h='<div class="wc-txt">';
+  if(!c.ok)return h+'Real-deficit check needs '+CAL_MIN_WEIGH+'+ weigh-ins over '+CAL_MIN_SPAN+'+ days and '+CAL_MIN_DEF+'+ days of calories (have '+c.weighIns+' weigh-ins, '+c.spanDays+' days, '+c.deficitDays+' calorie days).</div>';
+  function k(v){return (v>=0?'&minus;':'+')+Math.abs(Math.round(v)).toLocaleString();}
+  h+='Health reports <b>'+k(c.reported)+'</b> kcal/day; your weight trend implies <b>'+k(c.actual)+'</b>.';
+  var g=Math.round(c.gap);
+  if(Math.abs(g)<=150)h+=' These agree within 150 kcal/day.';
+  else if(g>0)h+=' Health may be overstating burn or understating intake by about <b>'+g+' kcal/day</b>.';
+  else h+=' The scale shows about <b>'+Math.abs(g)+' kcal/day</b> more loss than Health reports.';
+  if(c.adjustedOut!=null&&Math.abs(g)>150)h+=' Adjusted burn &asymp; <b>'+Math.round(c.adjustedOut).toLocaleString()+'</b> kcal/day.';
+  return h+'</div>';}
 function flPill(lbl,done){return '<span class="fl-pill'+(done?' done':'')+'"><span class="fl-dot">'+(done?'&#10003;':'&#9675;')+'</span>'+lbl+'</span>';}
 function fatLossHTML(vd){
   var h='<div class="dsec"><div class="sec-lbl">Fat-Loss</div><div class="sec-card fatloss">';
@@ -1697,8 +1731,10 @@ function fatLossHTML(vd){
   }else{h+='<div class="fl-empty">Log your weight in Apple Health to track the trend toward '+gw+' lb.</div>';}
   var end=new Date(vd);end.setHours(0,0,0,0);var start=new Date(end);start.setDate(end.getDate()-6);
   var nut=nutritionSummary(start.getTime(),end.getTime());
-  if(nut&&nut.dietDays>0&&nut.deficit!=null){var d=Math.round(nut.deficit),dc=d>0?'var(--green)':'var(--red)';
-    h+='<div class="fl-def"><span class="fl-defn" style="color:'+dc+'">'+(d>0?'&minus;':'+')+Math.abs(d).toLocaleString()+' kcal/day</span> <span class="fl-defsub">avg '+(d>0?'deficit':'surplus')+' &middot; '+nut.dietDays+'d logged</span></div>';}
+  if(nut&&(nut.dietDays>0||nut.defDays>0)&&nut.deficit!=null){var d=Math.round(nut.deficit),dc=d>0?'var(--green)':'var(--red)';
+    h+='<div class="fl-def"><span class="fl-defn" style="color:'+dc+'">'+(d>0?'&minus;':'+')+Math.abs(d).toLocaleString()+' kcal/day</span> <span class="fl-defsub">avg '+(d>0?'deficit':'surplus')+' &middot; '+(nut.deficitDays||nut.dietDays)+'d logged</span></div>';}
+  h+=calibrationHTML();
+  if(nut&&nut.partialToday&&!(nut.deficit!=null&&(nut.dietDays>0||nut.defDays>0)))h+='<div class="wc-txt">Today&rsquo;s calories count after '+(DAY_COMPLETE_HOUR>12?DAY_COMPLETE_HOUR-12+' pm':DAY_COMPLETE_HOUR+' am')+', once the day is complete.</div>';
   var hd=loadHealth(vd)||{},ib=inclBonusList(),inclDone=!!state['c_incl']||ib.length>0;
   h+='<div class="fl-levers">';
   h+=flPill('Protein'+(hd.protein!=null?' '+Math.round(hd.protein):''),hd.protein!=null&&hd.protein>=PROTEIN_TARGET_G);
@@ -1709,6 +1745,7 @@ function fatLossHTML(vd){
   h+='<span class="fl-pill fl-tap'+(state['vit']?' done':'')+'" onclick="toggleVit()"><span class="fl-dot">'+(state['vit']?'&#10003;':'&#9675;')+'</span>Vitamins</span>';
   h+='</div>';
   if(ib.length){h+='<div class="fl-chips">';for(var i=0;i<ib.length;i++){var e=ib[i];h+='<span class="fl-chip">&#128293; '+(e.min||INCL_BONUS_DEF.min)+'m @ '+(e.incl!=null?e.incl:INCL_BONUS_DEF.incl)+'% <b onclick="undoBonusIncline('+e.ts+')">&times;</b></span>';}h+='</div>';}
+  h+='<div class="fl-foot" onclick="openHealthSheet()">Health sync status &amp; manual entry &rsaquo;</div>';
   h+='</div></div>';return h;}
 /* Compact single-screen day layout: the section time-eyebrows (MORNING / 8:30 WORKOUT / CARDIO /
    WALKS / STANDING) are dropped and rows merged into two label-less cards — a checklist (mobility,
@@ -1943,7 +1980,36 @@ function seriesAvg(series){var s=0;for(var i=0;i<series.length;i++)s+=series[i].
 function weekBars(series,target,showAvg){var max=target,i;for(i=0;i<series.length;i++)if(series[i].count>max)max=series[i].count;if(max<1)max=1;var H=46,bars='',mos='',prevM=-1;for(i=0;i<series.length;i++){var s=series[i],ph=Math.max(2,Math.round(s.count/max*H)),cur=(s.wkAgo===0);bars+='<div class="wk-bar-wrap"><div class="wk-bval'+(cur?' cur':'')+'">'+(s.count>0?s.count:'')+'</div><div class="wk-bar'+(cur?' cur':'')+'" style="height:'+ph+'px"></div></div>';var mo=s.sun.getMonth();mos+='<div class="wk-mo">'+(mo!==prevM?MONTHS_S[mo]:'')+'</div>';prevM=mo;}var cap=(showAvg?('avg '+seriesAvg(series)+'/wk &middot; '):'')+'last '+series.length+' wks &middot; target '+target;return '<div class="wk-wrap"><div class="wk-chart"><div class="wk-tline" style="bottom:'+Math.round(target/max*H)+'px"></div>'+bars+'</div><div class="wk-molabels">'+mos+'</div><div class="wk-cap">'+cap+'</div></div>';}
 function bcCard(name,cnt,target,wkw,avg,nwks,dots,chart,extra){var ok=cnt>=target;return '<div class="wcard bc-card"><div class="bc-top"><div class="bc-name">'+name+'</div><div class="bc-right"><div class="bc-count'+(ok?' ok':'')+'"><span class="bc-cn">'+cnt+'</span><span class="bc-ct"> / '+target+' '+wkw+'</span></div><div class="bc-avg">avg '+avg+'/wk &middot; '+nwks+' wks</div></div></div>'+dots+chart+(extra||'')+'</div>';}
 function bigThreeHTML(wd){var mets=[{name:'Workouts',done:woDoneOn,target:3},{name:'Cardio',done:cardioDoneOn,target:5},{name:'Calories',done:calDoneOn,target:7}];var wkw=(weekOffset===0?'this week':relativeWeekLabel(weekOffset).toLowerCase());var h='<div class="sec"><div class="sec-lbl">The Big Three</div>';for(var m=0;m<mets.length;m++){var mt=mets[m],wk=metricWeek(wd,mt.done),ser=weeklyMetricSeries(mt.done,WK_CHART_WEEKS),extra='';if(mt.name==='Cardio')extra='<div class="wk-sublbl">Zone 2 minutes / week</div>'+weekBars(weeklyValueSeries(zone2MinOn,WK_CHART_WEEKS),CARDIO_Z2_TIERS.target,true);h+=bcCard(mt.name,wk.hit,mt.target,wkw,seriesAvg(ser),ser.length,bcDots(wk.cells),weekBars(ser,mt.target,false),extra);}h+='</div>';return h;}
-function renderWeek(){var st=weekStats(),wd=getWeekDates();var rng=MONTHS_S[wd[0].getMonth()]+' '+wd[0].getDate()+' - '+MONTHS_S[wd[6].getMonth()]+' '+wd[6].getDate();document.getElementById('weekRange').textContent=rng;document.getElementById('weekTitle').textContent=weekOffset===0?'This Week':relativeWeekLabel(weekOffset);var _pbf=document.getElementById('pbFill');_pbf.style.width=pct(st.wo,3)+'%';_pbf.style.background=st.wo>=2?'var(--green)':'var(--accent)';document.getElementById('pbTxt').textContent=st.wo>=2?(st.wo+' / 3 workouts \u00b7 floor met'):(st.wo+' / 3 workouts \u00b7 floor 2');var h=bigThreeHTML(wd);h+=woMakeUpHTML();var _nut=nutritionSummary(wd[0].getTime(),wd[6].getTime());if(_nut&&_nut.dietDays>0){var _def=(_nut.deficit!=null?Math.round(_nut.deficit):null);h+='<div class="sec"><div class="sec-lbl">Nutrition &amp; Energy Balance</div><div class="wcard">';if(_def!=null){var _dc=_def>0?'var(--green)':'var(--red)';h+='<div class="z2-head"><div><span class="z2-num" style="color:'+_dc+'">'+(_def>0?'&minus;':'+')+Math.abs(_def).toLocaleString()+'</span><span class="z2-unit"> kcal/day '+(_def>0?'deficit':'surplus')+'</span></div><div class="z2-tier" style="color:'+_dc+';border-color:'+_dc+'">'+(_def>0?'DEFICIT':'SURPLUS')+'</div></div>';}h+='<div class="wrow"><div style="flex:1"><div class="wilbl">Calories in</div><div class="wsub">Cronometer via Apple Health</div></div><div style="text-align:right;font-weight:700;padding-left:12px">'+(_nut.caloriesIn!=null?Math.round(_nut.caloriesIn).toLocaleString()+' kcal':'&mdash;')+'</div></div>';h+='<div class="wrow"><div style="flex:1"><div class="wilbl">Calories out</div><div class="wsub">Active + resting (Health estimate)</div></div><div style="text-align:right;font-weight:700;padding-left:12px">'+(_nut.caloriesOut!=null?Math.round(_nut.caloriesOut).toLocaleString()+' kcal':'&mdash;')+'</div></div>';if(_nut.protein!=null){var _p=Math.round(_nut.protein);h+='<div class="wrow" style="border-top:1px solid var(--border)"><div style="flex:1"><div class="wilbl">Protein</div><div class="wsub">Protects muscle in a deficit</div></div><div style="text-align:right">'+wcnt(_p,PROTEIN_TARGET_G)+'</div></div>'+wbar(_p,PROTEIN_TARGET_G);}if(_nut.fiber!=null){var _fb=Math.round(_nut.fiber);h+='<div class="wrow"><div style="flex:1"><div class="wilbl">Fiber</div></div><div style="text-align:right">'+wcnt(_fb,FIBER_TARGET_G)+'</div></div>'+wbar(_fb,FIBER_TARGET_G);}var _mac=[];if(_nut.protein!=null)_mac.push(Math.round(_nut.protein)+'g P');if(_nut.carbs!=null)_mac.push(Math.round(_nut.carbs)+'g C');if(_nut.fat!=null)_mac.push(Math.round(_nut.fat)+'g F');if(_mac.length)h+='<div class="wrow"><div class="wilbl">Avg macros</div><div style="text-align:right;font-size:0.75rem;color:var(--accent);font-weight:600;padding-left:12px">'+_mac.join(' &middot; ')+'</div></div>';h+='<div class="z2-sub">Deficit = calories out &minus; in, averaged over '+_nut.dietDays+' logged day'+(_nut.dietDays===1?'':'s')+'. Calories out is Apple Health\'s estimate (active + resting) &mdash; directional, not exact; weigh the weekly trend, not any single day.</div></div></div>';}h+='<div class="sec"><div class="sec-lbl">Cardio</div><div class="wcard"><div class="wrow"><div style="flex:1"><div class="wilbl">Runs</div><div class="wsub">Outdoor + treadmill</div></div><div style="text-align:right">'+wcnt(st.runs,2)+'</div></div>'+wbar(st.runs,2);var extras=[{lbl:'Incline Walk',v:st.incline},{lbl:'HIIT',v:st.hiit}];for(var ci=0;ci<extras.length;ci++)h+='<div class="wrow"><div class="wilbl">'+extras[ci].lbl+'</div><div class="wcount" style="color:'+(extras[ci].v>0?'var(--accent)':'var(--muted)')+'">'+''+extras[ci].v+'</div></div>';if(st.cMin>0||st.cCal>0||st.cDist>0){var ct=[st.cMin>0?Math.round(st.cMin)+' min':'',st.cDist>0?(Math.round(st.cDist*100)/100)+' mi':'',st.cCal>0?Math.round(st.cCal).toLocaleString()+' kcal':''].filter(Boolean).join(' · ');h+='<div class="wrow" style="border-top:1px solid var(--border)"><div style="flex:1"><div class="wilbl">Logged totals</div><div class="wsub">From cardio details</div></div><div style="text-align:right;font-size:0.75rem;color:var(--accent);font-weight:600;padding-left:12px">'+ct+'</div></div>';}h+='</div></div>';var _cpr=cardioPRs(),_ctr=cardioWeeklyTrend(5),_hasCard=(_cpr.dist||_cpr.kcal||_cpr.min||_cpr.pace||_ctr.some(function(x){return x.min>0;}));if(_hasCard){h+='<div class="sec"><div class="sec-lbl">Cardio Records</div><div class="wcard">';var _recs=[];if(_cpr.pace)_recs.push(['Fastest pace',fmtPace(_cpr.pace.v),cardioPRDate(_cpr.pace.ms)]);if(_cpr.dist)_recs.push(['Longest distance',(Math.round(_cpr.dist.v*100)/100)+' mi',cardioPRDate(_cpr.dist.ms)]);if(_cpr.min)_recs.push(['Longest time',_cpr.min.v+' min',cardioPRDate(_cpr.min.ms)]);if(_cpr.kcal)_recs.push(['Most calories',Math.round(_cpr.kcal.v).toLocaleString()+' kcal',cardioPRDate(_cpr.kcal.ms)]);if(_recs.length){for(var _r=0;_r<_recs.length;_r++)h+='<div class="wrow"><div style="flex:1"><div class="wilbl">'+_recs[_r][0]+'</div><div class="wsub">'+_recs[_r][2]+'</div></div><div style="text-align:right;font-weight:700;color:var(--accent);font-size:0.9375rem">'+_recs[_r][1]+'</div></div>';}else{h+='<div class="wrow"><div class="wsub">Log treadmill stats (time, distance, calories) to start tracking records.</div></div>';}var _mx=0;for(var _t=0;_t<_ctr.length;_t++)if(_ctr[_t].min>_mx)_mx=_ctr[_t].min;if(_mx>0){h+='<div class="wrow" style="border-top:1px solid var(--border);display:block"><div class="wilbl" style="margin-bottom:8px">Weekly minutes &middot; last 5 weeks</div><div style="display:flex;align-items:flex-end;gap:8px;height:70px">';for(var _t2=0;_t2<_ctr.length;_t2++){var _wk=_ctr[_t2],_ph=Math.max(3,Math.round(_wk.min/_mx*54)),_lab=_wk.wkAgo===0?'now':_wk.wkAgo+'w';h+='<div style="flex:1;text-align:center;display:flex;flex-direction:column;justify-content:flex-end"><div style="font-size:0.6875rem;color:var(--muted);margin-bottom:3px;height:13px">'+(_wk.min>0?Math.round(_wk.min):'')+'</div><div style="height:'+_ph+'px;background:'+(_wk.min>0?'var(--accent)':'var(--border)')+'"></div><div class="wdlbl" style="margin-top:4px">'+_lab+'</div></div>';}h+='</div></div>';}h+='</div></div>';}document.getElementById('root').innerHTML=h;}
+/* Weekly fat-loss review for the viewed week (wd = getWeekDates()). Facts only. Weight = mean of the week's weigh-ins vs the prior week's mean;
+   flat2w = neither of the last two weekly means dropped by 0.1 lb or more. Future days are skipped. */
+function addDaysMs(ms,n){var d=new Date(ms);d.setDate(d.getDate()+n);return d.getTime();}
+function weeklyReview(wd){var s0=new Date(wd[0].getFullYear(),wd[0].getMonth(),wd[0].getDate()).getTime(),now=Date.now(),r={dist:{n:0,sum:0},steps:{n:0,sum:0,hit:0},prot:{n:0,sum:0,hit:0},fib:{n:0,sum:0,hit:0}};
+  function tally(o,v,t){if(typeof v!=='number')return;o.n++;o.sum+=v;if(v>=t)o.hit++;}
+  for(var i=0;i<7;i++){if(wd[i].getTime()>now)continue;var hd=loadHealth(wd[i]);if(!hd)continue;tally(r.steps,hd.steps,STEP_TARGET);if(typeof hd.distanceMi==='number'){r.dist.n++;r.dist.sum+=hd.distanceMi;}tally(r.prot,hd.protein,PROTEIN_TARGET_G);tally(r.fib,hd.fiber,FIBER_TARGET_G);}
+  var pts=woWeightSeries(150);function mean(a,b){var t=0,n=0;for(var j=0;j<pts.length;j++)if(pts[j].ms>=a&&pts[j].ms<b){t+=pts[j].w;n++;}return n?t/n:null;}
+  var m0=mean(s0,addDaysMs(s0,7)),m1=mean(addDaysMs(s0,-7),s0),m2=mean(addDaysMs(s0,-14),addDaysMs(s0,-7));
+  r.weight={cur:m0,prev:m1,delta:(m0!=null&&m1!=null)?m0-m1:null,flat2w:(m0!=null&&m1!=null&&m2!=null&&(m1-m2>-0.1)&&(m0-m1>-0.1))};
+  var endMs=Math.min(addDaysMs(s0,6),now);r.nut=nutritionSummary(s0,endMs);
+  var _wl=wlStats();r.needPerWeek=(_wl&&_wl.requiredRate>0)?_wl.requiredRate:null;   // required pace comes from the Weight-Loss Mode goal
+  r.any=(m0!=null||r.steps.n>0||r.dist.n>0||r.prot.n>0||(r.nut&&(r.nut.dietDays>0||r.nut.defDays>0)));return r;}
+function weeklyReviewHTML(st,wd){var r=weeklyReview(wd);if(!r.any)return '';
+  function row(lbl,sub,val,top){return '<div class="wrow"'+(top?' style="border-top:1px solid var(--border)"':'')+'><div style="flex:1"><div class="wilbl">'+lbl+'</div>'+(sub?'<div class="wsub">'+sub+'</div>':'')+'</div><div style="text-align:right;font-weight:700;color:var(--accent);padding-left:12px">'+val+'</div></div>';}
+  function sg(v,d){var x=Math.round(v*d)/d;return (x>0?'+':(x<0?'&minus;':''))+Math.abs(x);}
+  var h='<div class="sec"><div class="sec-lbl">Weekly Review &middot; Fat Loss</div><div class="wcard">';
+  var w=r.weight;
+  if(w.cur!=null){var sub=(w.delta!=null?sg(w.delta,10)+' lb vs last week':'no weigh-ins last week');if(r.needPerWeek!=null)sub+=' &middot; needed &minus;'+(Math.round(r.needPerWeek*100)/100)+' lb/wk';h+=row('Weight (week avg)',sub,(Math.round(w.cur*10)/10)+' lb');}
+  else h+=row('Weight (week avg)','no weigh-ins this week','&mdash;');
+  var n=r.nut,nd=n?(n.deficitDays||n.dietDays):0;
+  if(n&&n.deficit!=null&&nd>0)h+=row('Deficit',nd+' day'+(nd===1?'':'s')+' with calories','&nbsp;'+(n.deficit>0?'&minus;':'+')+Math.abs(Math.round(n.deficit)).toLocaleString()+' kcal/day',1);
+  if(r.steps.n>0)h+=row('Steps',r.steps.hit+' of '+r.steps.n+' days at '+STEP_TARGET.toLocaleString()+'+',Math.round(r.steps.sum/r.steps.n).toLocaleString()+'/day',1);
+  if(r.dist.n>0)h+=row('Distance',(Math.round(r.dist.sum*10)/10)+' mi total this week',(Math.round(r.dist.sum/r.dist.n*10)/10)+' mi/day',1);
+  if(r.prot.n>0)h+=row('Protein',r.prot.hit+' of '+r.prot.n+' days at '+PROTEIN_TARGET_G+' g+',Math.round(r.prot.sum/r.prot.n)+' g/day',1);
+  if(r.fib.n>0)h+=row('Fiber',r.fib.hit+' of '+r.fib.n+' days at '+FIBER_TARGET_G+' g+',Math.round(r.fib.sum/r.fib.n)+' g/day',1);
+  var z=Math.round(st.cZ2||0);h+=row('Zone 2',cardioZ2Tier(z).lbl+' &middot; floor '+CARDIO_Z2_TIERS.floor+', target '+CARDIO_Z2_TIERS.target,z+' min',1);
+  h+=row('Workouts','floor 2, ceiling 3',st.wo+' / 3',1);
+  if(w.flat2w)h+='<div class="z2-sub">Weekly weight average has not dropped by 0.1 lb or more in the last two weeks. Data point, not a verdict; check the Real-deficit line on Goals.</div>';
+  return h+'</div></div>';}
+function renderWeek(){var st=weekStats(),wd=getWeekDates();var rng=MONTHS_S[wd[0].getMonth()]+' '+wd[0].getDate()+' - '+MONTHS_S[wd[6].getMonth()]+' '+wd[6].getDate();document.getElementById('weekRange').textContent=rng;document.getElementById('weekTitle').textContent=weekOffset===0?'This Week':relativeWeekLabel(weekOffset);var _pbf=document.getElementById('pbFill');_pbf.style.width=pct(st.wo,3)+'%';_pbf.style.background=st.wo>=2?'var(--green)':'var(--accent)';document.getElementById('pbTxt').textContent=st.wo>=2?(st.wo+' / 3 workouts \u00b7 floor met'):(st.wo+' / 3 workouts \u00b7 floor 2');var h=bigThreeHTML(wd);h+=woMakeUpHTML();h+=weeklyReviewHTML(st,wd);var _nut=nutritionSummary(wd[0].getTime(),wd[6].getTime());if(_nut&&(_nut.dietDays>0||_nut.defDays>0)){var _def=(_nut.deficit!=null?Math.round(_nut.deficit):null);h+='<div class="sec"><div class="sec-lbl">Nutrition &amp; Energy Balance</div><div class="wcard">';if(_def!=null){var _dc=_def>0?'var(--green)':'var(--red)';h+='<div class="z2-head"><div><span class="z2-num" style="color:'+_dc+'">'+(_def>0?'&minus;':'+')+Math.abs(_def).toLocaleString()+'</span><span class="z2-unit"> kcal/day '+(_def>0?'deficit':'surplus')+'</span></div><div class="z2-tier" style="color:'+_dc+';border-color:'+_dc+'">'+(_def>0?'DEFICIT':'SURPLUS')+'</div></div>';}h+='<div class="wrow"><div style="flex:1"><div class="wilbl">Calories in</div><div class="wsub">Cronometer via Apple Health</div></div><div style="text-align:right;font-weight:700;padding-left:12px">'+(_nut.caloriesIn!=null?Math.round(_nut.caloriesIn).toLocaleString()+' kcal':'&mdash;')+'</div></div>';h+='<div class="wrow"><div style="flex:1"><div class="wilbl">Calories out</div><div class="wsub">Active + resting (Health estimate)</div></div><div style="text-align:right;font-weight:700;padding-left:12px">'+(_nut.caloriesOut!=null?Math.round(_nut.caloriesOut).toLocaleString()+' kcal':'&mdash;')+'</div></div>';if(_nut.protein!=null){var _p=Math.round(_nut.protein);h+='<div class="wrow" style="border-top:1px solid var(--border)"><div style="flex:1"><div class="wilbl">Protein</div><div class="wsub">Protects muscle in a deficit</div></div><div style="text-align:right">'+wcnt(_p,PROTEIN_TARGET_G)+'</div></div>'+wbar(_p,PROTEIN_TARGET_G);}if(_nut.fiber!=null){var _fb=Math.round(_nut.fiber);h+='<div class="wrow"><div style="flex:1"><div class="wilbl">Fiber</div></div><div style="text-align:right">'+wcnt(_fb,FIBER_TARGET_G)+'</div></div>'+wbar(_fb,FIBER_TARGET_G);}var _mac=[];if(_nut.protein!=null)_mac.push(Math.round(_nut.protein)+'g P');if(_nut.carbs!=null)_mac.push(Math.round(_nut.carbs)+'g C');if(_nut.fat!=null)_mac.push(Math.round(_nut.fat)+'g F');if(_mac.length)h+='<div class="wrow"><div class="wilbl">Avg macros</div><div style="text-align:right;font-size:0.75rem;color:var(--accent);font-weight:600;padding-left:12px">'+_mac.join(' &middot; ')+'</div></div>';h+='<div class="z2-sub">Deficit = calories out &minus; in, averaged over '+(_nut.deficitDays||_nut.dietDays)+' logged day'+((_nut.deficitDays||_nut.dietDays)===1?'':'s')+'. Calories out is Apple Health\'s estimate (active + resting) &mdash; directional, not exact; weigh the weekly trend, not any single day.</div></div></div>';}h+='<div class="sec"><div class="sec-lbl">Cardio</div><div class="wcard"><div class="wrow"><div style="flex:1"><div class="wilbl">Runs</div><div class="wsub">Outdoor + treadmill</div></div><div style="text-align:right">'+wcnt(st.runs,2)+'</div></div>'+wbar(st.runs,2);var extras=[{lbl:'Incline Walk',v:st.incline},{lbl:'HIIT',v:st.hiit}];for(var ci=0;ci<extras.length;ci++)h+='<div class="wrow"><div class="wilbl">'+extras[ci].lbl+'</div><div class="wcount" style="color:'+(extras[ci].v>0?'var(--accent)':'var(--muted)')+'">'+''+extras[ci].v+'</div></div>';if(st.cMin>0||st.cCal>0||st.cDist>0){var ct=[st.cMin>0?Math.round(st.cMin)+' min':'',st.cDist>0?(Math.round(st.cDist*100)/100)+' mi':'',st.cCal>0?Math.round(st.cCal).toLocaleString()+' kcal':''].filter(Boolean).join(' · ');h+='<div class="wrow" style="border-top:1px solid var(--border)"><div style="flex:1"><div class="wilbl">Logged totals</div><div class="wsub">From cardio details</div></div><div style="text-align:right;font-size:0.75rem;color:var(--accent);font-weight:600;padding-left:12px">'+ct+'</div></div>';}h+='</div></div>';var _cpr=cardioPRs(),_ctr=cardioWeeklyTrend(5),_hasCard=(_cpr.dist||_cpr.kcal||_cpr.min||_cpr.pace||_ctr.some(function(x){return x.min>0;}));if(_hasCard){h+='<div class="sec"><div class="sec-lbl">Cardio Records</div><div class="wcard">';var _recs=[];if(_cpr.pace)_recs.push(['Fastest pace',fmtPace(_cpr.pace.v),cardioPRDate(_cpr.pace.ms)]);if(_cpr.dist)_recs.push(['Longest distance',(Math.round(_cpr.dist.v*100)/100)+' mi',cardioPRDate(_cpr.dist.ms)]);if(_cpr.min)_recs.push(['Longest time',_cpr.min.v+' min',cardioPRDate(_cpr.min.ms)]);if(_cpr.kcal)_recs.push(['Most calories',Math.round(_cpr.kcal.v).toLocaleString()+' kcal',cardioPRDate(_cpr.kcal.ms)]);if(_recs.length){for(var _r=0;_r<_recs.length;_r++)h+='<div class="wrow"><div style="flex:1"><div class="wilbl">'+_recs[_r][0]+'</div><div class="wsub">'+_recs[_r][2]+'</div></div><div style="text-align:right;font-weight:700;color:var(--accent);font-size:0.9375rem">'+_recs[_r][1]+'</div></div>';}else{h+='<div class="wrow"><div class="wsub">Log treadmill stats (time, distance, calories) to start tracking records.</div></div>';}var _mx=0;for(var _t=0;_t<_ctr.length;_t++)if(_ctr[_t].min>_mx)_mx=_ctr[_t].min;if(_mx>0){h+='<div class="wrow" style="border-top:1px solid var(--border);display:block"><div class="wilbl" style="margin-bottom:8px">Weekly minutes &middot; last 5 weeks</div><div style="display:flex;align-items:flex-end;gap:8px;height:70px">';for(var _t2=0;_t2<_ctr.length;_t2++){var _wk=_ctr[_t2],_ph=Math.max(3,Math.round(_wk.min/_mx*54)),_lab=_wk.wkAgo===0?'now':_wk.wkAgo+'w';h+='<div style="flex:1;text-align:center;display:flex;flex-direction:column;justify-content:flex-end"><div style="font-size:0.6875rem;color:var(--muted);margin-bottom:3px;height:13px">'+(_wk.min>0?Math.round(_wk.min):'')+'</div><div style="height:'+_ph+'px;background:'+(_wk.min>0?'var(--accent)':'var(--border)')+'"></div><div class="wdlbl" style="margin-top:4px">'+_lab+'</div></div>';}h+='</div></div>';}h+='</div></div>';}document.getElementById('root').innerHTML=h;}
 /* ── EXERCISE SNACKS — a simple day-long snack logger + weekly VO2max meters.
    Per-day data lives in the `state` blob: state.snkLog = [{ex,amt,ts,det?}]. */
 function snkVigToday(){var l=state.snkLog||[],n=0;for(var i=0;i<l.length;i++){var e=snackExById(l[i].ex);if(e&&e.vig)n++;}return n;}
@@ -2205,7 +2271,8 @@ var HEALTH_META={
   protein:{lbl:'Protein',suf:' g'},
   carbs:{lbl:'Carbs',suf:' g'},
   fatG:{lbl:'Fat',suf:' g'},
-  fiber:{lbl:'Fiber',suf:' g'}
+  fiber:{lbl:'Fiber',suf:' g'},
+  defKcal:{lbl:'Deficit',suf:' kcal',comma:1}
 };
 var HEALTH_FIELDS=[];for(var _hf in HEALTH_META){if(HEALTH_META.hasOwnProperty(_hf))HEALTH_FIELDS.push(_hf);}
 /* Forgiving alias map: lower-cased, alphanumerics only. Lets the Health shortcut use
@@ -2236,7 +2303,8 @@ var HEALTH_ALIAS={
   protein:'protein',dietaryprotein:'protein',proteing:'protein',
   carbs:'carbs',carbohydrates:'carbs',dietarycarbohydrates:'carbs',carbohydrate:'carbs',carb:'carbs',netcarbs:'carbs',
   fatg:'fatG',totalfat:'fatG',dietaryfattotal:'fatG',dietaryfat:'fatG',fattotal:'fatG',
-  fiber:'fiber',dietaryfiber:'fiber',fibre:'fiber',fiberg:'fiber'
+  fiber:'fiber',dietaryfiber:'fiber',fibre:'fiber',fiberg:'fiber',
+  defkcal:'defKcal',deficit:'defKcal',caloriedeficit:'defKcal',calorydeficit:'defKcal',dailydeficit:'defKcal'
 };
 function canonHealthField(k){if(k==null)return null;var raw=String(k);if(HEALTH_META[raw])return raw;var norm=raw.toLowerCase().replace(/[^a-z0-9]/g,'');if(HEALTH_ALIAS[norm])return HEALTH_ALIAS[norm];for(var f in HEALTH_META){if(HEALTH_META.hasOwnProperty(f)&&f.toLowerCase()===norm)return f;}return null;}
 function healthNum(v){if(v==null)return null;if(typeof v==='number')return isNaN(v)?null:v;var s=String(v).replace(/,/g,'').replace(/[^0-9.\-]/g,' ').trim();var m=/-?\d+(\.\d+)?/.exec(s);if(!m)return null;var n=parseFloat(m[0]);return isNaN(n)?null:n;}
@@ -2244,7 +2312,8 @@ function healthKey(y,m,d){return 'hl_'+y+'_'+m+'_'+d;}
 function healthKeyForDate(dt){return healthKey(dt.getFullYear(),dt.getMonth()+1,dt.getDate());}
 function loadHealth(dt){try{var r=localStorage.getItem(healthKeyForDate(dt));return r?JSON.parse(r):null;}catch(e){return null;}}
 function healthKeyFromStr(s){if(!s)return null;var p=String(s).split(/[-_\/]/);if(p.length<3)return null;var y=parseInt(p[0],10),m=parseInt(p[1],10),d=parseInt(p[2],10);if(!y||m<1||m>12||d<1||d>31)return null;return healthKey(y,m,d);}
-function ingestHealth(data){var days=Array.isArray(data)?data:[data],n=0;for(var i=0;i<days.length;i++){var d=days[i];if(!d||typeof d!=='object')continue;var _dstr=null;for(var _dk in d){if(d.hasOwnProperty(_dk)&&/^date$/i.test(_dk)){_dstr=d[_dk];break;}}var key=_dstr?healthKeyFromStr(_dstr):healthKeyForDate(new Date());if(!key)continue;var cur={};try{var ex=localStorage.getItem(key);if(ex)cur=JSON.parse(ex);}catch(e){}var got=false;for(var rk in d){if(!d.hasOwnProperty(rk)||/^date$/i.test(rk))continue;var fld=canonHealthField(rk);if(!fld)continue;var val=healthNum(d[rk]);if(val==null)continue;if((fld==='spo2'||fld==='bodyFatPct')&&val>0&&val<=1)val=val*100;/* fraction -> percent */cur[fld]=val;got=true;}if(!got)continue;cur.updated=Date.now();try{localStorage.setItem(key,JSON.stringify(cur));n++;}catch(e){}}return n;}
+var WEIGHT_IMPORT_MIN=150,WEIGHT_IMPORT_MAX=200,_hlSkipped=[];   // an imported weight outside this range is ignored (bad shortcut output)
+function ingestHealth(data){_hlSkipped=[];var days=Array.isArray(data)?data:[data],n=0;for(var i=0;i<days.length;i++){var d=days[i];if(!d||typeof d!=='object')continue;var _dstr=null;for(var _dk in d){if(d.hasOwnProperty(_dk)&&/^date$/i.test(_dk)){_dstr=d[_dk];break;}}var key=_dstr?healthKeyFromStr(_dstr):healthKeyForDate(new Date());if(!key)continue;var cur={};try{var ex=localStorage.getItem(key);if(ex)cur=JSON.parse(ex);}catch(e){}var got=false;for(var rk in d){if(!d.hasOwnProperty(rk)||/^date$/i.test(rk))continue;var fld=canonHealthField(rk);if(!fld)continue;var val=healthNum(d[rk]);if(val==null)continue;if((fld==='spo2'||fld==='bodyFatPct')&&val>0&&val<=1)val=val*100;/* fraction -> percent */if(fld==='weightLb'&&(val<WEIGHT_IMPORT_MIN||val>WEIGHT_IMPORT_MAX)){_hlSkipped.push(val+' lb');continue;}cur[fld]=val;if(cur.man)delete cur.man[fld];got=true;}if(!got)continue;cur.updated=Date.now();try{localStorage.setItem(key,JSON.stringify(cur));n++;}catch(e){}}return n;}
 function decodeB64(s){try{return decodeURIComponent(escape(atob(String(s).replace(/-/g,'+').replace(/_/g,'/'))));}catch(e){try{return atob(s);}catch(e2){return '';}}}
 function ingestHealthFromURL(){try{if(typeof location==='undefined')return 0;var src=(location.search||'')+'&'+(location.hash||'');var m=/[?&#]hl=([^&]+)/.exec(src);if(!m)return 0;var raw=decodeURIComponent(m[1]),data;try{data=JSON.parse(raw);}catch(e){try{data=JSON.parse(decodeB64(raw));}catch(e2){return 0;}}var n=ingestHealth(data);try{if(history&&history.replaceState)history.replaceState(null,'',location.pathname);}catch(e3){}return n;}catch(e){return 0;}}
 function importUrl(){try{return location.origin+location.pathname;}catch(e){return '';}}
@@ -2255,10 +2324,11 @@ function healthMetricsHTML(dt){var hd=loadHealth(dt);if(!hd)return '';var h='',a
 /* Loose fallback so a paste like "steps: 8421, weight 164" still imports even if it
    isn't strict JSON (a Shortcut's "Copy to Clipboard" of a Dictionary is usually JSON). */
 function parseLooseHealth(raw){var obj={},any=false;var parts=String(raw).split(/[\n,;]+/);for(var i=0;i<parts.length;i++){var m=/^\s*"?([A-Za-z][A-Za-z _]*[A-Za-z])"?\s*[:=]?\s*"?([-0-9][-0-9.,:]*)/.exec(parts[i]);if(!m)continue;obj[m[1].trim()]=m[2];any=true;}return any?obj:null;}
-function healthIngestText(raw){raw=String(raw||'').trim();if(!raw)return 0;var data=null;try{data=JSON.parse(raw);}catch(e){try{data=JSON.parse(decodeB64(raw));}catch(e2){data=parseLooseHealth(raw);}}if(!data)return -1;var n=ingestHealth(data);if(n>0){renderHealthSheet();try{render();}catch(e){}}return n;}
+function healthIngestText(raw){raw=String(raw||'').trim();if(!raw)return 0;var data=null;try{data=JSON.parse(raw);}catch(e){try{data=JSON.parse(decodeB64(raw));}catch(e2){data=parseLooseHealth(raw);}}if(!data)return -1;var n=ingestHealth(data);if(_hlSkipped.length&&typeof alert==='function')alert('Ignored weight '+_hlSkipped.join(', ')+' (outside '+WEIGHT_IMPORT_MIN+'–'+WEIGHT_IMPORT_MAX+' lb). The rest of the day was imported.');if(n>0){renderHealthSheet();try{render();}catch(e){}}return n;}
 function healthImportPaste(){var el=document.getElementById('hlPaste');if(!el)return;var raw=(el.value||'').trim();if(!raw){alert('Paste the data your shortcut copied first.');return;}var n=healthIngestText(raw);if(n>0){el.value='';}else if(n<0){alert('Could not read that. Paste the stats your shortcut copied — e.g. {"steps":8421,"weightLb":164,"sleepHr":7.2}');}else{alert('No recognized metrics in that text. Make sure it includes things like steps, weight, sleep, etc.');}}
 function healthImportClipboard(){if(!(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.readText)){alert('Reading the clipboard isn’t available here — paste into the box below instead.');return;}navigator.clipboard.readText().then(function(t){t=String(t||'').trim();if(!t){alert('Clipboard is empty. Run “Copy My Stats” first, then tap this again.');return;}var n=healthIngestText(t);if(n>0)alert('Imported Health data for '+n+' day'+(n>1?'s':'')+'.');else if(n<0)alert('That clipboard text wasn’t recognizable Health stats.');else alert('No recognized metrics on the clipboard.');}).catch(function(){alert('Couldn’t read the clipboard (permission). Paste into the box instead.');});}
-function healthRunImportShortcut(){if(typeof location==='undefined')return;try{location.href='shortcuts://run-shortcut?name='+encodeURIComponent('Copy My Stats');}catch(e){}}
+function healthShortcutURL(name){return 'shortcuts://run-shortcut?name='+encodeURIComponent(name||'Copy My Stats');}
+function healthRunImportShortcut(name){if(typeof location==='undefined')return;try{location.href=healthShortcutURL(name);}catch(e){}}
 /* One-tap sync: run the Copy My Stats shortcut (it copies today's Health stats), then auto-import
    from the clipboard when we come back to the app. If the clipboard read is blocked (iOS may require
    a tap), fall back to opening the Apple Health sheet where the manual Import button is one tap away.
@@ -2266,7 +2336,7 @@ function healthRunImportShortcut(){if(typeof location==='undefined')return;try{l
 var _hlSyncPending=false;
 function healthSyncPending(){if(_hlSyncPending)return true;try{return sessionStorage.getItem('_hlSyncPending')==='1';}catch(e){return false;}}
 function healthClearSyncPending(){_hlSyncPending=false;try{sessionStorage.removeItem('_hlSyncPending');}catch(e){}}
-function healthSyncNow(){_hlSyncPending=true;try{sessionStorage.setItem('_hlSyncPending','1');}catch(e){}healthRunImportShortcut();}
+function healthSyncNow(name){_hlSyncPending=true;try{sessionStorage.setItem('_hlSyncPending','1');}catch(e){}healthRunImportShortcut(name);}
 function healthAutoSyncOnReturn(){if(!healthSyncPending())return;healthClearSyncPending();
   if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.readText){
     navigator.clipboard.readText().then(function(t){t=String(t||'').trim();var n=t?healthIngestText(t):0;if(n>0)alert('Synced Apple Health for '+n+' day'+(n>1?'s':'')+'.');else openHealthSheet();}).catch(function(){openHealthSheet();});
@@ -2324,11 +2394,49 @@ function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">'
   h+='<div class="hl-note" style="margin-top:14px"><b>Want it fully hands-free</b> (no paste)? Instead of <b>Copy to Clipboard</b>, you can run the same stats from a daily <b>Time of Day</b> automation that opens the app at <code>'+u+'?hl=&lt;json&gt;</code> &mdash; more setup, and subject to one gotcha: if you launch the app from its Home-Screen icon, an automation that opens the URL in Safari can save to a separate place. After it runs, check the strip above filled in. The paste flow avoids this entirely.</div>';
   h+='<div class="hl-note">The export shortcut in Part A must be named exactly <b>Log to Health</b> for the <b>Add to Apple Health</b> button to find it.</div>';
   return h+'</div>';}
+/* Sync status: which of the last 7 completed days actually have the fields the fat-loss math needs.
+   'M' marks a hand-entered value. The morning shortcut files YESTERDAY, so today is not counted. */
+function healthStatusHTML(){var today=new Date();today.setHours(0,0,0,0);var rows='',missFood=0,missBurn=0,missWt=0,last=0;
+  function cell(ok,man){return '<span class="hs-d'+(ok?(man?' man':' ok'):'')+'">'+(ok?(man?'M':'&#10003;'):'&middot;')+'</span>';}
+  for(var i=0;i<14;i++){var dt=new Date(today);dt.setDate(today.getDate()-i);var hd=loadHealth(dt);if(hd&&hd.updated>last)last=hd.updated;
+    if(i<1||i>7)continue;hd=hd||{};var m=hd.man||{};
+    var food=(typeof hd.dietKcal==='number'&&hd.dietKcal>0)||typeof hd.defKcal==='number',burn=typeof hd.activeKcal==='number'||typeof hd.restKcal==='number',wt=typeof hd.weightLb==='number',st=typeof hd.steps==='number';
+    if(!food)missFood++;if(!burn&&typeof hd.defKcal!=='number')missBurn++;if(!wt)missWt++;
+    rows+='<div class="hs-row"><span class="hs-day">'+DAYS_S[dt.getDay()]+' '+MONTHS_S[dt.getMonth()]+' '+dt.getDate()+'</span>'+cell(wt,m.weightLb)+cell(food,m.dietKcal||m.defKcal)+cell(burn,0)+cell(st,0)+'</div>';}
+  var when=last?new Date(last).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'none in the last 14 days';
+  var h='<div class="hl-sec"><div class="hl-sec-t">Sync status</div><div class="hl-sec-b">Last Health import: <b>'+when+'</b></div>';
+  h+='<div class="hs-row" style="margin-top:6px"><span class="hs-day"></span><span class="hs-h">Weight</span><span class="hs-h">Food</span><span class="hs-h">Burn</span><span class="hs-h">Steps</span></div>'+rows;
+  var w=[];if(!last)w.push('No Health import in 14 days — run Sync Apple Health, or enter data below.');if(missWt>=5)w.push('Weight missing on '+missWt+' of the last 7 days.');if(missFood>=3)w.push('Food calories missing on '+missFood+' of the last 7 days (Cronometer → Apple Health not flowing?).');if(missBurn>=3)w.push('Calories burned missing on '+missBurn+' of the last 7 days.');
+  for(var j=0;j<w.length;j++)h+='<div class="hs-warn">'+w[j]+'</div>';
+  return h+'</div>';}
+/* Manual entry: writes the same hl_ day blob an import does, flagged in cur.man. A later real import of that field overwrites it. */
+var HEALTH_MANUAL_RANGE={weightLb:[50,700],dietKcal:[1,10000],protein:[0,600],defKcal:[-5000,5000]};
+function healthSetManual(dt,vals){var key=healthKeyForDate(dt),cur={};try{var ex=localStorage.getItem(key);if(ex)cur=JSON.parse(ex);}catch(e){}var n=0;
+  for(var f in vals){if(!vals.hasOwnProperty(f)||!HEALTH_MANUAL_RANGE[f])continue;var v=healthNum(vals[f]),r=HEALTH_MANUAL_RANGE[f];if(v==null||v<r[0]||v>r[1])continue;cur[f]=v;(cur.man||(cur.man={}))[f]=1;n++;}
+  if(!n)return 0;cur.manUpdated=Date.now();try{localStorage.setItem(key,JSON.stringify(cur));}catch(e){storageFail();return 0;}return n;}
+/* Weekly average deficit -> the same value on each past/current day that has no computed deficit of its own. */
+function healthSetWeeklyDeficit(dates,def){var n=0,now=Date.now();for(var i=0;i<dates.length;i++){if(dates[i].getTime()>now)continue;var hd=loadHealth(dates[i])||{};
+  var comp=typeof hd.dietKcal==='number'&&hd.dietKcal>0&&(typeof hd.activeKcal==='number'||typeof hd.restKcal==='number');if(comp)continue;if(healthSetManual(dates[i],{defKcal:def}))n++;}return n;}
+function healthManualHTML(vd){var hd=loadHealth(vd)||{},ds=MONTHS_S[vd.getMonth()]+' '+vd.getDate();
+  function inp(id,lbl,val,ph){return '<label class="hm-f"><span>'+lbl+'</span><input id="'+id+'" type="number" inputmode="decimal" step="any" value="'+(val!=null?val:'')+'" placeholder="'+ph+'"></label>';}
+  var h='<div class="hl-sec"><div class="hl-sec-t">Manual entry &middot; '+ds+'</div><div class="hl-sec-b">Use when Health isn&rsquo;t syncing. A real Health import of the same field overwrites these. <b>Deficit</b> = calories burned &minus; eaten (use a negative number for a surplus).</div><div class="hm-grid">';
+  h+=inp('hmWt','Weight (lb)',hd.weightLb,'e.g. 188.4')+inp('hmKcal','Calories eaten',hd.dietKcal,'kcal')+inp('hmProt','Protein (g)',hd.protein,'g')+inp('hmDef','Deficit today',hd.defKcal,'kcal');
+  h+='</div><div class="hm-grid" style="grid-template-columns:1fr">'+inp('hmWk','Weekly avg deficit &middot; this week (kcal/day)',null,'fills days without Health burn data')+'</div>';
+  return h+'<button onclick="healthSaveManual()" style="width:100%;margin-top:10px;background:var(--accent);color:#000;font-size:0.8125rem;font-weight:700;padding:12px;border:none;border-radius:6px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase">Save</button></div>';}
+function healthSaveManual(){var vd=getDateForDow(viewDow);function g(id){var e=document.getElementById(id);return e?String(e.value).trim():'';}
+  var raw={weightLb:g('hmWt'),dietKcal:g('hmKcal'),protein:g('hmProt'),defKcal:g('hmDef')},clean={},bad=[];
+  for(var f in raw){if(raw[f]==='')continue;var v=healthNum(raw[f]),r=HEALTH_MANUAL_RANGE[f];if(v==null||v<r[0]||v>r[1]){bad.push(HEALTH_META[f].lbl);continue;}clean[f]=v;}
+  var wk=g('hmWk'),wv=null;if(wk!==''){wv=healthNum(wk);if(wv==null||wv<-5000||wv>5000)bad.push('Weekly deficit');}
+  if(bad.length){alert('Check these values: '+bad.join(', '));return;}
+  var wn=(wv!=null)?healthSetWeeklyDeficit(getWeekDates(),wv):0,n=healthSetManual(vd,clean);   /* weekly first so an explicit daily value wins for its own day */
+  if(!n&&!wn){alert('Nothing to save — fill in at least one field.');return;}
+  renderHealthSheet();render();}
 function renderHealthSheet(){document.getElementById('shtTitle').textContent='Apple Health';document.getElementById('shtSub').textContent='Two-way sync via iOS Shortcuts';
   var vd=getDateForDow(viewDow),metrics=healthMetricsHTML(vd),u=importUrl();
   var h='<div style="padding:14px 18px;">';
   h+=metrics?('<div style="font-size:0.6875rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Imported · '+DAYS[viewDow]+'</div>'+metrics):'<div style="color:var(--muted);font-size:0.8125rem;margin-bottom:6px">No Health data imported yet for this day.</div>';
   h+='</div>';
+  h+=healthStatusHTML()+healthManualHTML(vd);
   h+='<div class="hl-sec"><div class="hl-sec-t">&#8595; Daily import &middot; easiest</div><div class="hl-sec-b">Each morning, tap <b>Sync Apple Health</b> at the bottom of the app &mdash; it runs <b>Copy My Stats</b> and imports <b>yesterday&rsquo;s complete day</b> on return. (Or run the shortcut and tap <b>Import from clipboard</b>.) The box below is a fallback.</div>';
   h+='<div style="display:flex;gap:8px;margin-top:10px"><button onclick="healthRunImportShortcut()" style="flex:1;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:0.7812rem;font-weight:600;padding:11px;border-radius:6px;cursor:pointer">Run Copy My Stats</button><button onclick="healthImportClipboard()" style="flex:1;background:var(--accent);color:#000;font-size:0.7812rem;font-weight:700;padding:11px;border:none;border-radius:6px;cursor:pointer">Import from clipboard</button></div>';
   h+='<textarea id="hlPaste" rows="3" placeholder=\'or paste here: {"steps":8421,"weightLb":164,"sleepHr":7.2}\' style="width:100%;margin-top:9px;background:var(--surf);border:1px solid var(--border);color:var(--text);font-size:0.8125rem;padding:10px;border-radius:6px;-webkit-appearance:none;outline:none;resize:vertical;line-height:1.4;font-family:ui-monospace,Menlo,monospace"></textarea>';
@@ -3365,16 +3473,25 @@ function coachHealth(r){try{var series={},start=new Date(r.start);start.setHours
 var PROTEIN_TARGET_G=170,FIBER_TARGET_G=50;
 /* Energy-balance + macro averages over a date range, from the Cronometer→Apple Health import.
    caloriesOut = Apple Health active + resting energy (an estimate, directional not exact). */
+/* Today's Health energy figures are incomplete until the day is over (burn accumulates, food is logged through the day), so
+   today is left out of the energy averages and deficit until DAY_COMPLETE_HOUR. A hand-entered deficit (defKcal) always counts. */
+var DAY_COMPLETE_HOUR=21;
+function dayEnergyPartial(dt){var n=new Date();return dt.getFullYear()===n.getFullYear()&&dt.getMonth()===n.getMonth()&&dt.getDate()===n.getDate()&&n.getHours()<DAY_COMPLETE_HOUR;}
 function nutritionSummary(startMs,endMs){try{var cur=new Date(startMs);cur.setHours(0,0,0,0);var end=new Date(endMs);end.setHours(0,0,0,0);var guard=0;
-  var keys=['dietKcal','activeKcal','restKcal','protein','carbs','fatG','fiber'],sum={},cnt={},i;for(i=0;i<keys.length;i++){sum[keys[i]]=0;cnt[keys[i]]=0;}
-  while(cur.getTime()<=end.getTime()&&guard<400){var hd=loadHealth(cur);if(hd){for(i=0;i<keys.length;i++){var k=keys[i];if(typeof hd[k]==='number'){sum[k]+=hd[k];cnt[k]++;}}}cur.setDate(cur.getDate()+1);guard++;}
+  var keys=['dietKcal','activeKcal','restKcal','protein','carbs','fatG','fiber'],sum={},cnt={},i,pdS=0,pdN=0,mdS=0,mdN=0,partialToday=false;for(i=0;i<keys.length;i++){sum[keys[i]]=0;cnt[keys[i]]=0;}
+  while(cur.getTime()<=end.getTime()&&guard<400){var hd=loadHealth(cur);if(hd){var _part=dayEnergyPartial(cur);if(_part&&typeof hd.dietKcal==='number')partialToday=true;for(i=0;i<keys.length;i++){var k=keys[i];if(_part&&(k==='dietKcal'||k==='activeKcal'||k==='restKcal'))continue;if(typeof hd[k]==='number'){sum[k]+=hd[k];cnt[k]++;}}
+    /* per-day deficit: computed (burn - eaten) when both exist, else a hand-entered defKcal */
+    var _dIn=(typeof hd.dietKcal==='number'&&hd.dietKcal>0)?hd.dietKcal:null,_dOut=(typeof hd.activeKcal==='number'||typeof hd.restKcal==='number')?((hd.activeKcal||0)+(hd.restKcal||0)):null;
+    if(!_part&&_dIn!=null&&_dOut!=null){pdS+=_dOut-_dIn;pdN++;}else if(typeof hd.defKcal==='number'){mdS+=hd.defKcal;mdN++;}}
+    cur.setDate(cur.getDate()+1);guard++;}
   function avg(k){return cnt[k]?sum[k]/cnt[k]:null;}
   var cin=avg('dietKcal'),ak=avg('activeKcal'),rk=avg('restKcal');
   var cout=(ak!=null||rk!=null)?((ak||0)+(rk||0)):null;
   var deficit=(cin!=null&&cout!=null)?(cout-cin):null;
-  return {dietDays:cnt.dietKcal,caloriesIn:cin,caloriesOut:cout,activeKcal:ak,restKcal:rk,deficit:deficit,protein:avg('protein'),carbs:avg('carbs'),fat:avg('fatG'),fiber:avg('fiber')};}catch(e){return null;}}
-function coachNutrition(r){try{var n=nutritionSummary(r.start,r.end);if(!n||!(n.dietDays>0))return null;function rd(v){return v==null?null:Math.round(v);}
-  return {daysLogged:n.dietDays,avgCaloriesIn:rd(n.caloriesIn),avgCaloriesOut:rd(n.caloriesOut),avgDailyDeficit:rd(n.deficit),inDeficit:(n.deficit!=null?n.deficit>0:null),proteinAvgG:rd(n.protein),proteinTargetG:PROTEIN_TARGET_G,carbsAvgG:rd(n.carbs),fatAvgG:rd(n.fat),fiberAvgG:rd(n.fiber),fiberTargetG:FIBER_TARGET_G,note:'avgCaloriesOut = Apple Health active + resting energy (estimate); deficit = out - in'};}catch(e){return null;}}
+  if(mdN>0)deficit=(pdS+mdS)/(pdN+mdN);   // blend in hand-entered days
+  return {partialToday:partialToday,defDays:mdN,deficitDays:(mdN>0?pdN+mdN:cnt.dietKcal),dietDays:cnt.dietKcal,caloriesIn:cin,caloriesOut:cout,activeKcal:ak,restKcal:rk,deficit:deficit,protein:avg('protein'),carbs:avg('carbs'),fat:avg('fatG'),fiber:avg('fiber')};}catch(e){return null;}}
+function coachNutrition(r){try{var n=nutritionSummary(r.start,r.end);if(!n||!(n.dietDays>0||n.defDays>0))return null;function rd(v){return v==null?null:Math.round(v);}
+  return {daysLogged:(n.deficitDays||n.dietDays),manualDeficitDays:n.defDays,avgCaloriesIn:rd(n.caloriesIn),avgCaloriesOut:rd(n.caloriesOut),avgDailyDeficit:rd(n.deficit),inDeficit:(n.deficit!=null?n.deficit>0:null),proteinAvgG:rd(n.protein),proteinTargetG:PROTEIN_TARGET_G,carbsAvgG:rd(n.carbs),fatAvgG:rd(n.fat),fiberAvgG:rd(n.fiber),fiberTargetG:FIBER_TARGET_G,scaleCheck:(function(){var c=deficitCalibration();return c.ok?{reportedDeficit:Math.round(c.reported),scaleImpliedDeficit:Math.round(c.actual),gapKcalPerDay:Math.round(c.gap),spanDays:c.spanDays}:null;})(),note:'avgCaloriesOut = Apple Health active + resting energy (estimate); deficit = out - in'};}catch(e){return null;}}
 /* Summarize exercise-snack behavior for the coach: today's post-meal coverage + logged snacks,
    and the current week's vigorous-burst count (VO2max lever) vs target, meal-coverage days, and
    per-exercise mix. Independent of the viewed day/week — always reads the real current week. */
