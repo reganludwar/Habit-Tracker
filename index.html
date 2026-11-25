@@ -3504,7 +3504,7 @@ var PROTEIN_TARGET_G=170,FIBER_TARGET_G=50;
    caloriesOut = Apple Health active + resting energy (an estimate, directional not exact). */
 /* Today's Health energy figures are incomplete until the day is over (burn accumulates, food is logged through the day), so
    today is left out of the energy averages and deficit until DAY_COMPLETE_HOUR. A hand-entered deficit (defKcal) always counts. */
-var DAY_COMPLETE_HOUR=21;
+var DAY_COMPLETE_HOUR=18;   // 6 pm: today counts toward the deficit and the calorie check from here on
 function dayEnergyPartial(dt){var n=new Date();return dt.getFullYear()===n.getFullYear()&&dt.getMonth()===n.getMonth()&&dt.getDate()===n.getDate()&&n.getHours()<DAY_COMPLETE_HOUR;}
 function nutritionSummary(startMs,endMs){try{var cur=new Date(startMs);cur.setHours(0,0,0,0);var end=new Date(endMs);end.setHours(0,0,0,0);var guard=0;
   var keys=['dietKcal','activeKcal','restKcal','protein','carbs','fatG','fiber'],sum={},cnt={},i,pdS=0,pdN=0,mdS=0,mdN=0,partialToday=false;for(i=0;i<keys.length;i++){sum[keys[i]]=0;cnt[keys[i]]=0;}

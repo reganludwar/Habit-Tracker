@@ -2186,6 +2186,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var d=new Date();d.setHours(0,0,0,0);function ago(n){var x=new Date(d);x.setDate(d.getDate()-n);return x;}
   function ymd(x){return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate();}
   // partial-day guard
+  ok(sandbox.DAY_COMPLETE_HOUR===18,'partial guard: today counts from 6 pm (DAY_COMPLETE_HOUR = 18)');
   sandbox.ingestHealth({date:ymd(ago(0)),dietKcal:1500,activeKcal:200,restKcal:500});
   sandbox.ingestHealth({date:ymd(ago(1)),dietKcal:2000,activeKcal:500,restKcal:1800});
   sandbox.DAY_COMPLETE_HOUR=25;   // today is always "not complete yet"
@@ -2201,7 +2202,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.DAY_COMPLETE_HOUR=0;    // today is complete
   var n2=sandbox.nutritionSummary(ago(1).getTime(),ago(0).getTime());
   ok(n2.partialToday===false&&n2.dietDays===2,'partial guard: once the day is complete, today counts again');
-  sandbox.DAY_COMPLETE_HOUR=21;
+  sandbox.DAY_COMPLETE_HOUR=18;
   store.clear();
   // weight import guard
   var k=sandbox.ingestHealth({date:ymd(ago(2)),weightLb:94.5,steps:6000});
@@ -2246,7 +2247,7 @@ sandbox.closeSheet&&sandbox.closeSheet();
   sandbox.calTap();ok(sandbox.state.caltgt===false,'calorie tap: auto says done -> a tap stores a manual "no"');
   sandbox.calTap();ok(sandbox.state.caltgt===undefined,'calorie tap: tapping back to the auto result clears the override');
   sandbox.state={};sandbox.ingestHealth({date:ymd(ago(0)),dietKcal:3000});sandbox.calTap();ok(sandbox.state.caltgt===true,'calorie tap: over target -> a tap stores a manual "yes"');
-  sandbox.DAY_COMPLETE_HOUR=21;
+  sandbox.DAY_COMPLETE_HOUR=18;
   store.clear();_s.forEach(function(v,k){store.set(k,v);});
 })();
 // ---- fat-loss coach: steps card, local suggestion, plan validation, approve/undo ----
