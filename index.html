@@ -1778,14 +1778,14 @@ function floorProgress(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6);
   // The workout floor unit is day-aware: on a lift day (a split is scheduled) the LIFT is the
   // requirement and cardio is bonus; on a cardio/Zone-2 day (Tue/Thu, no split) cardio fills it.
   if(!wknd)unit(woTagForDow(dow)?!!state.lift:cardioDoneToday());
-  unit(!!state.caltgt);
+  unit(calDoneOn(state,vd));
   unit(!!state.vit);
   return {done:done,total:total,pct:total?Math.round(done/total*100):0,complete:done>=total,wknd:wknd};}
 /* Compact hero: a small floor ring beside a slim mantra bar, one row, so the day fits on one screen. */
 function dayHeroHTML(vd){var p=floorProgress(vd),on=!!state.mantra,R=42,C=Math.round(2*Math.PI*R),dash=Math.round(C*p.pct/100);
   var center=p.complete?'<div class="hr-check">&#10003;</div>':'<div class="hr-num">'+p.done+'<span>/'+p.total+'</span></div>';
   return '<div class="dsec day-hero"><div class="hero-ring'+(p.complete?' done':'')+'"><svg class="ring" viewBox="0 0 104 104" aria-hidden="true"><circle class="ring-track" cx="52" cy="52" r="'+R+'"/><circle class="ring-arc" cx="52" cy="52" r="'+R+'" stroke-dasharray="'+dash+' '+C+'" transform="rotate(-90 52 52)"/></svg><div class="ring-center">'+center+'</div></div><div class="mantra'+(on?' done':'')+'" onclick="dayCheck(\'mantra\')"><div class="mantra-q">“'+MANTRA+'”</div><div class="mantra-chk">'+(on?'&#10003; said it':(p.complete?'Day complete':'tap when you\'ve said it'))+'</div></div></div>';}
-function floorBtn(label,done,onclick){return '<div class="gcell'+(done?' done-green':'')+'" onclick="'+onclick+'"><div class="gcell-main">'+label+'</div></div>';}
+function floorBtn(label,done,onclick,sub){return '<div class="gcell'+(done?' done-green':'')+'" onclick="'+onclick+'"><div class="gcell-main">'+label+'</div>'+(sub?'<div class="gcell-sub">'+sub+'</div>':'')+'</div>';}
 /* Workout floor unit as a soft-green pill (no checkbox). Day-aware: on a lift day the LIFT is the
    requirement (cardio is bonus, tracked separately below), so the pill greens only from state.lift
    and opens the Workout tab; on a cardio/Zone-2 day (no split) cardio fills it and it opens the
@@ -1802,7 +1802,7 @@ function floorCardHTML(vd){var dow=vd.getDay(),wknd=(dow===0||dow===6),h='';
   h+=walksHTML(WALKS3);
   if(wknd)h+='<div class="floor-hint">2 walks for the win · a 3rd is bonus</div>';
   if(!wknd)h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Stretch',state.mob>=1,"setView('stretch')")+moveBtnHTML(vd)+'</div>';
-  h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Calories',!!state.caltgt,"dayCheck('caltgt')")+floorBtn('Vitamins',!!state.vit,"toggleVit()")+'</div>';
+  h+='<div class="cgrid c2" style="margin-top:8px">'+floorBtn('Calories',calDoneOn(state,vd),"calTap()",calSubLabel(vd))+floorBtn('Vitamins',!!state.vit,"toggleVit()")+'</div>';
   h+='</div></div>';
   return h;}
 /* Cardio counts as a BONUS whenever it isn't the day's main workout: on lift days (the lift is the
@@ -1969,11 +1969,25 @@ function renderAdherence(bounds){var firstAny=(bounds&&bounds.firstAny!=null)?bo
    did it) and an Apple-style weekly-count bar chart over the recent weeks. No streaks. */
 var WK_CHART_WEEKS=12;
 function woDoneOn(ds){return !!(ds&&ds.lift);}
-function calDoneOn(ds){return !!(ds&&ds.caltgt);}
+/* Calorie floor = "I hit my target". Auto-derived from Cronometer's dietKcal (via Health): a day is on target when
+   dietKcal <= CAL_TARGET + a discounted, capped credit for LOGGED cardio kcal (watch/machine burn runs high, and
+   "I ran, so I can eat 800 more" is not the point): ceiling = 2200 + min(0.5 x cardio kcal, 250). A ceiling, not a bullseye.
+   state.caltgt: true = manual yes, false = manual no, undefined = follow the auto result. A tap only stores an
+   override when it differs from auto. Today is only judged automatically once DAY_COMPLETE_HOUR (food is still being logged). */
+var CAL_CREDIT_RATE=0.5,CAL_CREDIT_CAP=250;
+function cardioKcalOn(ds){var t=0,k;if(!ds)return 0;for(k in ds){if(ds.hasOwnProperty(k)&&k.indexOf('cdt_')===0){var cd=ds[k];if(cd&&typeof cd.cal==='number'&&cd.cal>0)t+=cd.cal;}}return t;}
+function calCeiling(ds){return CAL_TARGET+Math.min(cardioKcalOn(ds)*CAL_CREDIT_RATE,CAL_CREDIT_CAP);}
+function calAuto(dt,ds){var hd=loadHealth(dt);if(!hd||!(typeof hd.dietKcal==='number'&&hd.dietKcal>0)||dayEnergyPartial(dt))return null;var c=calCeiling(ds);return {kcal:hd.dietKcal,ceiling:c,ok:hd.dietKcal<=c};}
+function calDoneOn(ds,dt){if(!ds)return false;if(ds.caltgt===true)return true;if(ds.caltgt===false)return false;if(!dt)return false;var a=calAuto(dt,ds);return !!(a&&a.ok);}
+function calTap(){if(dayLocked())return;var vd=getDateForDow(viewDow),a=calAuto(vd,state),want=!calDoneOn(state,vd);if(a&&want===a.ok)delete state.caltgt;else state.caltgt=want;save();renderDay();}
+function calSubLabel(vd){var hd=loadHealth(vd),f=function(n){return Math.round(n).toLocaleString();};
+  if(state.caltgt===true||state.caltgt===false)return 'manual';
+  var a=calAuto(vd,state);if(a)return f(a.kcal)+' / '+f(a.ceiling);
+  if(hd&&typeof hd.dietKcal==='number'&&hd.dietKcal>0)return f(hd.dietKcal)+' so far';return '';}
 /* Count of days in the viewed week the metric was done, plus a per-day (Sun→Sat) hit row. */
-function metricWeek(wd,done){var hit=0,cells=[];for(var i=0;i<7;i++){var dt=new Date(wd[i]);dt.setHours(0,0,0,0);var d=done(loadStateForDate(dt));if(d)hit++;cells.push({dow:dt.getDay(),hit:d});}return {hit:hit,cells:cells};}
+function metricWeek(wd,done){var hit=0,cells=[];for(var i=0;i<7;i++){var dt=new Date(wd[i]);dt.setHours(0,0,0,0);var d=done(loadStateForDate(dt),dt);if(d)hit++;cells.push({dow:dt.getDay(),hit:d});}return {hit:hit,cells:cells};}
 /* One count per week for the last nWeeks (oldest first, current week last). */
-function weeklyMetricSeries(done,nWeeks){var t=new Date();t.setHours(0,0,0,0);var out=[];for(var w=-(nWeeks-1);w<=0;w++){var sun=new Date(t);sun.setDate(t.getDate()-t.getDay()+w*7);sun.setHours(0,0,0,0);var cnt=0;for(var d=0;d<7;d++){var dt=new Date(sun);dt.setDate(sun.getDate()+d);dt.setHours(0,0,0,0);if(done(loadStateForDate(dt)))cnt++;}out.push({wkAgo:-w,count:cnt,sun:sun});}return out;}
+function weeklyMetricSeries(done,nWeeks){var t=new Date();t.setHours(0,0,0,0);var out=[];for(var w=-(nWeeks-1);w<=0;w++){var sun=new Date(t);sun.setDate(t.getDate()-t.getDay()+w*7);sun.setHours(0,0,0,0);var cnt=0;for(var d=0;d<7;d++){var dt=new Date(sun);dt.setDate(sun.getDate()+d);dt.setHours(0,0,0,0);if(done(loadStateForDate(dt),dt))cnt++;}out.push({wkAgo:-w,count:cnt,sun:sun});}return out;}
 /* Total Zone 2 minutes logged on a day: cardio-detail z2 fields + bonus-incline minutes (same as weekStats). */
 function zone2MinOn(ds){if(!ds)return 0;var m=0,k;for(k in ds){if(ds.hasOwnProperty(k)&&k.indexOf('cdt_')===0){var cd=ds[k];if(cd&&typeof cd.z2==='number')m+=cd.z2;}}var ib=ds.inclBonus||[];for(var i=0;i<ib.length;i++)m+=(typeof ib[i].min==='number')?ib[i].min:INCL_BONUS_DEF.min;return m;}
 /* Like weeklyMetricSeries but SUMS a per-day value (e.g. Zone 2 minutes) instead of counting days. */
