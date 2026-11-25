@@ -2219,6 +2219,36 @@ sandbox.closeSheet&&sandbox.closeSheet();
   var hh=sandbox.weeklyReviewHTML({wo:0,cZ2:0},wd);ok(/Distance/.test(hh)&&/6\.2 mi total/.test(hh)&&/3\.1 mi\/day/.test(hh),'review: Distance row shows total and mi/day');
   store.clear();_s.forEach(function(v,k){store.set(k,v);});
 })();
+// ---- calorie "hit my target" auto-check ----
+(function(){
+  var _s=new Map(store);store.clear();
+  var d=new Date();d.setHours(0,0,0,0);function ago(n){var x=new Date(d);x.setDate(d.getDate()-n);return x;}
+  function ymd(x){return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate();}
+  ok(sandbox.calCeiling({})===2200&&sandbox.calCeiling({cdt_c_run:{cal:300}})===2350,'calorie: ceiling = 2200 plus half of logged cardio kcal (300 -> +150)');
+  ok(sandbox.calCeiling({cdt_c_run:{cal:1000},cdt_c_bike:{cal:500}})===2450,'calorie: cardio credit is capped at +250');
+  ok(sandbox.calCeiling({inclBonus:[{min:30}]})===2200,'calorie: only logged cardio kcal earns credit (not active energy or minutes)');
+  sandbox.ingestHealth({date:ymd(ago(2)),dietKcal:2200});sandbox.ingestHealth({date:ymd(ago(3)),dietKcal:2201});sandbox.ingestHealth({date:ymd(ago(4)),dietKcal:2300});
+  ok(sandbox.calAuto(ago(2),{}).ok===true,'calorie: exactly the ceiling is on target (a ceiling, not a bullseye)');
+  ok(sandbox.calAuto(ago(3),{}).ok===false,'calorie: 1 kcal over the ceiling is not');
+  ok(sandbox.calAuto(ago(4),{cdt_c_run:{cal:300}}).ok===true&&sandbox.calAuto(ago(4),{}).ok===false,'calorie: 2300 is on target only with a 300 kcal cardio credit (ceiling 2350)');
+  ok(sandbox.calAuto(ago(5),{})===null,'calorie: no intake data -> no automatic verdict');
+  ok(sandbox.calDoneOn({},ago(2))===true&&sandbox.calDoneOn({},ago(3))===false,'calorie: day is done by the auto rule when nothing is ticked');
+  ok(sandbox.calDoneOn({caltgt:false},ago(2))===false&&sandbox.calDoneOn({caltgt:true},ago(3))===true,'calorie: a manual tick or untick overrides the auto result');
+  ok(sandbox.calDoneOn({caltgt:true},ago(5))===true&&sandbox.calDoneOn({},ago(5))===false,'calorie: with no intake data the manual tick works as before');
+  ok(sandbox.calDoneOn({}) === false,'calorie: weekly callers without a date fall back to the manual flag only');
+  // today: only judged after the day is complete
+  sandbox.ingestHealth({date:ymd(ago(0)),dietKcal:1500});
+  sandbox.DAY_COMPLETE_HOUR=25;ok(sandbox.calAuto(ago(0),{})===null&&sandbox.calDoneOn({},ago(0))===false,'calorie: today is not auto-judged before the day is complete');
+  ok(/so far/.test(function(){sandbox.viewDow=ago(0).getDay();sandbox.weekOffset=0;sandbox.state={};return sandbox.calSubLabel(ago(0));}()),'calorie: the button shows a running total while the day is open');
+  sandbox.DAY_COMPLETE_HOUR=0;ok(sandbox.calDoneOn({},ago(0))===true,'calorie: once complete, today is judged');
+  // tap: stores an override only when it differs from auto
+  sandbox.viewDow=ago(0).getDay();sandbox.weekOffset=0;sandbox.state={};
+  sandbox.calTap();ok(sandbox.state.caltgt===false,'calorie tap: auto says done -> a tap stores a manual "no"');
+  sandbox.calTap();ok(sandbox.state.caltgt===undefined,'calorie tap: tapping back to the auto result clears the override');
+  sandbox.state={};sandbox.ingestHealth({date:ymd(ago(0)),dietKcal:3000});sandbox.calTap();ok(sandbox.state.caltgt===true,'calorie tap: over target -> a tap stores a manual "yes"');
+  sandbox.DAY_COMPLETE_HOUR=21;
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
 (function(){
   var _snap=new Map(store);store.clear();
   // healthIngestText parses strict JSON, loose "key: value" text, and reports outcome codes
