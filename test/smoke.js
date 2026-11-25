@@ -2110,6 +2110,115 @@ sandbox.closeSheet&&sandbox.closeSheet();
 })();
 
 // ===== Apple Health daily import: shared ingest + clipboard path =====
+// ---- manual weight / calorie entry + sync status (weight-loss inputs) ----
+(function(){
+  var _s=new Map(store);store.clear();
+  var d=new Date();d.setHours(0,0,0,0);
+  function ago(n){var x=new Date(d);x.setDate(d.getDate()-n);return x;}
+  function hl(n){return JSON.parse(store.get(sandbox.healthKeyForDate(ago(n)))||'null');}
+  ok(sandbox.healthSetManual(ago(1),{weightLb:'168.4',dietKcal:2100})===2,'manual: weight + calories saved');
+  var h1=hl(1);ok(h1.weightLb===168.4&&h1.dietKcal===2100&&h1.man.weightLb===1,'manual: stored in the hl_ blob and flagged manual');
+  ok(sandbox.healthSetManual(ago(1),{weightLb:9999,dietKcal:-5,protein:'abc'})===0&&hl(1).weightLb===168.4,'manual: out-of-range / non-numeric values rejected, old value kept');
+  ok(sandbox.woWeightSeries(5).some(function(p){return p.w===168.4;}),'manual weight appears in the weight series');
+  sandbox.ingestHealth({date:ago(1).getFullYear()+'-'+(ago(1).getMonth()+1)+'-'+ago(1).getDate(),weightLb:167.2});
+  ok(hl(1).weightLb===167.2&&!(hl(1).man&&hl(1).man.weightLb)&&hl(1).man.dietKcal===1,'real Health import overwrites a manual field and clears only its flag');
+  // deficit: weekly manual value fills days with no computed deficit; computed days untouched
+  store.clear();
+  sandbox.ingestHealth({date:ago(2).getFullYear()+'-'+(ago(2).getMonth()+1)+'-'+ago(2).getDate(),dietKcal:2000,activeKcal:500,restKcal:1800});   // computed deficit 300
+  var wk=[];for(var i=3;i>=1;i--)wk.push(ago(i));
+  ok(sandbox.healthSetWeeklyDeficit(wk,600)===2&&hl(2).defKcal===undefined&&hl(1).defKcal===600&&hl(3).defKcal===600,'weekly deficit fills only days without a computed deficit');
+  var n=sandbox.nutritionSummary(ago(3).getTime(),ago(1).getTime());
+  ok(n&&n.defDays===2&&Math.round(n.deficit)===500,'nutritionSummary blends computed (300) + manual (600,600) per day = 500 ('+(n&&Math.round(n.deficit))+')');
+  store.clear();
+  sandbox.healthSetManual(ago(1),{defKcal:-250});
+  var n2=sandbox.nutritionSummary(ago(1).getTime(),ago(1).getTime());
+  ok(n2.dietDays===0&&n2.defDays===1&&n2.deficit===-250,'manual-only surplus (-250) is reported with no Health data');
+  ok(sandbox.coachNutrition({start:ago(1).getTime(),end:ago(1).getTime()})!==null,'coach nutrition accepts manual-only data');
+  var nb=Array.from(store.keys()).filter(function(k){return sandbox.isBackupKey(k);}).length;ok(nb===1,'manual entries ride in the existing hl_ backup sweep');
+  // status panel + manual form render
+  store.clear();var st=sandbox.healthStatusHTML();ok(/No Health import in 14 days/.test(st)&&/Weight missing/.test(st),'status panel warns when nothing has synced');
+  sandbox.healthSetManual(ago(1),{weightLb:168,dietKcal:2000});st=sandbox.healthStatusHTML();ok(/hs-d man/.test(st),'status panel marks manual cells');
+  ok(/hmWk/.test(sandbox.healthManualHTML(ago(1))),'manual form renders the weekly deficit field');
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
+// ---- real-deficit calibration (reported deficit vs scale-implied) ----
+(function(){
+  var _s=new Map(store);store.clear();
+  var d=new Date();d.setHours(0,0,0,0);function ago(n){var x=new Date(d);x.setDate(d.getDate()-n);return x;}
+  var c0=sandbox.deficitCalibration();ok(!c0.ok&&c0.weighIns===0&&/needs 6\+ weigh-ins/.test(sandbox.calibrationHTML()),'calibration: not enough data is explained, not faked');
+  for(var i=0;i<28;i++)sandbox.healthSetManual(ago(27-i),{weightLb:170-0.1*i,defKcal:700});
+  var c=sandbox.deficitCalibration();
+  ok(c.ok&&Math.abs(c.reported-700)<1&&Math.abs(c.actual-350)<5&&Math.abs(c.gap-350)<6,'calibration: reported 700 vs scale 350 (0.1 lb/day) -> gap ~350 ('+Math.round(c.reported)+'/'+Math.round(c.actual)+'/'+Math.round(c.gap)+')');
+  var h=sandbox.calibrationHTML();ok(/Health reports/.test(h)&&/overstating burn/.test(h)&&!/NaN|undefined/.test(h),'calibration: text flags the gap, neutral wording, no NaN');
+  store.clear();for(i=0;i<28;i++)sandbox.healthSetManual(ago(27-i),{weightLb:170-0.1*i,defKcal:350});
+  ok(/agree within 150/.test(sandbox.calibrationHTML()),'calibration: reported ~= scale reads as agreeing');
+  store.clear();for(i=0;i<28;i++)sandbox.healthSetManual(ago(27-i),{weightLb:170-0.1*i,defKcal:0});
+  ok(/more loss than Health reports/.test(sandbox.calibrationHTML()),'calibration: scale loss above reported is described');
+  store.clear();for(i=0;i<28;i+=2)sandbox.healthSetManual(ago(27-i),{weightLb:170-0.1*i,defKcal:700});   // only 14 calorie days at 2-day spacing is still enough; drop food instead
+  for(i=0;i<28;i++){var k=sandbox.healthKeyForDate(ago(i)),o=JSON.parse(store.get(k)||'null');if(o&&i%4!==0){delete o.defKcal;store.set(k,JSON.stringify(o));}}
+  ok(!sandbox.deficitCalibration().ok,'calibration: too few calorie days (<10) stays not-ready');
+  store.clear();for(i=0;i<28;i++)sandbox.healthSetManual(ago(27-i),{weightLb:170-0.1*i,defKcal:700});
+  var cn=sandbox.coachNutrition({start:ago(27).getTime(),end:ago(0).getTime()});ok(cn&&cn.scaleCheck&&cn.scaleCheck.gapKcalPerDay>300,'coach payload carries the scale check');
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
+// ---- weekly fat-loss review card ----
+(function(){
+  var _s=new Map(store);store.clear();
+  var wd=sandbox.getWeekDates();function dd(n){var x=new Date(wd[0].getFullYear(),wd[0].getMonth(),wd[0].getDate());x.setDate(x.getDate()+n);return x;}
+  ok(sandbox.weeklyReview(wd).any===false&&sandbox.weeklyReviewHTML({wo:0,cZ2:0},wd)==='','review: no data -> no card');
+  sandbox.healthSetManual(dd(0),{weightLb:169});sandbox.healthSetManual(dd(-7),{weightLb:170});sandbox.healthSetManual(dd(-14),{weightLb:170});
+  var r=sandbox.weeklyReview(wd);
+  ok(r.weight.cur===169&&r.weight.prev===170&&Math.abs(r.weight.delta+1)<1e-9&&r.weight.flat2w===false,'review: week avg 169 vs 170 = -1.0, not flat');
+  sandbox.healthSetManual(dd(0),{weightLb:170});r=sandbox.weeklyReview(wd);ok(r.weight.flat2w===true,'review: three equal weekly means flag flat-for-2-weeks');
+  sandbox.healthSetManual(dd(-14),{weightLb:171});r=sandbox.weeklyReview(wd);ok(r.weight.flat2w===false,'review: a drop in the earlier of the two weeks is not flat');
+  sandbox.healthSetManual(dd(0),{weightLb:169,defKcal:500,protein:180});
+  sandbox.ingestHealth({date:dd(0).getFullYear()+'-'+(dd(0).getMonth()+1)+'-'+dd(0).getDate(),steps:12000,fiber:30});
+  r=sandbox.weeklyReview(wd);
+  ok(r.steps.n===1&&r.steps.hit===1&&r.prot.hit===1&&r.fib.n===1&&r.fib.hit===0,'review: steps/protein/fiber tallies and target hits');
+  ok(r.nut&&Math.round(r.nut.deficit)===500,'review: deficit comes from the shared nutrition summary');
+  var h=sandbox.weeklyReviewHTML({wo:2,cZ2:95},wd);
+  ok(/Weekly Review/.test(h)&&/12,000\/day|12000\/day/.test(h)&&/95 min/.test(h)&&/2 \/ 3/.test(h)&&!/NaN|undefined/.test(h),'review: card renders steps, Zone 2, workouts, no NaN');
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
+// ---- partial-day guard, weight import guard, sync-yesterday URL, distance row ----
+(function(){
+  var _s=new Map(store);store.clear();
+  var d=new Date();d.setHours(0,0,0,0);function ago(n){var x=new Date(d);x.setDate(d.getDate()-n);return x;}
+  function ymd(x){return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate();}
+  // partial-day guard
+  sandbox.ingestHealth({date:ymd(ago(0)),dietKcal:1500,activeKcal:200,restKcal:500});
+  sandbox.ingestHealth({date:ymd(ago(1)),dietKcal:2000,activeKcal:500,restKcal:1800});
+  sandbox.DAY_COMPLETE_HOUR=25;   // today is always "not complete yet"
+  var n=sandbox.nutritionSummary(ago(1).getTime(),ago(0).getTime());
+  ok(n.partialToday===true&&Math.round(n.deficit)===300&&n.dietDays===1,'partial guard: today is left out of the deficit while incomplete (only yesterday counts: 300)');
+  var onlyToday=sandbox.nutritionSummary(ago(0).getTime(),ago(0).getTime());
+  ok(onlyToday.deficit===null&&onlyToday.partialToday===true,'partial guard: a window of only today has no deficit yet');
+  var _yk=sandbox.healthKeyForDate(ago(1)),_yv=store.get(_yk);store.delete(_yk);
+  ok(/calories count after \d+ [ap]m/.test(sandbox.fatLossHTML(ago(0))),'partial guard: Fat-Loss card explains why there is no deficit yet');
+  store.set(_yk,_yv);
+  sandbox.healthSetManual(ago(0),{defKcal:400});
+  ok(Math.round(sandbox.nutritionSummary(ago(0).getTime(),ago(0).getTime()).deficit)===400,'partial guard: a hand-entered deficit for today still counts');
+  sandbox.DAY_COMPLETE_HOUR=0;    // today is complete
+  var n2=sandbox.nutritionSummary(ago(1).getTime(),ago(0).getTime());
+  ok(n2.partialToday===false&&n2.dietDays===2,'partial guard: once the day is complete, today counts again');
+  sandbox.DAY_COMPLETE_HOUR=21;
+  store.clear();
+  // weight import guard
+  var k=sandbox.ingestHealth({date:ymd(ago(2)),weightLb:94.5,steps:6000});
+  var h=JSON.parse(store.get(sandbox.healthKeyForDate(ago(2))));
+  ok(k===1&&h.steps===6000&&h.weightLb===undefined,'weight guard: 94.5 lb is ignored, the rest of the day still imports');
+  ok(sandbox.ingestHealth({date:ymd(ago(3)),weightLb:149.9})===0&&sandbox.ingestHealth({date:ymd(ago(3)),weightLb:200.1})===0,'weight guard: 149.9 and 200.1 are ignored');
+  ok(sandbox.ingestHealth({date:ymd(ago(3)),weightLb:150})===1&&sandbox.ingestHealth({date:ymd(ago(4)),weightLb:200})===1,'weight guard: 150 and 200 are accepted');
+  // sync yesterday URL
+  ok(sandbox.healthShortcutURL('Copy My Stats Yesterday')==='shortcuts://run-shortcut?name=Copy%20My%20Stats%20Yesterday'&&sandbox.healthShortcutURL()==='shortcuts://run-shortcut?name=Copy%20My%20Stats','sync: yesterday shortcut URL, default stays Copy My Stats');
+  // distance on the weekly review
+  store.clear();
+  var wd=[];for(var i=7;i>=1;i--)wd.push(ago(i));
+  sandbox.ingestHealth({date:ymd(ago(6)),distanceMi:2.7});sandbox.ingestHealth({date:ymd(ago(5)),distanceMi:3.5});
+  var r=sandbox.weeklyReview(wd);ok(r.dist.n===2&&Math.abs(r.dist.sum-6.2)<1e-9&&r.any===true,'review: distance tallied (6.2 mi over 2 days) and counts as data');
+  var hh=sandbox.weeklyReviewHTML({wo:0,cZ2:0},wd);ok(/Distance/.test(hh)&&/6\.2 mi total/.test(hh)&&/3\.1 mi\/day/.test(hh),'review: Distance row shows total and mi/day');
+  store.clear();_s.forEach(function(v,k){store.set(k,v);});
+})();
 (function(){
   var _snap=new Map(store);store.clear();
   // healthIngestText parses strict JSON, loose "key: value" text, and reports outcome codes
