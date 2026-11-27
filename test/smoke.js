@@ -2211,7 +2211,8 @@ sandbox.closeSheet&&sandbox.closeSheet();
   ok(sandbox.ingestHealth({date:ymd(ago(3)),weightLb:149.9})===0&&sandbox.ingestHealth({date:ymd(ago(3)),weightLb:200.1})===0,'weight guard: 149.9 and 200.1 are ignored');
   ok(sandbox.ingestHealth({date:ymd(ago(3)),weightLb:150})===1&&sandbox.ingestHealth({date:ymd(ago(4)),weightLb:200})===1,'weight guard: 150 and 200 are accepted');
   // sync yesterday URL
-  ok(sandbox.healthShortcutURL('Copy My Stats Yesterday')==='shortcuts://run-shortcut?name=Copy%20My%20Stats%20Yesterday'&&sandbox.healthShortcutURL()==='shortcuts://run-shortcut?name=Copy%20My%20Stats','sync: yesterday shortcut URL, default stays Copy My Stats');
+  ok(sandbox.healthShortcutURL('Copy My Stats Yesterday')==='shortcuts://run-shortcut?name=Copy%20My%20Stats%20Yesterday'&&sandbox.healthShortcutURL()==='shortcuts://run-shortcut?name=Copy%20My%20Stats%20Today','sync: yesterday shortcut URL, default is Copy My Stats Today');
+ok(/class="reset-btn sync-btn" onclick="healthSyncNow\(\)">[^<]*Sync Apple Health today</.test(html)&&/class="reset-btn sync-btn" onclick="healthSyncNow\('Copy My Stats Yesterday'\)">[^<]*Sync Apple Health yesterday</.test(html)&&!/sync-btn2/.test(html),'both sync buttons share one style and are labelled today / yesterday');
   // distance on the weekly review
   store.clear();
   var wd=[];for(var i=7;i>=1;i--)wd.push(ago(i));
