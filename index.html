@@ -844,6 +844,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif
 .hs-day{flex:1;font-variant-numeric:tabular-nums}
 .hs-h{width:44px;text-align:center;font-size:0.625rem;letter-spacing:.06em;text-transform:uppercase}
 .hs-d{width:44px;text-align:center;font-weight:700}
+.hs-row.today{color:var(--text);font-weight:700;border-bottom:1px solid var(--border)}
 .hs-d.ok{color:var(--green)}.hs-d.man{color:var(--accent)}
 .hs-warn{font-size:0.75rem;color:var(--red);margin-top:6px;line-height:1.4}
 .hm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
@@ -2427,10 +2428,11 @@ function healthGuideHTML(){var u=esc(importUrl());var h='<div class="hl-guide">'
 function healthStatusHTML(){var today=new Date();today.setHours(0,0,0,0);var rows='',missFood=0,missBurn=0,missWt=0,last=0;
   function cell(ok,man){return '<span class="hs-d'+(ok?(man?' man':' ok'):'')+'">'+(ok?(man?'M':'&#10003;'):'&middot;')+'</span>';}
   for(var i=0;i<14;i++){var dt=new Date(today);dt.setDate(today.getDate()-i);var hd=loadHealth(dt);if(hd&&hd.updated>last)last=hd.updated;
-    if(i<1||i>7)continue;hd=hd||{};var m=hd.man||{};
+    if(i>7)continue;hd=hd||{};   // today (i=0) is shown, but a partial day is never counted as missing
+    var m=hd.man||{};
     var food=(typeof hd.dietKcal==='number'&&hd.dietKcal>0)||typeof hd.defKcal==='number',burn=typeof hd.activeKcal==='number'||typeof hd.restKcal==='number',wt=typeof hd.weightLb==='number',st=typeof hd.steps==='number';
-    if(!food)missFood++;if(!burn&&typeof hd.defKcal!=='number')missBurn++;if(!wt)missWt++;
-    rows+='<div class="hs-row"><span class="hs-day">'+DAYS_S[dt.getDay()]+' '+MONTHS_S[dt.getMonth()]+' '+dt.getDate()+'</span>'+cell(wt,m.weightLb)+cell(food,m.dietKcal||m.defKcal)+cell(burn,0)+cell(st,0)+'</div>';}
+    if(i){if(!food)missFood++;if(!burn&&typeof hd.defKcal!=='number')missBurn++;if(!wt)missWt++;}
+    rows+='<div class="hs-row'+(i?'':' today')+'"><span class="hs-day">'+(i?DAYS_S[dt.getDay()]+' '+MONTHS_S[dt.getMonth()]+' '+dt.getDate():'Today (so far)')+'</span>'+cell(wt,m.weightLb)+cell(food,m.dietKcal||m.defKcal)+cell(burn,0)+cell(st,0)+'</div>';}
   var when=last?new Date(last).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'none in the last 14 days';
   var h='<div class="hl-sec"><div class="hl-sec-t">Sync status</div><div class="hl-sec-b">Last Health import: <b>'+when+'</b></div>';
   h+='<div class="hs-row" style="margin-top:6px"><span class="hs-day"></span><span class="hs-h">Weight</span><span class="hs-h">Food</span><span class="hs-h">Burn</span><span class="hs-h">Steps</span></div>'+rows;

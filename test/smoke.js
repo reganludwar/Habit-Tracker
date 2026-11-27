@@ -2138,6 +2138,10 @@ sandbox.closeSheet&&sandbox.closeSheet();
   // status panel + manual form render
   store.clear();var st=sandbox.healthStatusHTML();ok(/No Health import in 14 days/.test(st)&&/Weight missing/.test(st),'status panel warns when nothing has synced');
   sandbox.healthSetManual(ago(1),{weightLb:168,dietKcal:2000});st=sandbox.healthStatusHTML();ok(/hs-d man/.test(st),'status panel marks manual cells');
+  store.clear();for(var _k=1;_k<=5;_k++)sandbox.healthSetManual(ago(_k),{weightLb:168,dietKcal:2000,defKcal:300});
+  st=sandbox.healthStatusHTML();ok(/hs-row today"><span class="hs-day">Today \(so far\)/.test(st)&&(st.match(/class="hs-row( today)?"><span class="hs-day">[^<]/g)||[]).length===8,'status table lists Today first, plus the 7 earlier days');
+  ok(!/missing on/.test(st),'an empty today is not counted as missing');
+  sandbox.healthSetManual(ago(0),{weightLb:168});st=sandbox.healthStatusHTML();ok(/Today \(so far\)<\/span><span class="hs-d man"/.test(st),'today row shows data that has arrived');
   ok(/hmWk/.test(sandbox.healthManualHTML(ago(1))),'manual form renders the weekly deficit field');
   store.clear();_s.forEach(function(v,k){store.set(k,v);});
 })();
